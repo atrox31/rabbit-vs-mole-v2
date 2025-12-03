@@ -19,6 +19,6 @@ public static class PlayerPrefsConst
     public const string GOLDEN_CARROT_DATA = "GOLDEN_CARROT_DATA";
     public const string RABBIT_STORY_PROGRESS = "RABBIT_STORY_PROGRESS";
 
-    public const string LANGUAGE = "LANGUAGE";
+    public const string LANGUAGE = "SelectedLocale";
     public const string INPUT_BINDINGS = "INPUT_BINDINGS";
 }

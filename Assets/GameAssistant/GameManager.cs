@@ -103,7 +103,7 @@ public class GameManager : MonoBehaviour
     {
         if (_instance == null)
         {
-            Debug.LogWarning("GameManager.SetRabbitStoryProgress: Instance is null.");
+            Debug.LogWarning("GameManager.GoldenCarrotPick: Instance is null.");
             return;
         }
         _instance._goldenCarrotPickState[_instance._currentDayOfWeek] = true;
@@ -112,7 +112,7 @@ public class GameManager : MonoBehaviour
     {
         if (_instance == null)
         {
-            Debug.LogWarning("GameManager.SetRabbitStoryProgress: Instance is null.");
+            Debug.LogWarning("GameManager.IsGoldenCarrotCollected: Instance is null.");
             return default;
         }
         return _instance._goldenCarrotPickState[dayOfWeek];

@@ -18,6 +18,7 @@ public class LoadingCarrotAnimation : MonoBehaviour
     void Awake()
     {
         _spriteRenderer = GetComponent<Image>();
+        _originalPosition = transform.localPosition;
     }
 
     void FixedUpdate()
