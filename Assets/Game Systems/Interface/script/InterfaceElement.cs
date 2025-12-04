@@ -20,6 +20,13 @@ namespace Interface.Element
         protected float _animationTimer = 0f;
         protected bool _isAnimating = false;
         protected bool _isVisible = false;
+        protected string _elementID = string.Empty;
+
+        public string ElementID
+        {
+            get => _elementID;
+            set => _elementID = value;
+        }
 
         /// <summary>
         /// Określa czy GUIPanel może modyfikować anchory tego elementu.

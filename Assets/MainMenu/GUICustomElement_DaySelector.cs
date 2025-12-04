@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Localization;
 
+[Obsolete]
 public class GUICustomElement_DaySelector : Interface.Element.InterfaceElement
 {
     [Header("Day Selector References")]
@@ -174,7 +175,7 @@ public class GUICustomElement_DaySelector : Interface.Element.InterfaceElement
         if (_levelStatusImage == null)
             return;
 
-        bool isLevelCompleted = GameManager.GetRabbitStoryProgress(_currentDay);
+        bool isLevelCompleted = GameManager.GetStoryProgress(_currentDay, PlayerType.Rabbit);
         bool hasGoldenCarrot = GameManager.IsGoldenCarrotCollected(_currentDay);
 
         if (isLevelCompleted && hasGoldenCarrot && _goldenCarrot != null)

@@ -11,6 +11,7 @@ namespace Interface
     {
         private MainMenuManager _manager;
         private GUIPanel _panel;
+        private InterfaceElement _lastAddedInterfaceElement;
 
         public PanelBuilder(MainMenuManager manager, GUIPanel panel)
         {
@@ -21,14 +22,14 @@ namespace Interface
         public PanelBuilder AddButton(string text, Action onClick, bool isBottomButton = false)
         {
             var button = _manager.CreateButton(text, onClick);
-            _panel.AddElement(button, isBottomButton);
+            _lastAddedInterfaceElement = _panel.AddElement(button, isBottomButton);
             return this;
         }
 
         public PanelBuilder AddButton(LocalizedString localizedText, Action onClick, bool isBottomButton = false)
         {
             var button = _manager.CreateButton(localizedText, onClick);
-            _panel.AddElement(button, isBottomButton);
+            _lastAddedInterfaceElement = _panel.AddElement(button, isBottomButton);
             return this;
         }
 
@@ -49,7 +50,7 @@ namespace Interface
             {
                 guiButton.SetDisabled(disabled, tooltipText);
             }
-            _panel.AddElement(button, isBottomButton);
+            _lastAddedInterfaceElement = _panel.AddElement(button, isBottomButton);
             return this;
         }
 
@@ -57,70 +58,70 @@ namespace Interface
         public PanelBuilder AddSlider(string label, Action<float> onValueChanged, Func<float> getCurrentValue = null)
         {
             var slider = _manager.CreateSlider(label, onValueChanged, getCurrentValue);
-            _panel.AddElement(slider);
+            _lastAddedInterfaceElement = _panel.AddElement(slider);
             return this;
         }
 
         public PanelBuilder AddSlider(LocalizedString localizedLabel, Action<float> onValueChanged, Func<float> getCurrentValue = null)
         {
             var slider = _manager.CreateSlider(localizedLabel, onValueChanged, getCurrentValue);
-            _panel.AddElement(slider);
+            _lastAddedInterfaceElement = _panel.AddElement(slider);
             return this;
         }
 
         public PanelBuilder AddToggle(string label, Action<bool> onValueChanged, Func<bool> getCurrentValue = null)
         {
             var toggle = _manager.CreateToggle(label, onValueChanged, getCurrentValue);
-            _panel.AddElement(toggle);
+            _lastAddedInterfaceElement = _panel.AddElement(toggle);
             return this;
         }
 
         public PanelBuilder AddToggle(LocalizedString localizedLabel, Action<bool> onValueChanged, Func<bool> getCurrentValue = null)
         {
             var toggle = _manager.CreateToggle(localizedLabel, onValueChanged, getCurrentValue);
-            _panel.AddElement(toggle);
+            _lastAddedInterfaceElement = _panel.AddElement(toggle);
             return this;
         }
 
         public PanelBuilder AddDropDown(string label, Action<int> onValueChanged, List<string> options, Func<int> getCurrentValue = null)
         {
             var dropdown = _manager.CreateDropdown(label, onValueChanged, options, getCurrentValue);
-            _panel.AddElement(dropdown);
+            _lastAddedInterfaceElement = _panel.AddElement(dropdown);
             return this;
         }
 
         public PanelBuilder AddDropDown(LocalizedString localizedLabel, Action<int> onValueChanged, List<string> options, Func<int> getCurrentValue = null)
         {
             var dropdown = _manager.CreateDropdown(localizedLabel, onValueChanged, options, getCurrentValue);
-            _panel.AddElement(dropdown);
+            _lastAddedInterfaceElement = _panel.AddElement(dropdown);
             return this;
         }
 
         public PanelBuilder AddDropDown(LocalizedString localizedLabel, Action<int> onValueChanged, List<LocalizedString> localizedOptions, Func<int> getCurrentValue = null)
         {
             var dropdown = _manager.CreateDropdown(localizedLabel, onValueChanged, localizedOptions, getCurrentValue);
-            _panel.AddElement(dropdown);
+            _lastAddedInterfaceElement = _panel.AddElement(dropdown);
             return this;
         }
 
         public PanelBuilder AddLabel(string text)
         {
             var label = _manager.CreateLabel(text);
-            _panel.AddElement(label);
+            _lastAddedInterfaceElement = _panel.AddElement(label);
             return this;
         }
 
         public PanelBuilder AddLabel(LocalizedString localizedText)
         {
             var label = _manager.CreateLabel(localizedText);
-            _panel.AddElement(label);
+            _lastAddedInterfaceElement = _panel.AddElement(label);
             return this;
         }
 
         public PanelBuilder AddSpacer(float height = 20f)
         {
             var spacer = _manager.CreateSpacer(height);
-            _panel.AddElement(spacer);
+            _lastAddedInterfaceElement = _panel.AddElement(spacer);
             return this;
         }
 
@@ -146,7 +147,7 @@ namespace Interface
                 var keyBinder = _manager.CreateKeyBinder(localizedLabel, action, bindingIndex, bindingGroup);
                 if (keyBinder != null)
                 {
-                    _panel.AddElement(keyBinder);
+                    _lastAddedInterfaceElement = _panel.AddElement(keyBinder);
                 }
             }
 
@@ -229,7 +230,7 @@ namespace Interface
             var customElement = _manager.CreateCustomElement(prefab, argument);
             if (customElement != null)
             {
-                _panel.AddElement(customElement, isBottomElement);
+                _lastAddedInterfaceElement = _panel.AddElement(customElement, isBottomElement);
             }
             return this;
         }
@@ -237,6 +238,15 @@ namespace Interface
         public GUIPanel Build()
         {
             return _panel;
+        }
+
+        public PanelBuilder SetId(string id)
+        {
+            if (_panel != null && _lastAddedInterfaceElement != null)
+            {
+                _lastAddedInterfaceElement.ElementID = id;
+            }
+            return this;
         }
     }
 }

@@ -284,5 +284,10 @@ public partial class GUICustomElement_GameModeSelector : Interface.Element.Inter
             }
         }
     }
+
+    internal PlayerType GetSelectedPlayer()
+    {
+        throw new NotImplementedException();
+    }
 }
 

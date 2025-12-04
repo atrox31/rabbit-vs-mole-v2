@@ -27,4 +27,16 @@ public static partial class EnumExtensions
 
         return Arr[prevIndex];
     }
+
+    /// <summary>
+    /// Get random enum element
+    /// </summary>
+    /// <returns>Random enum element</returns>
+    public static T SelectRandom<T>(this T src) where T : Enum
+    {
+        T[] Arr = (T[])Enum.GetValues(src.GetType());
+        Random random = new Random();
+        int randomIndex = random.Next(Arr.Length);
+        return Arr[randomIndex];
+    }
 }

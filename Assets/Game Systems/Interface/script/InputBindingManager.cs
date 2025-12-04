@@ -29,11 +29,14 @@ namespace Interface
 
             try
             {
-                asset.LoadBindingOverridesFromJson(json);
+                // Load bindings and ignore errors for missing binding IDs (from old structure)
+                asset.LoadBindingOverridesFromJson(json, true);
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"Failed to load input bindings: {ex.Message}");
+                Debug.LogWarning($"Failed to load input bindings: {ex.Message}. Clearing old bindings.");
+                // Clear old bindings if they're incompatible
+                ClearInputBindings(asset);
             }
         }
 
@@ -152,7 +155,7 @@ namespace Interface
         /// <summary>
         /// Begins an interactive rebinding operation for an action
         /// </summary>
-        public static InputActionRebindingExtensions.RebindingOperation BeginRebind(InputAction action, int bindingIndex, Action onComplete, Action onCancel = null, float waitForAnother = 0.1f)
+        public static InputActionRebindingExtensions.RebindingOperation BeginRebind(InputAction action, int bindingIndex, Action onComplete, Action onCancel = null, float waitForAnother = 0.1f, string bindingGroup = null)
         {
             if (action == null)
                 return null;
@@ -209,19 +212,38 @@ namespace Interface
                         onCancel?.Invoke();
                     });
 
-                // Restrict device types based on action map name
-                string actionMapName = action.actionMap?.name ?? string.Empty;
-                if (actionMapName.Contains("Keyboard", StringComparison.OrdinalIgnoreCase))
+                // Restrict device types based on binding group (control scheme)
+                if (!string.IsNullOrWhiteSpace(bindingGroup))
                 {
-                    // Only allow keyboard devices
-                    operation.WithControlsExcluding("<Gamepad>");
-                    operation.WithControlsExcluding("<Mouse>");
+                    if (bindingGroup.Contains("Keyboard", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Only allow keyboard devices
+                        operation.WithControlsExcluding("<Gamepad>");
+                        operation.WithControlsExcluding("<Mouse>");
+                    }
+                    else if (bindingGroup.Contains("Gamepad", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Only allow gamepad devices
+                        operation.WithControlsExcluding("<Keyboard>");
+                        operation.WithControlsExcluding("<Mouse>");
+                    }
                 }
-                else if (actionMapName.Contains("Gamepad", StringComparison.OrdinalIgnoreCase))
+                else
                 {
-                    // Only allow gamepad devices
-                    operation.WithControlsExcluding("<Keyboard>");
-                    operation.WithControlsExcluding("<Mouse>");
+                    // Fallback: check action map name if binding group is not provided
+                    string actionMapName = action.actionMap?.name ?? string.Empty;
+                    if (actionMapName.Contains("Keyboard", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Only allow keyboard devices
+                        operation.WithControlsExcluding("<Gamepad>");
+                        operation.WithControlsExcluding("<Mouse>");
+                    }
+                    else if (actionMapName.Contains("Gamepad", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Only allow gamepad devices
+                        operation.WithControlsExcluding("<Keyboard>");
+                        operation.WithControlsExcluding("<Mouse>");
+                    }
                 }
 
                 operation.Start();

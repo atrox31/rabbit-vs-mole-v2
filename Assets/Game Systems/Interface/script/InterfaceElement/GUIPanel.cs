@@ -6,6 +6,7 @@ using UnityEngine.UI;
 using UnityEngine.Localization;
 using UnityEngine.Localization.Components;
 using System.Collections;
+using System.Linq;
 
 namespace Interface
 {
@@ -159,18 +160,15 @@ namespace Interface
             }
         }
 
-        public void AddElement(InterfaceElement element, bool isBottomElement = false)
+        public InterfaceElement AddElement(InterfaceElement element, bool isBottomElement = false)
         {
-            if (element == null) return;
+            if (element == null) return null;
 
             if (isBottomElement)
-            {
-                _bottomElements.Add(element);
-            }
-            else
-            {
-                _elements.Add(element);
-            }
+                            _bottomElements.Add(element);
+                        else
+                            _elements.Add(element);
+            
 
             element.transform.SetParent(_contentContainer, false);
             
@@ -222,6 +220,11 @@ namespace Interface
             {
                 StartCoroutine(CheckScrollAfterLayout());
             }
+
+            if (isBottomElement)
+                return _bottomElements.Last();
+            else
+                return _elements.Last();
         }
 
         public void RemoveElement(InterfaceElement element)
@@ -803,6 +806,12 @@ namespace Interface
             }
         }
 
+        public InterfaceElement GetElementByID(string elementID) =>
+            _elements
+                .Concat(_bottomElements)
+                .Where(x => x?.ElementID != string.Empty)
+                .FirstOrDefault(x => x.ElementID == elementID);
+        
         private IEnumerator CheckScrollAndStartAutoScroll()
         {
             yield return new WaitForEndOfFrame();

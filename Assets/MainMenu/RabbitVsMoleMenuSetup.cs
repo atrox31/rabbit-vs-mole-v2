@@ -4,6 +4,8 @@ using Interface;
 using UnityEngine.Localization;
 using UnityEngine.Localization.Settings;
 using UnityEngine.InputSystem;
+using System.Linq;
+using System;
 
 public class RabbitVsMoleMenuSetup : MonoBehaviour
 {
@@ -39,9 +41,10 @@ public class RabbitVsMoleMenuSetup : MonoBehaviour
 
     [Header("Key Bindings")]
     [SerializeField] private InputActionAsset inputActions;
-    [SerializeField] private string playerPrimaryActions = "PlayerKeyboard1";
-    [SerializeField] private string playerSecondaryActions = "PlayerKeyboard2";
-    [SerializeField] private string playerGamepadActions = "PlayerGamepad";
+    [SerializeField] private string playerActionMap = "Player";
+    [SerializeField] private string playerPrimaryBindingGroup = "KeyboardP1";
+    [SerializeField] private string playerSecondaryBindingGroup = "KeyboardP2";
+    [SerializeField] private string playerGamepadBindingGroup = "Gamepad";
 
     [Header("Custom elements")]
     [SerializeField] private GameObject daySelectorPrefab;
@@ -54,7 +57,7 @@ public class RabbitVsMoleMenuSetup : MonoBehaviour
     [SerializeField] private List<GameModeData> challengeGameModes;
     [SerializeField] private List<GameModeData> duelGameModes;
 
-    private bool IsStoryComplite => GameManager.GetRabbitStoryProgress(System.DayOfWeek.Sunday);
+    private bool IsStoryComplite => GameManager.GetStoryProgress(System.DayOfWeek.Sunday, PlayerType.Rabbit);
 
     private void Start()
     {
@@ -80,6 +83,7 @@ public class RabbitVsMoleMenuSetup : MonoBehaviour
         }
 
         SetupMenus();
+        LocalizationSettings.SelectedLocaleChanged += OnLanguageChanged;
     }
 
     public void WebPageRedirect()
@@ -103,37 +107,123 @@ public class RabbitVsMoleMenuSetup : MonoBehaviour
 
     //} 
 
+    private int GetMaxStoryProgress(PlayerType playerType)
+    {
+
+        if (GameManager.GetStoryProgress(System.DayOfWeek.Sunday, playerType))
+        {
+            return 7;
+        }
+        else
+        {
+            for (var i = 6; i >= 0; i--)
+            {
+                if (GameManager.GetStoryProgress((System.DayOfWeek)i, playerType))
+                {
+                    return i;
+                }
+            }
+            return 1;
+        }
+    }
+
+    DayOfWeek GetDayFromSelectedIndex(int index)
+    {
+        if(index < 0 || index > 6)
+        {
+            Debug.LogWarning("GetDayFromSelectedIndex: Index out of range, returning Monday as default.");
+            return DayOfWeek.Monday;
+        }
+
+        int dayValue = (index + 1) % 7;
+        return (DayOfWeek)dayValue;
+    }
+
+    void PlayStoryRabbit()
+    {
+        var gamemode = (_playPanelStoryRabbit.GetElementByID("GameModeStoryRabbit") as GUICustomElement_GameModeSelector).GetSelectedGameMode();
+        var dayOfWeek = GetDayFromSelectedIndex((_playPanelStoryRabbit.GetElementByID("GameModeStoryRabbit") as GUICustomElement_GameModeSelector).SelectedIndex);
+
+        GameManager.PlayGame(
+            gameMode: gamemode,
+            map: GameSceneManager.SceneType.Gameplay_RabbitSolo,
+            day: dayOfWeek,
+            playerTypeForStory: PlayerType.Rabbit,
+            rabbitControlAgent: PlayerControlAgent.Human,
+            moleControlAgent: PlayerControlAgent.None);
+    }
+    void PlayStoryMole()
+    {
+        var gamemode = (_playPanelStoryMole.GetElementByID("GameModeStoryMole") as GUICustomElement_GameModeSelector).GetSelectedGameMode();
+        var dayOfWeek = GetDayFromSelectedIndex((_playPanelStoryRabbit.GetElementByID("GameModeStoryMole") as GUICustomElement_GameModeSelector).SelectedIndex);
+
+        GameManager.PlayGame(
+            gameMode: gamemode,
+            map: GameSceneManager.SceneType.GamePlay_MoleSolo,
+            day: dayOfWeek,
+            playerTypeForStory: PlayerType.Mole,
+            rabbitControlAgent: PlayerControlAgent.None,
+            moleControlAgent: PlayerControlAgent.Human);
+    }
+
+    void PlayDuelSplitScreen()
+    {
+        var gamemode = (_playPanelDuelLocalSplit.GetElementByID("GameModelDuelLocalSplit") as GUICustomElement_GameModeSelector).GetSelectedGameMode();
+        GameManager.PlayGame(
+            gameMode: gamemode, 
+            map: GameSceneManager.SceneType.GamePlay_Duel, 
+            day: System.DayOfWeek.Monday.SelectRandom(), 
+            playerTypeForStory: PlayerType.Rabbit, 
+            rabbitControlAgent: PlayerControlAgent.Human,
+            moleControlAgent: PlayerControlAgent.Human);
+    }
+
+    void PlayDuelSolo()
+    {
+        var gamemode = (_playPanelDuelLocalSolo.GetElementByID("GameModeDuelLocalSolo") as GUICustomElement_GameModeSelector).GetSelectedGameMode();
+        var playerType = (_playPanelDuelLocalSolo.GetElementByID("GameModeDuelLocalSolo") as GUICustomElement_GameModeSelector).GetSelectedPlayer();
+        GameManager.PlayGame(
+            gameMode: gamemode,
+            map: GameSceneManager.SceneType.GamePlay_Duel,
+            day: System.DayOfWeek.Monday.SelectRandom(),
+            playerTypeForStory: playerType,
+            rabbitControlAgent: playerType == PlayerType.Rabbit ? PlayerControlAgent.Human : PlayerControlAgent.AI,
+            moleControlAgent: playerType == PlayerType.Mole ? PlayerControlAgent.Human : PlayerControlAgent.AI);
+    }
+
     private void SetupMenus()
     {
-        // Create panels with localized names
-
-
         _playPanelStoryMole = _menuManager.CreatePanel(GetLocalizedString("menu_play_story_mole"))
-            //TODO: Add story mode levels selection here
+            .AddCustomElement(gameModeSelectorPrefab, rabbitStoryGameModes.GetRange(0, GetMaxStoryProgress(PlayerType.Mole)))
+                .SetId("PlayPanelStoryMole")
+            .AddButton(GetLocalizedString("button_play_story"), () => { }, true)
             .AddBackButton()
             .Build();
 
         _playPanelStoryRabbit = _menuManager.CreatePanel(GetLocalizedString("menu_play_story_rabbit"), widePanelPrefab)
-            .AddCustomElement(gameModeSelectorPrefab, rabbitStoryGameModes, false)
-            .AddButton(GetLocalizedString("play_story"), _playPanelStoryRabbit, true)
+            .AddCustomElement(gameModeSelectorPrefab, rabbitStoryGameModes.GetRange(0, GetMaxStoryProgress(PlayerType.Rabbit)))
+                .SetId("GameModeStoryRabbit")
+            .AddButton(GetLocalizedString("button_play_story"), PlayStoryRabbit, true)
             .AddBackButton()
             .Build();
 
-        _playPanelStory = _menuManager.CreatePanel(GetLocalizedString("menu_play_story"))
+        _playPanelStory = _menuManager.CreatePanel(GetLocalizedString("menu_play_story"), widePanelPrefab)
             .AddButton(GetLocalizedString("button_play_story_rabbit"), _playPanelStoryRabbit)
             .AddButton(GetLocalizedString("button_play_story_mole"), _playPanelStoryMole)
             .AddBackButton()
             .Build();
 
         _playPanelDuelLocalSolo = _menuManager.CreatePanel(GetLocalizedString("menu_play_duel_local_solo"), widePanelPrefab)
-           .AddCustomElement(gameModeSelectorPrefab, duelGameModes, false)
-           .AddButton(GetLocalizedString("play_story"), _playPanelStoryRabbit, true)
+           .AddCustomElement(gameModeSelectorPrefab, duelGameModes)
+                .SetId("GameModeDuelLocalSolo")
+           .AddButton(GetLocalizedString("button_play_duel"), PlayDuelSolo, true)
            .AddBackButton()
            .Build();
 
         _playPanelDuelLocalSplit = _menuManager.CreatePanel(GetLocalizedString("menu_play_duel_local_split"), widePanelPrefab)
-            .AddCustomElement(gameModeSelectorPrefab, duelGameModes, false)
-            .AddButton(GetLocalizedString("play_story"), _playPanelStoryRabbit, true)
+            .AddCustomElement(gameModeSelectorPrefab, duelGameModes)
+                .SetId("GameModelDuelLocalSplit")
+            .AddButton(GetLocalizedString("button_play_duel"), PlayDuelSplitScreen, true)
             .AddBackButton()
             .Build();
 
@@ -155,8 +245,7 @@ public class RabbitVsMoleMenuSetup : MonoBehaviour
             .Build();
 
         _playPanel = _menuManager.CreatePanel(GetLocalizedString("menu_play"))
-            .AddButton(GetLocalizedString("button_play_story"), _playPanelStoryRabbit)
-            //.AddButton(GetLocalizedString("button_play_story"), _playPanelStory)
+            .AddButton(GetLocalizedString("button_play_story"), moleStoryGameModes.Count == 0 ? _playPanelStoryRabbit : _playPanelStory)
             .AddButton(GetLocalizedString("button_play_challenge"), _playPanelChalleange, !IsStoryComplite, 
                 IsStoryComplite 
                 ? GetLocalizedString("tooltip_challenge_disabled") 
@@ -170,7 +259,6 @@ public class RabbitVsMoleMenuSetup : MonoBehaviour
             .AddAutoScroll(.1f, 2f)
             .Build();
         UpdateCredits();
-        LocalizationSettings.SelectedLocaleChanged += OnLanguageChanged;
 
         _panelOptionsGraphic = _menuManager.CreatePanel(GetLocalizedString("menu_options_graphics"))
             .AddDropDown(GetLocalizedString("option_resolution"), MainMenuDefaultLogic.HandleResolutionChange, MainMenuDefaultLogic.GetAvailableResolutions(), MainMenuDefaultLogic.GetCurrentResolutionIndex)
@@ -190,17 +278,17 @@ public class RabbitVsMoleMenuSetup : MonoBehaviour
             .Build();
 
         _panelOptionsControlsKeyboardPrimary = _menuManager.CreatePanel(GetLocalizedString("menu_options_controls_keyboard_primary"))
-            .AddKeyBindControls(inputActions, playerPrimaryActions)
+            .AddKeyBindControls(inputActions, playerActionMap, playerPrimaryBindingGroup)
             .AddBackButton()
             .Build();
 
         _panelOptionsControlsKeyboardSecondary = _menuManager.CreatePanel(GetLocalizedString("menu_options_controls_keyboard_secondary"))
-            .AddKeyBindControls(inputActions, playerSecondaryActions)
+            .AddKeyBindControls(inputActions, playerActionMap, playerSecondaryBindingGroup)
             .AddBackButton()
             .Build();
 
         _panelOptionsControlsGamepad = _menuManager.CreatePanel(GetLocalizedString("menu_options_controls_gamepad"))
-            .AddKeyBindControls(inputActions, playerGamepadActions)
+            .AddKeyBindControls(inputActions, playerActionMap, playerGamepadBindingGroup)
             .AddBackButton()
             .Build();
 

@@ -23,6 +23,7 @@ namespace Interface.Element
         private LocalizedString _localizedLabel;
         private InputAction _action;
         private int _bindingIndex = -1;
+        private string _bindingGroup;
         private Action<InputAction, int, string> _onKeyChanged;
         private InputActionRebindingExtensions.RebindingOperation _rebindingOperation;
         private string _fallbackLabel;
@@ -111,6 +112,7 @@ namespace Interface.Element
             _localizedLabel = key;
             _action = action;
             _bindingIndex = bindingIndex;
+            _bindingGroup = bindingGroup;
             _onKeyChanged = onKeyChanged ?? InputBindingManager.HandleBindingChanged;
             
             // Ensure localization is set up after label is assigned
@@ -124,6 +126,7 @@ namespace Interface.Element
             _fallbackLabel = key;
             _action = action;
             _bindingIndex = bindingIndex;
+            _bindingGroup = bindingGroup;
             _onKeyChanged = onKeyChanged ?? InputBindingManager.HandleBindingChanged;
             
             // Ensure localization is set up after label is assigned
@@ -153,7 +156,7 @@ namespace Interface.Element
                 _keyButton.interactable = false;
             }
 
-            _rebindingOperation = InputBindingManager.BeginRebind(_action, _bindingIndex, OnRebindFinished, OnRebindCanceled);
+            _rebindingOperation = InputBindingManager.BeginRebind(_action, _bindingIndex, OnRebindFinished, OnRebindCanceled, 0.1f, _bindingGroup);
             if (_rebindingOperation == null)
             {
                 EndListeningState();

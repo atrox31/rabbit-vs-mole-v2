@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel;
 using UnityEngine;
 
@@ -23,14 +24,14 @@ public class GameSceneManager : MonoBehaviour
         GamePlay_Duel
     };
 
-    public static void ChangeScene(SceneType scene)
+    public static void ChangeScene(SceneType scene, Action OnSceneStart = null)
     {
         var description = scene.GetType()
             .GetField(scene.ToString())
             .GetCustomAttributes(typeof(DescriptionAttribute), false);
         if (description.Length > 0)
         {
-            SceneLoader.ChangeScene(((DescriptionAttribute)description[0]).Description);
+            SceneLoader.ChangeScene(((DescriptionAttribute)description[0]).Description, OnSceneStart);
         }
     }
 }

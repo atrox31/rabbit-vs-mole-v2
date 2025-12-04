@@ -8,9 +8,9 @@ public static class GameProgressDataManager
     // Bits 0-6: Data (7 days of the week)
     private const int DATA_BITS_COUNT = 7;
 
-    public static Dictionary<DayOfWeek, bool> LoadStatus()
+    public static Dictionary<DayOfWeek, bool> LoadStatus(string PrefsConst)
     {
-        int data = EncryptedPlayerPrefsManager.LoadEncryptedInt(PlayerPrefsConst.RABBIT_STORY_PROGRESS, 0, DATA_BITS_COUNT);
+        int data = EncryptedPlayerPrefsManager.LoadEncryptedInt(PrefsConst, 0, DATA_BITS_COUNT);
 
         Dictionary<DayOfWeek, bool> status = new Dictionary<DayOfWeek, bool>();
         foreach (DayOfWeek day in Enum.GetValues(typeof(DayOfWeek)))
@@ -23,7 +23,7 @@ public static class GameProgressDataManager
         return status;
     }
 
-    public static void SaveStatus(Dictionary<DayOfWeek, bool> status)
+    public static void SaveStatus(Dictionary<DayOfWeek, bool> status, string PrefsConst)
     {
         // Calculate Data
         int data = 0;
@@ -36,6 +36,6 @@ public static class GameProgressDataManager
             }
         }
 
-        EncryptedPlayerPrefsManager.SaveEncryptedInt(PlayerPrefsConst.RABBIT_STORY_PROGRESS, data, DATA_BITS_COUNT);
+        EncryptedPlayerPrefsManager.SaveEncryptedInt(PrefsConst, data, DATA_BITS_COUNT);
     }
 }

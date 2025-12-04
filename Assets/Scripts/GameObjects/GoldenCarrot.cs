@@ -32,13 +32,6 @@ namespace GameObjects
                 Destroy(gameObject);
             }
             startPosition = _model.position;
-
-            var showThisCarrot = _dayOfWeek == GameManager.CurrentDayOfWeek 
-                && GameManager.IsGoldenCarrotCollected(_dayOfWeek) == false;
-
-            gameObject.SetActive(showThisCarrot);
-            if(showThisCarrot)
-                StartCoroutine(Animate());
         }
 
         private IEnumerator Animate()
@@ -54,6 +47,16 @@ namespace GameObjects
 
                 yield return null;
             }
+        }
+
+        private void Start()
+        {
+            var showThisCarrot = _dayOfWeek == GameManager.CurrentDayOfWeek
+                && GameManager.IsGoldenCarrotCollected(_dayOfWeek) == false;
+
+            gameObject.SetActive(showThisCarrot);
+            if (showThisCarrot)
+                StartCoroutine(Animate());
         }
 
         public void OnTriggerEnter(Collider other)
