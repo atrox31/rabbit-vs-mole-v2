@@ -7,6 +7,7 @@ using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using WalkingImmersionSystem;
 
 public class GameManager : MonoBehaviour
 {
@@ -37,6 +38,7 @@ public class GameManager : MonoBehaviour
 
     void Awake()
     {
+        Debug.Log("GameManager: Awake started.");
         if (_instance != null)
         {
             Destroy(gameObject);
@@ -45,7 +47,9 @@ public class GameManager : MonoBehaviour
         _instance = this;
         DontDestroyOnLoad(gameObject);
 
+
         DialogueSystem.TriggerData.TD_GameManagerGet.OnGetValue = Get;
+        Debug.Log("GameManager: Awake completed.");
     }
 
     void OnDestroy()
@@ -58,14 +62,16 @@ public class GameManager : MonoBehaviour
         LoadPlayerPrefs();
         yield return null;
 
+        SoundConfigLoader.InitializeLoader();
+        yield return null;
+
         if (_debugResetGoldenCarrotState)
         {
             ResetGoldenCarrotProgress(PlayerType.Rabbit);
             ResetGoldenCarrotProgress(PlayerType.Mole);
         }
 
-        yield return new WaitForSecondsRealtime(5.0f);
-
+        yield return new WaitForSecondsRealtime(1.0f);
         GameSceneManager.ChangeScene(GameSceneManager.SceneType.MainMenu);
     }
 
@@ -355,6 +361,46 @@ public class GameManager : MonoBehaviour
         Debug.Log($"GameManager: Starting game for {day}, Map: {GetSceneTypeDescription(map)}[{map}], Rabbit: {rabbitControlAgent}, Mole: {moleControlAgent}");
     }
 
+    public static void RestartGame()
+    {
+        if (GameInspector.CurrentGameMode == null)
+        {
+            Debug.LogError("GameManager.RestartGame: CurrentGameMode is null! Cannot restart game.");
+            return;
+        }
+        
+        // Determine scene from active scene name if CurrentScene is not set correctly
+        GameSceneManager.SceneType sceneToRestart = GameSceneManager.CurrentScene;
+        if (sceneToRestart == GameSceneManager.SceneType.MainMenu)
+        {
+            string activeSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            foreach (GameSceneManager.SceneType sceneType in System.Enum.GetValues(typeof(GameSceneManager.SceneType)))
+            {
+                var description = sceneType.GetType()
+                    .GetField(sceneType.ToString())
+                    .GetCustomAttributes(typeof(System.ComponentModel.DescriptionAttribute), false);
+                if (description.Length > 0)
+                {
+                    string sceneName = ((System.ComponentModel.DescriptionAttribute)description[0]).Description;
+                    if (sceneName == activeSceneName)
+                    {
+                        sceneToRestart = sceneType;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        PlayGame(
+            GameInspector.CurrentGameMode, 
+            sceneToRestart, 
+            _instance._currentDayOfWeek, 
+            GameInspector.CurrentPlayerOnStory, 
+            GameInspector.RabbitControlAgent, 
+            GameInspector.MoleControlAgent
+            );
+    }
+
     internal static bool GetMoleProgress(DayOfWeek dayOfWeek)
     {
         if(_instance == null)
@@ -373,5 +419,25 @@ public class GameManager : MonoBehaviour
     internal static void GamePlayCarrotGoal()
     {
         throw new NotImplementedException();
+    }
+
+    internal static void Pause()
+    {
+        if (_instance == null)
+        {
+            Debug.LogWarning("GameManager.Pause: Instance is null.");
+            return;
+        }
+        Time.timeScale = 0f;
+    }
+
+    internal static void Unpause()
+    {
+        if (_instance == null)
+        {
+            Debug.LogWarning("GameManager.Unpause: Instance is null.");
+            return;
+        }
+        Time.timeScale = 1f;
     }
 }

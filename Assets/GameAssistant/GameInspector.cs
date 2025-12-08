@@ -86,6 +86,8 @@ public class GameInspector : MonoBehaviour
         }
     }
 
+    private Coroutine _gameTimerCoroutine;
+
     void Start()
     {
         if(_currentGameMode == null)
@@ -95,7 +97,7 @@ public class GameInspector : MonoBehaviour
         }
 
         if(CurrentGameMode.timeLimitInMinutes > 0)      
-            StartCoroutine(GameTimer());
+            _gameTimerCoroutine = StartCoroutine(GameTimer());
         
     }
 
@@ -103,20 +105,30 @@ public class GameInspector : MonoBehaviour
     {
         if (_instance == null)
         {
-            Debug.LogWarning("GameInspector.CarrotPicked: Instance is null.");
+            Debug.LogWarning("GameInspector.GameTimer: Instance is null.");
             yield break;
         }
 
         if (CurrentGameMode == null)
         {
-            Debug.LogWarning("GameInspector.CarrotPicked: CurrentGameMode is null.");
+            Debug.LogWarning("GameInspector.GameTimer: CurrentGameMode is null.");
             yield break;
         }
 
         if (_currentGameMode.timeLimitInMinutes <= 0.1f)
             yield break;
         
-        yield return new WaitForSeconds(_currentGameMode.timeLimitInMinutes);
+        float timeLimitInSeconds = _currentGameMode.timeLimitInMinutes * 60f;
+        float elapsedTime = 0f;
+
+        Debug.Log($"Count down started for: {timeLimitInSeconds} secconds");
+        // Count down using Time.deltaTime, which respects Time.timeScale
+        // When Time.timeScale = 0 (paused), Time.deltaTime = 0, so timer stops
+        while (elapsedTime < timeLimitInSeconds)
+        {
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
 
         Debug.Log($"Time end");
         GameManager.GamePlayTimeEnd();

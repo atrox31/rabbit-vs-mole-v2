@@ -65,9 +65,7 @@ namespace GameObjects.Misc
             finalColor.a = 0f;
             fadePanel.color = finalColor;
 
-            // Opcjonalnie: Wy³¹cz obiekt Panelu, aby nie by³ renderowany, 
-            // ale mo¿na go pozostawiæ aktywnego dla ³atwiejszego debugowania.
-            // fadePanel.gameObject.SetActive(false); 
+            fadePanel.gameObject.SetActive(false); 
 
             Debug.Log("Efekt Fade-In zakoñczony. Scena jest widoczna.");
         }

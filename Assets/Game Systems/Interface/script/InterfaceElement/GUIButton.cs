@@ -36,6 +36,17 @@ namespace Interface.Element
 
             if (_button != null)
             {
+                // Respect disabled state - don't override if already set
+                _button.interactable = !_isDisabled;
+                
+                // Ensure button's Image can receive raycasts even when disabled
+                // This allows EventTrigger to work for disabled buttons (for tooltips)
+                UnityEngine.UI.Image buttonImage = _button.GetComponent<UnityEngine.UI.Image>();
+                if (buttonImage != null)
+                {
+                    buttonImage.raycastTarget = true;
+                }
+                
                 if (_onClickAction != null)
                 {
                     _button.onClick.RemoveAllListeners();
@@ -48,10 +59,27 @@ namespace Interface.Element
 
         private void SetupHoverEvents()
         {
-            EventTrigger trigger = _button.gameObject.GetComponent<EventTrigger>();
+            // For disabled buttons, we need to use the Image component directly for EventTrigger
+            // because disabled buttons don't receive pointer events
+            GameObject targetObject = _button.gameObject;
+            UnityEngine.UI.Image targetImage = _button.GetComponent<UnityEngine.UI.Image>();
+            
+            // If button is disabled and has tooltip, ensure Image can receive raycasts
+            if (_isDisabled && _tooltipText != null && !_tooltipText.IsEmpty)
+            {
+                if (targetImage == null)
+                {
+                    // Add Image component if it doesn't exist (for raycast detection)
+                    targetImage = targetObject.AddComponent<UnityEngine.UI.Image>();
+                    targetImage.color = new Color(1, 1, 1, 0); // Transparent
+                }
+                targetImage.raycastTarget = true;
+            }
+            
+            EventTrigger trigger = targetObject.GetComponent<EventTrigger>();
             if (trigger == null)
             {
-                trigger = _button.gameObject.AddComponent<EventTrigger>();
+                trigger = targetObject.AddComponent<EventTrigger>();
             }
 
             // Remove existing entries for pointer enter/exit
@@ -161,6 +189,16 @@ namespace Interface.Element
             if (_button != null)
             {
                 _button.interactable = !disabled;
+                
+                // Ensure Image can receive raycasts for disabled buttons (for tooltips)
+                if (disabled)
+                {
+                    UnityEngine.UI.Image buttonImage = _button.GetComponent<UnityEngine.UI.Image>();
+                    if (buttonImage != null)
+                    {
+                        buttonImage.raycastTarget = true;
+                    }
+                }
             }
         }
 

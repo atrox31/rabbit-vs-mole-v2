@@ -195,9 +195,9 @@ public class PlayerController : MonoBehaviour
         else if (ActionSpecialPressed)
         {
             // Special action doesn't require raycast - find nearest interactable
+            //interactable = FindNearestInteractable();
             //TODO: custom actions
             return;
-            //interactable = FindNearestInteractable();
         }
 
         if (interactable != null)

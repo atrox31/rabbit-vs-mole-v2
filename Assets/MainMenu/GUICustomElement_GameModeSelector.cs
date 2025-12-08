@@ -98,8 +98,16 @@ public partial class GUICustomElement_GameModeSelector : Interface.Element.Inter
             return;
         }
 
-        // Disable template so it's not included in layout calculations
+        // Disable template immediately so it's not included in layout calculations or visible
         _gameModeButtonTemplate.SetActive(false);
+        
+        // If template is a child of scrollContent, ensure it's not counted in layout
+        if (_gameModeButtonTemplate.transform.parent == _scrollContent)
+        {
+            // Move template out of scrollContent hierarchy temporarily to prevent it from being visible
+            // We'll keep it disabled, but moving it ensures it's not in the layout
+            _gameModeButtonTemplate.transform.SetParent(transform, false);
+        }
 
         // Only create buttons if game modes are already initialized
         // Otherwise, they will be created in InitializeWithArgument
@@ -129,6 +137,16 @@ public partial class GUICustomElement_GameModeSelector : Interface.Element.Inter
 
     private void CreateButtons()
     {
+        // Ensure template is disabled and not in scrollContent hierarchy
+        if (_gameModeButtonTemplate != null)
+        {
+            _gameModeButtonTemplate.SetActive(false);
+            if (_gameModeButtonTemplate.transform.parent == _scrollContent)
+            {
+                _gameModeButtonTemplate.transform.SetParent(transform, false);
+            }
+        }
+        
         // Clear existing buttons
         foreach (var button in _createdButtons)
         {
@@ -201,6 +219,8 @@ public partial class GUICustomElement_GameModeSelector : Interface.Element.Inter
                 Debug.LogWarning($"GameModeSelector: Button component not found in template for mode {i}");
             }
         }
+
+        Destroy(_gameModeButtonTemplate);
     }
 
     private void OnModeButtonClicked(int index)
@@ -283,11 +303,6 @@ public partial class GUICustomElement_GameModeSelector : Interface.Element.Inter
                 button.onClick.RemoveAllListeners();
             }
         }
-    }
-
-    internal PlayerType GetSelectedPlayer()
-    {
-        throw new NotImplementedException();
     }
 }
 

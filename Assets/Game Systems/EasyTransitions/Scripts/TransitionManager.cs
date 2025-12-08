@@ -26,7 +26,14 @@ namespace EasyTransition
         public static TransitionManager Instance()
         {
             if (instance == null)
-                Debug.LogError("You tried to access the instance before it exists.");
+            {
+                // Try to find existing instance before logging error
+                instance = FindFirstObjectByType<TransitionManager>();
+                if (instance == null)
+                {
+                    Debug.LogWarning("TransitionManager instance not found. Make sure TransitionManager exists in the scene.");
+                }
+            }
 
             return instance;
         }

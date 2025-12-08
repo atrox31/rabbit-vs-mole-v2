@@ -4,7 +4,7 @@ using UnityEngine;
 class DayOfWeekVisibility : MonoBehaviour
 {
     [SerializeField] private DayOfWeek _dayOfWeek;
-    private void Awake()
+    void Awake()
     {
         gameObject.SetActive(_dayOfWeek == GameManager.CurrentDayOfWeek);
     }

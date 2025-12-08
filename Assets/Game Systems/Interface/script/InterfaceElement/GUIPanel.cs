@@ -264,7 +264,7 @@ namespace Interface
             
             // Wait for panel animation to complete before starting auto-scroll
             float animationDelay = _animationDuration > 0f ? _animationDuration : 0.25f;
-            yield return new WaitForSeconds(animationDelay);
+            yield return new WaitForSecondsRealtime(animationDelay);
             
             // Wait for animation to actually finish
             yield return new WaitUntil(() => !_isAnimating);
@@ -405,6 +405,8 @@ namespace Interface
             gameObject.SetActive(true);
             Show();
             
+            StartCoroutine(EnsureButtonsInteractableAfterDelay());
+            
             if (_enableScrollWhenNeeded)
             {
                 StartCoroutine(CheckScrollAfterLayout());
@@ -412,6 +414,24 @@ namespace Interface
             
             // Reset scrollbar to top and start auto-scroll if enabled
             StartCoroutine(ResetScrollAndStartAutoScroll());
+        }
+        
+        private IEnumerator EnsureButtonsInteractableAfterDelay()
+        {
+            // Wait for animation to complete using unscaled time
+            float delay = _animationDuration > 0f ? _animationDuration + 0.1f : 0.35f;
+            yield return new WaitForSecondsRealtime(delay);
+            
+            // Wait until animation is actually done using unscaled time
+            float timeout = 5f;
+            float elapsed = 0f;
+            while (_isAnimating && elapsed < timeout)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+            
+            EnsureButtonsInteractable();
         }
 
         public void HidePanel()
@@ -489,6 +509,11 @@ namespace Interface
                 _isVisible = false;
                 gameObject.SetActive(false);
             }
+            else if (animationStatus == AnimationStatus.Show)
+            {
+                // Ensure all buttons are interactable after animation completes
+                EnsureButtonsInteractable();
+            }
 
             _isAnimating = false;
         }
@@ -498,7 +523,7 @@ namespace Interface
         {
             _animationDuration = duration;
         }
-        
+                
         public void SetAnimationSettings(PanelAnimationType animationType, SlideDirection slideDirection, float slideDistance, float bounceAmount)
         {
             _animationType = animationType;
@@ -847,7 +872,7 @@ namespace Interface
             
             // Calculate expected next value based on auto-scroll direction
             float direction = _isScrollingDown ? -1f : 1f;
-            float expectedNextValue = expectedValue + (direction * _autoScrollSpeed * Time.deltaTime);
+            float expectedNextValue = expectedValue + (direction * _autoScrollSpeed * Time.unscaledDeltaTime);
             expectedNextValue = Mathf.Clamp01(expectedNextValue);
             
             // If the actual value differs significantly from expected, user is manually scrolling
@@ -875,7 +900,7 @@ namespace Interface
                     _isScrollingDown = false; 
                     if (_autoScrollDelay > 0f)
                     {
-                        yield return new WaitForSeconds(_autoScrollDelay);
+                        yield return new WaitForSecondsRealtime(_autoScrollDelay);
                     }
                 }
                 else if (_scrollRect.verticalNormalizedPosition >= 1f)
@@ -884,12 +909,12 @@ namespace Interface
                     _isScrollingDown = true; 
                     if (_autoScrollDelay > 0f)
                     {
-                        yield return new WaitForSeconds(_autoScrollDelay);
+                        yield return new WaitForSecondsRealtime(_autoScrollDelay);
                     }
                 }
                 
                 float direction = _isScrollingDown ? -1f : 1f;
-                float newValue = _scrollRect.verticalNormalizedPosition + (direction * _autoScrollSpeed * Time.deltaTime);
+                float newValue = _scrollRect.verticalNormalizedPosition + (direction * _autoScrollSpeed * Time.unscaledDeltaTime);
                 newValue = Mathf.Clamp01(newValue);
                 
                 _scrollRect.verticalNormalizedPosition = newValue;
@@ -897,6 +922,71 @@ namespace Interface
                 
                 yield return null;
             }
+        }
+
+        private void EnsureButtonsInteractable()
+        {
+            // Ensure CanvasGroup doesn't block raycasts - check all CanvasGroups in hierarchy
+            CanvasGroup[] canvasGroups = GetComponentsInChildren<CanvasGroup>(true);
+            foreach (var canvasGroup in canvasGroups)
+            {
+                if (canvasGroup != null)
+                {
+                    canvasGroup.blocksRaycasts = true;
+                    canvasGroup.interactable = true;
+                }
+            }
+            
+            // Preserve disabled state for buttons that should be disabled (like challenges button)
+            UnityEngine.UI.Button[] buttons = GetComponentsInChildren<UnityEngine.UI.Button>(true);
+            System.Collections.Generic.Dictionary<UnityEngine.UI.Button, bool> buttonDisabledStates = 
+                new System.Collections.Generic.Dictionary<UnityEngine.UI.Button, bool>();
+            
+            foreach (var button in buttons)
+            {
+                if (button != null)
+                {
+                    var guiButton = button.GetComponent<Interface.Element.GUIButton>();
+                    if (guiButton != null)
+                    {
+                        buttonDisabledStates[button] = !button.interactable;
+                    }
+                }
+            }
+            
+            // Set all buttons to interactable
+            foreach (var button in buttons)
+            {
+                if (button != null)
+                {
+                    button.interactable = true;
+                    if (!button.gameObject.activeInHierarchy)
+                    {
+                        button.gameObject.SetActive(true);
+                    }
+                    
+                    var buttonImage = button.GetComponent<UnityEngine.UI.Image>();
+                    if (buttonImage != null)
+                    {
+                        buttonImage.raycastTarget = true;
+                    }
+                }
+            }
+            
+            // Restore disabled state for buttons that should be disabled
+            foreach (var kvp in buttonDisabledStates)
+            {
+                if (kvp.Value)
+                {
+                    kvp.Key.interactable = false;
+                    var buttonImage = kvp.Key.GetComponent<UnityEngine.UI.Image>();
+                    if (buttonImage != null)
+                    {
+                        buttonImage.raycastTarget = true;
+                    }
+                }
+            }
+            
         }
 
         private void OnDestroy()

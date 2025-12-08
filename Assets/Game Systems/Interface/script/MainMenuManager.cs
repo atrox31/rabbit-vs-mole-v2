@@ -121,7 +121,12 @@ namespace Interface
         public void ChangePanel(GUIPanel panel)
         {
             if (panel == null) return;
-            if (panel == _currentPanel) return; 
+            
+            // If panel is already current and visible, don't change
+            if (panel == _currentPanel && panel.IsVisible && !panel.IsAnimating)
+            {
+                return; 
+            }
             
             if (_currentPanel != null && _currentPanel.IsAnimating)
             {
@@ -131,18 +136,39 @@ namespace Interface
             StartCoroutine(ChangePanelCoroutine(panel));
         }
 
+        public void ClosePanel(GUIPanel panel)
+        {
+            if (panel == null) return;
+            
+            // If this is the current panel, clear it
+            if (panel == _currentPanel)
+            {
+                _currentPanel = null;
+            }
+            
+            panel.HidePanel();
+        }
+
         private IEnumerator ChangePanelCoroutine(GUIPanel newPanel)
         {
-            if (_currentPanel != null)
+            if (_currentPanel != null && _currentPanel != newPanel)
             {
-                _panelHistory.Push(_currentPanel);
-                _currentPanel.HidePanel();
+                GUIPanel panelToHide = _currentPanel;
+                _panelHistory.Push(panelToHide);
+                panelToHide.HidePanel();
                 
-                yield return new WaitUntil(() => !_currentPanel.IsAnimating);
+                // Wait for animation to complete using unscaled time
+                float timeout = 5f; // Safety timeout
+                float elapsed = 0f;
+                while (panelToHide.IsAnimating && elapsed < timeout)
+                {
+                    elapsed += Time.unscaledDeltaTime;
+                    yield return null;
+                }
             }
 
             _currentPanel = newPanel;
-            newPanel.ShowPanel();
+            newPanel?.ShowPanel();
         }
 
         public void GoBack()

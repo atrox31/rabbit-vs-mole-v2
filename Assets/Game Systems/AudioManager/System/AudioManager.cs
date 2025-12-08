@@ -99,6 +99,7 @@ public class AudioManager : MonoBehaviour
 
     void Awake()
     {
+        Debug.Log("AudioManager: Awake called.");
         // Implement the Singleton pattern
         if (_instance == null)
         {
@@ -112,6 +113,7 @@ public class AudioManager : MonoBehaviour
         {
             Destroy(gameObject);
         }
+        Debug.Log("AudioManager: Singleton instance set.");
     }
 
     void Update()

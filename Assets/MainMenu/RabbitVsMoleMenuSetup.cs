@@ -178,10 +178,9 @@ public class RabbitVsMoleMenuSetup : MonoBehaviour
             moleControlAgent: PlayerControlAgent.Human);
     }
 
-    void PlayDuelSolo()
+    void PlayDuelSolo(PlayerType playerType)
     {
         var gamemode = (_playPanelDuelLocalSolo.GetElementByID("GameModeDuelLocalSolo") as GUICustomElement_GameModeSelector).GetSelectedGameMode();
-        var playerType = (_playPanelDuelLocalSolo.GetElementByID("GameModeDuelLocalSolo") as GUICustomElement_GameModeSelector).GetSelectedPlayer();
         GameManager.PlayGame(
             gameMode: gamemode,
             map: GameSceneManager.SceneType.GamePlay_Duel,
@@ -216,7 +215,8 @@ public class RabbitVsMoleMenuSetup : MonoBehaviour
         _playPanelDuelLocalSolo = _menuManager.CreatePanel(GetLocalizedString("menu_play_duel_local_solo"), widePanelPrefab)
            .AddCustomElement(gameModeSelectorPrefab, duelGameModes)
                 .SetId("GameModeDuelLocalSolo")
-           .AddButton(GetLocalizedString("button_play_duel"), PlayDuelSolo, true)
+           .AddButton(GetLocalizedString("button_play_duel_as_rabbit"),()=>PlayDuelSolo(PlayerType.Rabbit), true)
+           .AddButton(GetLocalizedString("button_play_duel_as_mole"), () => PlayDuelSolo(PlayerType.Mole), true)
            .AddBackButton()
            .Build();
 
@@ -247,7 +247,7 @@ public class RabbitVsMoleMenuSetup : MonoBehaviour
         _playPanel = _menuManager.CreatePanel(GetLocalizedString("menu_play"))
             .AddButton(GetLocalizedString("button_play_story"), moleStoryGameModes.Count == 0 ? _playPanelStoryRabbit : _playPanelStory)
             .AddButton(GetLocalizedString("button_play_challenge"), _playPanelChalleange, !IsStoryComplite, 
-                IsStoryComplite 
+                !IsStoryComplite 
                 ? GetLocalizedString("tooltip_challenge_disabled") 
                 : new LocalizedString())
             .AddButton(GetLocalizedString("button_play_duel"), _playPanelDuel)

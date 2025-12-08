@@ -69,7 +69,7 @@ namespace Interface
             }
             else
             {
-                yield return new WaitForSeconds(duration);
+                yield return new WaitForSecondsRealtime(duration);
             }
         }
 
@@ -88,7 +88,7 @@ namespace Interface
 
             while (animationTimer < duration)
             {
-                animationTimer += Time.deltaTime;
+                animationTimer += Time.unscaledDeltaTime;
                 float progress = Mathf.Clamp01(animationTimer / duration);
 
                 float targetAlpha = animationStatus == AnimationStatus.Show ? 1f : 0f;
@@ -143,7 +143,7 @@ namespace Interface
 
             while (animationTimer < duration)
             {
-                animationTimer += Time.deltaTime;
+                animationTimer += Time.unscaledDeltaTime;
                 Vector2 currentPosition;
 
                 if (animationStatus == AnimationStatus.Show)

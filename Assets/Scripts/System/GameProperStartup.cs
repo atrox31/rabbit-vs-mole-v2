@@ -4,8 +4,7 @@ using UnityEngine.SceneManagement;
 public class GameProperStartup : MonoBehaviour
 {
     private static bool hasStarted = false;
-    [SerializeField] private bool backToActiveSceneAfterLoading;
-    private void Awake()
+    void Awake()
     {
         if (hasStarted)
         {
@@ -13,16 +12,6 @@ public class GameProperStartup : MonoBehaviour
             return;
         }
         hasStarted = true;
-
-
-        if (backToActiveSceneAfterLoading)
-        {
-            Scene activeScene = SceneManager.GetActiveScene();
-            SceneLoader.ChangeScene(activeScene.name, null);
-        }
-        else
-        {
-            SceneManager.LoadScene("Loading", LoadSceneMode.Single);
-        }
+        SceneManager.LoadScene("Loading", LoadSceneMode.Single);
     }
 }

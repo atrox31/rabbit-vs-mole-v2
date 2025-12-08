@@ -28,6 +28,8 @@ namespace Interface.Element
             set => _elementID = value;
         }
 
+        public float AnimationDuration => _animationDuration;
+
         /// <summary>
         /// Określa czy GUIPanel może modyfikować anchory tego elementu.
         /// Domyślnie true dla wbudowanych elementów, false dla customowych.
@@ -123,6 +125,12 @@ namespace Interface.Element
             if (_isAnimating && !_isVisible)
                 return;
 
+            // Ensure object is active before starting coroutine
+            if (!gameObject.activeInHierarchy)
+            {
+                gameObject.SetActive(true);
+            }
+
             StartCoroutine(AnimateCoroutine(AnimationStatus.Hide));
         }
 
@@ -156,7 +164,7 @@ namespace Interface.Element
 
             while (_animationTimer < _animationDuration)
             {
-                _animationTimer += Time.deltaTime;
+                _animationTimer += Time.unscaledDeltaTime;
                 float progress = Mathf.Clamp01(_animationTimer / _animationDuration);
                 
                 float targetAlpha = animationStatus == AnimationStatus.Show ? 1f : 0f;

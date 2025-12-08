@@ -27,6 +27,12 @@ namespace WalkingImmersionSystem
             _instance.InitializeConfigsAsync();
         }
 
+        public static void InitializeLoader()
+        {
+            if (_instance == null)
+                CreateInstance();
+        }
+
         public static List<TerrainLayerData> GetTerrainLayerData()
         {
             if (_instance == null)
