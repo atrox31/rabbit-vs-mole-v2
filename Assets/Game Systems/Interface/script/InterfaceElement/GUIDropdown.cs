@@ -13,6 +13,9 @@ namespace Interface.Element
         [SerializeField] private TMPro.TMP_Dropdown _dropdown;
         [SerializeField] private TextMeshProUGUI _labelTextOverride;
 
+        [Header("Sound")]
+        [SerializeField] private AudioClip _onClickSound;
+
         private Action<int> _onValueChanged;
         private Func<int> _getCurrentValue;
         private List<LocalizedString> _localizedOptions;
@@ -34,6 +37,7 @@ namespace Interface.Element
                 _dropdown.onValueChanged.RemoveAllListeners();
                 _dropdown.onValueChanged.AddListener(OnDropdownValueChanged);
             }
+            AudioManager.PreloadClips(_onClickSound);
         }
 
         public void Initialize(string label, Action<int> onValueChanged, List<string> options, Func<int> getCurrentValue = null)
@@ -128,7 +132,11 @@ namespace Interface.Element
 
         private void OnDropdownValueChanged(int value)
         {
+            if (!_isReady)
+                return;
+
             _onValueChanged?.Invoke(value);
+            AudioManager.PlaySoundUI(_onClickSound);
         }
 
         public void SetValue(int value)

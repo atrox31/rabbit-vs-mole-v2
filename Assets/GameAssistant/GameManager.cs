@@ -13,6 +13,9 @@ public class GameManager : MonoBehaviour
 {
     private static GameManager _instance;
 
+    private PlayerType _currentPlayerForStory;
+    public static PlayerType CurrentPlayerForStory { get { return _instance._currentPlayerForStory; } private set { _instance._currentPlayerForStory = value; } }
+
     private DayOfWeek _currentDayOfWeek = DayOfWeek.Monday;
     public static DayOfWeek CurrentDayOfWeek { get { return _instance._currentDayOfWeek; } private set { _instance._currentDayOfWeek = value; } }
 
@@ -144,7 +147,7 @@ public class GameManager : MonoBehaviour
                 break;
         }
     }
-    internal static bool IsGoldenCarrotCollected(DayOfWeek dayOfWeek)
+    internal static bool IsGoldenCarrotCollected(DayOfWeek dayOfWeek, PlayerType playerType)
     {
         if (_instance == null)
         {
@@ -152,13 +155,7 @@ public class GameManager : MonoBehaviour
             return false;
         }
 
-        if (!GameInspector.IsActive)
-        {
-            Debug.LogWarning("GameManager.IsGoldenCarrotCollected: GameInspector is not active.");
-            return false;
-        }
-
-        switch(GameInspector.CurrentPlayerOnStory)
+        switch(playerType)
         {
             case PlayerType.Rabbit:
                 return _instance._goldenCarrotPickStateRabbit[dayOfWeek];
@@ -346,6 +343,7 @@ public class GameManager : MonoBehaviour
     public static void PlayGame(GameModeData gameMode, GameSceneManager.SceneType map, DayOfWeek day, PlayerType playerTypeForStory, PlayerControlAgent rabbitControlAgent, PlayerControlAgent moleControlAgent)
     {
         _instance._currentDayOfWeek = day;
+        _instance._currentPlayerForStory = playerTypeForStory;
         GameSceneManager.ChangeScene(map, () =>
         {
             Instantiate(_instance.GameInspectorPrefab, SceneManager.GetActiveScene());
@@ -356,6 +354,8 @@ public class GameManager : MonoBehaviour
             
             // Spawn players after GameInspector is set up
             PlayerSpawnSystem.SpawnPlayers();
+
+            PlayMusic(MusicType.Gameplay);
         });
 
         Debug.Log($"GameManager: Starting game for {day}, Map: {GetSceneTypeDescription(map)}[{map}], Rabbit: {rabbitControlAgent}, Mole: {moleControlAgent}");

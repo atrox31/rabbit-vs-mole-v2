@@ -23,6 +23,10 @@ namespace Interface
         [SerializeField] private string _panelName;
         private LocalizedString _localizedPanelName;
 
+        [Header("Sound")]
+        [SerializeField] private AudioClip _showSound;
+        [SerializeField] private AudioClip _hideSound;
+
         [Header("Layout Settings")]
         [SerializeField] private float _elementSpacing = 10f;
         [SerializeField] private float _topPadding = 100f;
@@ -34,7 +38,7 @@ namespace Interface
 
         private List<InterfaceElement> _elements = new List<InterfaceElement>();
         private List<InterfaceElement> _bottomElements = new List<InterfaceElement>();
-        
+
         // Scroll components
         private ScrollRect _scrollRect;
         private RectTransform _scrollViewport;
@@ -42,7 +46,7 @@ namespace Interface
         private Scrollbar _verticalScrollbar;
         private RectTransform _originalContentContainer;
         private bool _scrollSetup = false;
-        
+
         // Auto-scroll settings
         private float _autoScrollSpeed = 0f;
         private float _autoScrollDelay = 1f;
@@ -50,7 +54,7 @@ namespace Interface
         private bool _autoScrollPaused = false;
         private float _lastScrollValue = 0f;
         private bool _isScrollingDown = true;
-        
+
         // Animation settings
         private PanelAnimationType _animationType = PanelAnimationType.Fade;
         private SlideDirection _slideDirection = SlideDirection.Left;
@@ -92,7 +96,7 @@ namespace Interface
                 {
                     _localizeTitleEvent = _panelTitle.gameObject.AddComponent<LocalizeStringEvent>();
                 }
-                
+
                 if (_localizeTitleEvent != null)
                 {
                     _localizeTitleEvent.OnUpdateString.AddListener(OnLocalizedStringUpdate);
@@ -111,6 +115,8 @@ namespace Interface
                     _panelTitle.text = _panelName;
                 }
             }
+
+            AudioManager.PreloadClips(_showSound, _hideSound);
         }
 
         private void OnLocalizedStringUpdate(string localizedString)
@@ -405,7 +411,7 @@ namespace Interface
             gameObject.SetActive(true);
             Show();
             
-            StartCoroutine(EnsureButtonsInteractableAfterDelay());
+            //StartCoroutine(EnsureButtonsInteractableAfterDelay());
             
             if (_enableScrollWhenNeeded)
             {
@@ -414,6 +420,8 @@ namespace Interface
             
             // Reset scrollbar to top and start auto-scroll if enabled
             StartCoroutine(ResetScrollAndStartAutoScroll());
+
+            AudioManager.PlaySoundUI(_showSound);
         }
         
         private IEnumerator EnsureButtonsInteractableAfterDelay()
@@ -431,7 +439,7 @@ namespace Interface
                 yield return null;
             }
             
-            EnsureButtonsInteractable();
+            //EnsureButtonsInteractable();
         }
 
         public void HidePanel()
@@ -448,6 +456,8 @@ namespace Interface
             }
             
             Hide();
+
+            AudioManager.PlaySoundUI(_showSound);
         }
          
         protected override IEnumerator AnimateCoroutine(AnimationStatus animationStatus)
@@ -512,7 +522,7 @@ namespace Interface
             else if (animationStatus == AnimationStatus.Show)
             {
                 // Ensure all buttons are interactable after animation completes
-                EnsureButtonsInteractable();
+                //EnsureButtonsInteractable();
             }
 
             _isAnimating = false;

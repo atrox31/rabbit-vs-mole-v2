@@ -14,6 +14,9 @@ namespace Interface.Element
         [SerializeField] private UnityEngine.UI.Button _button;
         [SerializeField] private TextMeshProUGUI _buttonTextOverride;
 
+        [Header("Sound")]
+        [SerializeField] private AudioClip _onClickSound;
+
         private Action _onClickAction;
         
         [Header("Tooltip Settings")]
@@ -50,11 +53,21 @@ namespace Interface.Element
                 if (_onClickAction != null)
                 {
                     _button.onClick.RemoveAllListeners();
-                    _button.onClick.AddListener(() => _onClickAction?.Invoke());
+                    _button.onClick.AddListener(OnClickAction);
                 }
                 
                 SetupHoverEvents();
+                AudioManager.PreloadClips(_onClickSound);
             }
+        }
+
+        void OnClickAction()
+        {
+            if (!_isReady)
+                return;
+
+            _onClickAction?.Invoke();
+            AudioManager.PlaySoundUI(_onClickSound);
         }
 
         private void SetupHoverEvents()

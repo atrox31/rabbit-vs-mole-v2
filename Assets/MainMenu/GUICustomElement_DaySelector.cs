@@ -176,7 +176,7 @@ public class GUICustomElement_DaySelector : Interface.Element.InterfaceElement
             return;
 
         bool isLevelCompleted = GameManager.GetStoryProgress(_currentDay, PlayerType.Rabbit);
-        bool hasGoldenCarrot = GameManager.IsGoldenCarrotCollected(_currentDay);
+        bool hasGoldenCarrot = GameManager.IsGoldenCarrotCollected(_currentDay, PlayerType.Rabbit);
 
         if (isLevelCompleted && hasGoldenCarrot && _goldenCarrot != null)
         {

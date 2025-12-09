@@ -84,6 +84,8 @@ public class RabbitVsMoleMenuSetup : MonoBehaviour
 
         SetupMenus();
         LocalizationSettings.SelectedLocaleChanged += OnLanguageChanged;
+
+        GameManager.PlayMusic(GameManager.MusicType.MainMenu);
     }
 
     public void WebPageRedirect()
@@ -101,11 +103,6 @@ public class RabbitVsMoleMenuSetup : MonoBehaviour
         localizedString.TableEntryReference = key;
         return localizedString;
     }
-
-    //private PanelBuilder CreateStoryMenu(PlayerType playerType)
-    //{
-
-    //} 
 
     private int GetMaxStoryProgress(PlayerType playerType)
     {

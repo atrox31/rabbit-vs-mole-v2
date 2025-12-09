@@ -12,6 +12,9 @@ namespace Interface.Element
         [SerializeField] private UnityEngine.UI.Toggle _toggle;
         [SerializeField] private TextMeshProUGUI _labelTextOverride;
 
+        [Header("Sound")]
+        [SerializeField] private AudioClip _onClickSound;
+
         private Action<bool> _onValueChanged;
         private Func<bool> _getCurrentValue;
 
@@ -32,6 +35,8 @@ namespace Interface.Element
                 _toggle.onValueChanged.RemoveAllListeners();
                 _toggle.onValueChanged.AddListener(OnToggleValueChanged);
             }
+
+            AudioManager.PreloadClips(_onClickSound);
         }
 
         public void Initialize(string label, Action<bool> onValueChanged, Func<bool> getCurrentValue = null)
@@ -62,7 +67,11 @@ namespace Interface.Element
 
         private void OnToggleValueChanged(bool value)
         {
+            if (!_isReady)
+                return;
+
             _onValueChanged?.Invoke(value);
+            AudioManager.PlaySoundUI(_onClickSound);
         }
 
         public void SetValue(bool value)

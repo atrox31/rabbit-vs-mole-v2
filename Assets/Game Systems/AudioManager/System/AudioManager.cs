@@ -62,9 +62,10 @@ public class AudioManager : MonoBehaviour
     // --- Internal Fields ---
 
     // Audio lisner in scene
-    private AudioListener _audioLisner;
     private AudioListener _selfAudioLisner;
-    private bool _haveAudioLisner => _audioLisner != null;
+    private int AudioLisnerCount => _instance._registeredPlayerListeners.Count;
+    private bool HaveSingleLisner => (AudioLisnerCount == 1);
+    private List<AudioListener> _registeredPlayerListeners = new List<AudioListener>();
 
     // Audio sources
     private AudioSource _musicSourceA;
@@ -108,6 +109,8 @@ public class AudioManager : MonoBehaviour
             InitializeAudioSources();
             InitializeSfxPool();
             _selfAudioLisner = gameObject.GetOrAddComponent<AudioListener>();
+            // AudioManager's listener is enabled by default (for menu, splitscreen, etc.)
+            _selfAudioLisner.enabled = true;
         }
         else
         {
@@ -487,7 +490,7 @@ public class AudioManager : MonoBehaviour
         
         _instance.PlaySoundAtPosition(
             cachedClip, 
-            _instance._haveAudioLisner 
+            _instance.HaveSingleLisner
                 ? position 
                 : _instance.transform.position, 
             channel);
@@ -501,7 +504,7 @@ public class AudioManager : MonoBehaviour
         if (_instance == null) return;
         await _instance.InternalPlaySoundAtPositionAsync(
             addressableKey, 
-            _instance._haveAudioLisner 
+            _instance.HaveSingleLisner
                 ? position 
                 : _instance.transform.position, 
             channel);
@@ -520,7 +523,7 @@ public class AudioManager : MonoBehaviour
         
         _instance.PlaySoundAtPosition(
             cachedClip, 
-            _instance._haveAudioLisner 
+            _instance.HaveSingleLisner
                 ? position 
                 : _instance.transform.position, 
             AudioChannel.Dialogue);
@@ -539,7 +542,7 @@ public class AudioManager : MonoBehaviour
         if (_instance == null) return;
         await _instance.InternalPlaySoundAtPositionAsync(
             addressableKey, 
-            _instance._haveAudioLisner 
+            _instance.HaveSingleLisner
                 ? position 
                 : _instance.transform.position, 
             AudioChannel.Dialogue);
@@ -933,26 +936,78 @@ public class AudioManager : MonoBehaviour
         }
     }
 
-    public static void AudioLisnerRegister(AudioListener audioListener)
+    /// <summary>
+    /// Registers a new AudioListener (e.g., from a player).
+    /// Updates all listener states based on player count:
+    /// - 0 players: AudioManager's listener active, all player listeners inactive
+    /// - 1 player: Only that player's listener active, AudioManager's listener inactive
+    /// - 2+ players: AudioManager's listener active, all player listeners inactive
+    /// </summary>
+    public static void RegisterNewAudioLisner(AudioListener listener)
     {
-        Debug.Log("SD");
-        if (_instance._haveAudioLisner)
+        if (_instance == null)
         {
-            audioListener.enabled = false;
+            Debug.LogError("AudioManager: Instance is not yet initialized.");
+            return;
         }
-        else
+
+        if (listener == null)
         {
-            _instance._audioLisner = audioListener;
-            _instance._selfAudioLisner.enabled = false;
+            Debug.LogError("AudioManager: Attempted to register null AudioListener.");
+            return;
         }
+
+        if (_instance._registeredPlayerListeners.Contains(listener))
+        {
+            Debug.LogWarning("AudioManager: AudioListener already registered.");
+            return;
+        }
+
+        _instance._registeredPlayerListeners.Add(listener);
+        _instance.UpdateListenerStates();
     }
 
-    public static void AudioLisnerDelelete()
+    public static void UnregisterAudioLisner(AudioListener listener)
     {
-        _instance._audioLisner = null;
-        if(_instance._selfAudioLisner != null)
-            _instance._selfAudioLisner.enabled = true;
+        if (_instance == null)
+        {
+            Debug.LogError("AudioManager: Instance is not yet initialized.");
+            return;
+        }
+
+        if (listener == null)
+        {
+            Debug.LogWarning("AudioManager: Attempted to unregister null AudioListener.");
+            return;
+        }
+
+        if (!_instance._registeredPlayerListeners.Remove(listener))
+            Debug.LogWarning("AudioManager: Attempted to unregister AudioListener that was not registered.");
+        
+        _instance.UpdateListenerStates();
     }
 
+    private void UpdateListenerStates()
+    {
+        // Clean up null references
+        _registeredPlayerListeners.RemoveAll(listener => listener == null);
+
+        if (_selfAudioLisner != null)
+            _selfAudioLisner.enabled = !HaveSingleLisner;
+
+        if(HaveSingleLisner)
+        {
+            _registeredPlayerListeners[0].enabled = true;
+            return;
+        }
+
+        foreach (var playerListener in _registeredPlayerListeners)
+        {
+            if (playerListener != null)
+            {
+                playerListener.enabled = false;
+            }
+        }
+    }
 }
 #endregion

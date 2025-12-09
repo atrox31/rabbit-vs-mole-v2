@@ -49,10 +49,11 @@ namespace GameObjects
             }
         }
 
-        private void Start()
+        void Start()
         {
-            var showThisCarrot = _dayOfWeek == GameManager.CurrentDayOfWeek
-                && GameManager.IsGoldenCarrotCollected(_dayOfWeek) == false;
+            var isTodayCarrot = _dayOfWeek == GameManager.CurrentDayOfWeek;
+            var isCollected = GameManager.IsGoldenCarrotCollected(_dayOfWeek, GameManager.CurrentPlayerForStory);
+            var showThisCarrot = isTodayCarrot && !isCollected;
 
             gameObject.SetActive(showThisCarrot);
             if (showThisCarrot)

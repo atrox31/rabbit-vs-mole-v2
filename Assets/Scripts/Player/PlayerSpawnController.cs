@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.InputSystem;
 using Enums;
+using Unity.VisualScripting;
 
 /// <summary>
 /// PlayerSpawnController - handles camera setup and player model instantiation.
@@ -76,6 +77,7 @@ public class PlayerSpawnController : MonoBehaviour
             return;
 
         SetupCamera(target, type, isSplitscreen, playerIndex);
+        target.AddComponent<AudioLisnerController>();
     }
 
     private void SetupCamera(Transform target, PlayerType playerType, bool isSplitscreen, int playerIndex)

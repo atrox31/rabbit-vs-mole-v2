@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
@@ -15,12 +16,13 @@ namespace Interface.Element
         [Header("Element Settings")]
         [SerializeField] protected bool _startActive = true;
         [SerializeField] protected float _animationDuration = 0.25f;
-        [SerializeField] protected bool _allowAnchorModification = true; // Domyślnie true dla wbudowanych elementów
+        [SerializeField] protected bool _allowAnchorModification = true; 
 
         protected float _animationTimer = 0f;
         protected bool _isAnimating = false;
         protected bool _isVisible = false;
         protected string _elementID = string.Empty;
+        protected bool _isReady = false;
 
         public string ElementID
         {
@@ -83,6 +85,12 @@ namespace Interface.Element
             gameObject.SetActive(_startActive);
             _isVisible = _startActive;
             Setup();
+        }
+
+        IEnumerator Start()
+        {
+            yield return null; 
+            _isReady = true;
         }
 
         public virtual void SetAlpha(float alpha)

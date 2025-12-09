@@ -13,6 +13,10 @@ namespace Interface.Element
         [SerializeField] private TextMeshProUGUI _labelTextOverride;
         [SerializeField] private TextMeshProUGUI _valueText;
 
+        [Header("Sound")]
+        [SerializeField] private AudioClip _onClickSound;
+        [SerializeField] private AudioClip _onSlideSound;
+
         private Action<float> _onValueChanged;
         private Func<float> _getCurrentValue;
 
@@ -33,6 +37,8 @@ namespace Interface.Element
                 _slider.onValueChanged.RemoveAllListeners();
                 _slider.onValueChanged.AddListener(OnSliderValueChanged);
             }
+
+            AudioManager.PreloadClips(_onClickSound, _onSlideSound);
         }
 
         public void Initialize(string label, Action<float> onValueChanged, Func<float> getCurrentValue = null)
@@ -85,10 +91,24 @@ namespace Interface.Element
             }
         }
 
+        private const float SOUND_COOLDOWN = 0.15f; 
+        private float _lastSoundPlayTime = -SOUND_COOLDOWN; 
+
         private void OnSliderValueChanged(float value)
         {
             UpdateValueText();
+
+            if (!_isReady)
+                return;
+
             _onValueChanged?.Invoke(value);
+            
+            float currentTime = Time.time;
+            if (currentTime - _lastSoundPlayTime >= SOUND_COOLDOWN)
+            {
+                AudioManager.PlaySoundUI(_onSlideSound);
+                _lastSoundPlayTime = currentTime;
+            }
         }
 
         private void UpdateValueText()
