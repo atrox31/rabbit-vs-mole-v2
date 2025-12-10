@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace WalkingImmersionSystem
+namespace Extensions
 {
     /// <summary>
     /// Extension methods for the GameObject class, providing utility functions.

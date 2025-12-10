@@ -74,6 +74,7 @@ public class GameInspector : MonoBehaviour
             Destroy(this.gameObject);
             return;
         }
+        Debug.Log("GameInspektor is alive!");
         _instance = this;
     }
 

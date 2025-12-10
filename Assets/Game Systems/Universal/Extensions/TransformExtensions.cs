@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace DialogueSystem
+namespace Extensions
 {
     public static class TransformExtensions
     {

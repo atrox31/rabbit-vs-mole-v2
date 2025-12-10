@@ -9,6 +9,7 @@ using UnityEditor.Rendering;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
+using Extensions;
 
 namespace DialogueSystem.Editor
 {

@@ -6,6 +6,7 @@ using UnityEngine.Localization.Settings;
 using UnityEngine.InputSystem;
 using System.Linq;
 using System;
+using Extensions;
 
 public class RabbitVsMoleMenuSetup : MonoBehaviour
 {

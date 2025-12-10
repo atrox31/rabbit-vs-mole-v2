@@ -87,7 +87,7 @@ public class GameManager : MonoBehaviour
 
         AudioManager.SetAmbientVolume(PlayerPrefs.GetFloat(PlayerPrefsConst.AMBIENT_VOLUME, 1.0f));
         AudioManager.SetSFXVolume(PlayerPrefs.GetFloat(PlayerPrefsConst.SFX_VOLUME, 1.0f));
-        AudioManager.SetMusicVolume(PlayerPrefs.GetFloat(PlayerPrefsConst.MUSIC_VOLUME, 1.0f));
+        AudioManager.SetMusicVolume(PlayerPrefs.GetFloat(PlayerPrefsConst.MUSIC_VOLUME, 0.35f));
         AudioManager.SetDialoguesVolume(PlayerPrefs.GetFloat(PlayerPrefsConst.DIALOGUES_VOLUME, 1.0f));
         AudioManager.SetMasterVolume(PlayerPrefs.GetFloat(PlayerPrefsConst.MASTER_VOLUME, 1.0f));
     }
@@ -340,23 +340,39 @@ public class GameManager : MonoBehaviour
         return sceneType.ToString();
     }
 
+    /// <summary>
+    /// Starts the game with the specified game mode, map, day, player type, and control agents.
+    /// </summary>
+    /// <remarks>This method initializes the game by setting the current day and player type for the story, 
+    /// loading the specified map, and configuring the game environment. It also sets up the game  inspector and spawns
+    /// the players using the provided control agents.</remarks>
+    /// <param name="gameMode">The game mode data that defines the rules and settings for the game.</param>
+    /// <param name="map">The map to load for the game, represented as a scene type.</param>
+    /// <param name="day">The day of the week to associate with the game session.</param>
+    /// <param name="playerTypeForStory">The player type to use for story-related gameplay elements.</param>
+    /// <param name="rabbitControlAgent">The control agent responsible for managing the rabbit player's actions.</param>
+    /// <param name="moleControlAgent">The control agent responsible for managing the mole player's actions.</param>
     public static void PlayGame(GameModeData gameMode, GameSceneManager.SceneType map, DayOfWeek day, PlayerType playerTypeForStory, PlayerControlAgent rabbitControlAgent, PlayerControlAgent moleControlAgent)
     {
         _instance._currentDayOfWeek = day;
         _instance._currentPlayerForStory = playerTypeForStory;
-        GameSceneManager.ChangeScene(map, () =>
-        {
-            Instantiate(_instance.GameInspectorPrefab, SceneManager.GetActiveScene());
-            GameInspector.CurrentGameMode = gameMode;
-            GameInspector.CurrentPlayerOnStory = playerTypeForStory;
-            GameInspector.RabbitControlAgent = rabbitControlAgent;
-            GameInspector.MoleControlAgent = moleControlAgent;
-            
-            // Spawn players after GameInspector is set up
-            PlayerSpawnSystem.SpawnPlayers();
-
-            PlayMusic(MusicType.Gameplay);
-        });
+        GameSceneManager.ChangeScene(map, 
+            () =>   // On Scene Start
+            {
+                Debug.Log("Play game -> On Scene Start");
+                PlayMusic(MusicType.Gameplay);
+                PlayerSpawnSystem.SpawnPlayers();
+            },
+            (scene) =>   // On Scene Load
+            {
+                Debug.Log("Play game -> On Scene Load");
+                Instantiate(_instance.GameInspectorPrefab, scene);
+                GameInspector.CurrentGameMode = gameMode;
+                GameInspector.CurrentPlayerOnStory = playerTypeForStory;
+                GameInspector.RabbitControlAgent = rabbitControlAgent;
+                GameInspector.MoleControlAgent = moleControlAgent;
+                PlayerSpawnSystem.CreateInstance(scene);
+            });
 
         Debug.Log($"GameManager: Starting game for {day}, Map: {GetSceneTypeDescription(map)}[{map}], Rabbit: {rabbitControlAgent}, Mole: {moleControlAgent}");
     }
@@ -369,26 +385,12 @@ public class GameManager : MonoBehaviour
             return;
         }
         
-        // Determine scene from active scene name if CurrentScene is not set correctly
+        // MainMenu cannot be restarted - it's not a gameplay scene
         GameSceneManager.SceneType sceneToRestart = GameSceneManager.CurrentScene;
         if (sceneToRestart == GameSceneManager.SceneType.MainMenu)
         {
-            string activeSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-            foreach (GameSceneManager.SceneType sceneType in System.Enum.GetValues(typeof(GameSceneManager.SceneType)))
-            {
-                var description = sceneType.GetType()
-                    .GetField(sceneType.ToString())
-                    .GetCustomAttributes(typeof(System.ComponentModel.DescriptionAttribute), false);
-                if (description.Length > 0)
-                {
-                    string sceneName = ((System.ComponentModel.DescriptionAttribute)description[0]).Description;
-                    if (sceneName == activeSceneName)
-                    {
-                        sceneToRestart = sceneType;
-                        break;
-                    }
-                }
-            }
+            Debug.LogError("GameManager.RestartGame: Cannot restart MainMenu scene. CurrentScene is not set correctly or you are trying to restart from MainMenu.");
+            return;
         }
         
         PlayGame(

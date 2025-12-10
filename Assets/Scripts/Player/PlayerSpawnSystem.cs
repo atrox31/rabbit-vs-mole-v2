@@ -4,6 +4,8 @@ using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.InputSystem;
 using Enums;
+using UnityEngine.SceneManagement;
+using System.Dynamic;
 
 /// <summary>
 /// PlayerSpawnSystem - handles spawning players when a new map loads.
@@ -72,16 +74,29 @@ public class PlayerSpawnSystem : MonoBehaviour
         }
     }
 
-    public static void SpawnPlayers()
+    public static void CreateInstance(Scene scene)
     {
+        Debug.Log("PlayerSpawnSystem: CreateInstance");
         if (_instance == null)
         {
             var go = new GameObject("PlayerSpawnSystem");
             _instance = go.AddComponent<PlayerSpawnSystem>();
+            SceneManager.MoveGameObjectToScene(go, scene);
         }
+        else
+        {
+            Debug.Log("PlayerSpawnSystem: instance exists");
+        }
+    }
 
+    public static void SpawnPlayers()
+    {
+        Debug.Log("PlayerSpawnSystem: SpawnPlayers");
         if (!GameInspector.IsActive)
+        {
+            Debug.LogError("PlayerSpawnSystem: SpawnPlayers error! GameInspector is not active");
             return;
+        }
 
         _instance.StartCoroutine(_instance.SpawnPlayersCoroutine());
     }
@@ -105,6 +120,9 @@ public class PlayerSpawnSystem : MonoBehaviour
             if (spawnPoint != null)
             {
                 SpawnPlayer(PlayerType.Rabbit, spawnPoint.transform.position, isSplitscreen, 0);
+            } else
+            {
+                DebugHelper.LogError(this, "Can not find spawnpoint for Rabbit");
             }
         }
 
@@ -115,6 +133,10 @@ public class PlayerSpawnSystem : MonoBehaviour
             {
                 int playerIndex = isSplitscreen ? 1 : 0;
                 SpawnPlayer(PlayerType.Mole, spawnPoint.transform.position, isSplitscreen, playerIndex);
+            }
+            else
+            {
+                DebugHelper.LogError(this, "Can not find spawnpoint for Rabbit");
             }
         }
 
