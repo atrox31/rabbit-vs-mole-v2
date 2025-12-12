@@ -9,15 +9,13 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using WalkingImmersionSystem;
 
-public class GameManager : MonoBehaviour
+public class GameManager : SingletonMonoBehaviour<GameManager>
 {
-    private static GameManager _instance;
-
     private PlayerType _currentPlayerForStory;
-    public static PlayerType CurrentPlayerForStory { get { return _instance._currentPlayerForStory; } private set { _instance._currentPlayerForStory = value; } }
+    public static PlayerType CurrentPlayerForStory { get { return Instance._currentPlayerForStory; } private set { Instance._currentPlayerForStory = value; } }
 
     private DayOfWeek _currentDayOfWeek = DayOfWeek.Monday;
-    public static DayOfWeek CurrentDayOfWeek { get { return _instance._currentDayOfWeek; } private set { _instance._currentDayOfWeek = value; } }
+    public static DayOfWeek CurrentDayOfWeek { get { return Instance._currentDayOfWeek; } private set { Instance._currentDayOfWeek = value; } }
 
     [Header("Game Inspector")]
     [SerializeField] private GameObject GameInspectorPrefab;
@@ -39,20 +37,16 @@ public class GameManager : MonoBehaviour
     [Header("Debug")]
     [SerializeField] bool _debugResetGoldenCarrotState = false;
 
-    void Awake()
+    protected override void Ready()
     {
         Debug.Log("GameManager: Awake started.");
-        if (_instance != null)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        _instance = this;
-        DontDestroyOnLoad(gameObject);
-
-
         DialogueSystem.TriggerData.TD_GameManagerGet.OnGetValue = Get;
         Debug.Log("GameManager: Awake completed.");
+    }
+
+    public override void OnGameStart()
+    {
+        GoToMainMenu();
     }
 
     void OnDestroy()
@@ -73,9 +67,6 @@ public class GameManager : MonoBehaviour
             ResetGoldenCarrotProgress(PlayerType.Rabbit);
             ResetGoldenCarrotProgress(PlayerType.Mole);
         }
-
-        yield return new WaitForSecondsRealtime(1.0f);
-        GameSceneManager.ChangeScene(GameSceneManager.SceneType.MainMenu);
     }
 
     private void LoadPlayerPrefs()
@@ -103,16 +94,16 @@ public class GameManager : MonoBehaviour
         switch (type)
         {
             case MusicType.Gameplay:
-                AudioManager.PlayMusicPlaylist(_instance.MusicForGameplay);
+                AudioManager.PlayMusicPlaylist(Instance.MusicForGameplay);
                 break;
             case MusicType.Victory:
-                AudioManager.PlayMusic(_instance.MusicForVictory);
+                AudioManager.PlayMusic(Instance.MusicForVictory);
                 break;
             case MusicType.Defeat:
-                AudioManager.PlayMusic(_instance.MusicForDefeat);
+                AudioManager.PlayMusic(Instance.MusicForDefeat);
                 break;
             case MusicType.MainMenu:
-                AudioManager.PlayMusic(_instance.MusicForMainMenu);
+                AudioManager.PlayMusic(Instance.MusicForMainMenu);
                 break;
             default:
                 break;
@@ -122,7 +113,7 @@ public class GameManager : MonoBehaviour
     // --- GAMEPLAY --- //
     public static void GoldenCarrotPick()
     {
-        if (_instance == null)
+        if (Instance == null)
         {
             Debug.LogWarning("GameManager.GoldenCarrotPick: Instance is null.");
             return;
@@ -137,10 +128,10 @@ public class GameManager : MonoBehaviour
         switch(GameInspector.CurrentPlayerOnStory)
         {
             case PlayerType.Rabbit:
-                _instance._goldenCarrotPickStateRabbit[_instance._currentDayOfWeek] = true;
+                Instance._goldenCarrotPickStateRabbit[Instance._currentDayOfWeek] = true;
                 break;
             case PlayerType.Mole:
-                _instance._goldenCarrotPickStateMole[_instance._currentDayOfWeek] = true;
+                Instance._goldenCarrotPickStateMole[Instance._currentDayOfWeek] = true;
                 break;
             default:
                 Debug.LogWarning("GameManager.GoldenCarrotPick: Unknown player type.");
@@ -149,7 +140,7 @@ public class GameManager : MonoBehaviour
     }
     internal static bool IsGoldenCarrotCollected(DayOfWeek dayOfWeek, PlayerType playerType)
     {
-        if (_instance == null)
+        if (Instance == null)
         {
             Debug.LogWarning("GameManager.IsGoldenCarrotCollected: Instance is null.");
             return false;
@@ -158,9 +149,9 @@ public class GameManager : MonoBehaviour
         switch(playerType)
         {
             case PlayerType.Rabbit:
-                return _instance._goldenCarrotPickStateRabbit[dayOfWeek];
+                return Instance._goldenCarrotPickStateRabbit[dayOfWeek];
             case PlayerType.Mole:
-                return _instance._goldenCarrotPickStateMole[dayOfWeek];
+                return Instance._goldenCarrotPickStateMole[dayOfWeek];
             default:
                 Debug.LogWarning("GameManager.IsGoldenCarrotCollected: Unknown player type.");
                 return false;
@@ -172,7 +163,7 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public static void SetStoryProgress(DayOfWeek dayOfWeek, bool value)
     {
-        if (_instance == null)
+        if (Instance == null)
         {
             Debug.LogWarning("GameManager.SetStoryProgress: Instance is null.");
             return;
@@ -186,17 +177,17 @@ public class GameManager : MonoBehaviour
         switch (GameInspector.CurrentPlayerOnStory)
         {
             case PlayerType.Rabbit:
-                _instance._playerStoryProgressRabbit[dayOfWeek] = value;
+                Instance._playerStoryProgressRabbit[dayOfWeek] = value;
                 break;
             case PlayerType.Mole:
-                _instance._playerStoryProgressMole[dayOfWeek] = value;
+                Instance._playerStoryProgressMole[dayOfWeek] = value;
                 break;
             default:
                 Debug.LogWarning("GameManager.SetStoryProgress: Unknown player type.");
                 return;
         }
 
-        _instance.SavePlayerPrefs();
+        Instance.SavePlayerPrefs();
     }
 
     /// <summary>
@@ -204,7 +195,7 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public static bool GetStoryProgress(DayOfWeek dayOfWeek, PlayerType playerType)
     {
-        if (_instance == null)
+        if (Instance == null)
         {
             Debug.LogWarning("GameManager.GetStoryProgress: Instance is null.");
             return false;
@@ -213,9 +204,9 @@ public class GameManager : MonoBehaviour
         switch(playerType)
         {
             case PlayerType.Rabbit:
-                return _instance._playerStoryProgressRabbit[dayOfWeek];
+                return Instance._playerStoryProgressRabbit[dayOfWeek];
             case PlayerType.Mole:
-                return _instance._playerStoryProgressMole[dayOfWeek];
+                return Instance._playerStoryProgressMole[dayOfWeek];
             default:
                 Debug.LogWarning("GameManager.GetStoryProgress: Unknown player type.");
                 return false;
@@ -224,7 +215,7 @@ public class GameManager : MonoBehaviour
 
     public static void ResetStoryProgress(PlayerType playerType)
     {
-        if (_instance == null)
+        if (Instance == null)
         {
             Debug.LogWarning("GameManager.ResetStoryProgress: Instance is null.");
             return;
@@ -234,25 +225,25 @@ public class GameManager : MonoBehaviour
             case PlayerType.Rabbit:
                 foreach (var day in Enum.GetValues(typeof(DayOfWeek)))
                 {
-                    _instance._playerStoryProgressRabbit[(DayOfWeek)day] = false;
+                    Instance._playerStoryProgressRabbit[(DayOfWeek)day] = false;
                 }
                 break;
             case PlayerType.Mole:
                 foreach (var day in Enum.GetValues(typeof(DayOfWeek)))
                 {
-                    _instance._playerStoryProgressMole[(DayOfWeek)day] = false;
+                    Instance._playerStoryProgressMole[(DayOfWeek)day] = false;
                 }
                 break;
             default:
                 Debug.LogWarning("GameManager.ResetStoryProgress: Unknown player type.");
                 return;
         }
-        _instance.SavePlayerPrefs();
+        Instance.SavePlayerPrefs();
     }
 
     public static void ResetGoldenCarrotProgress(PlayerType playerType)
     {
-        if (_instance == null)
+        if (Instance == null)
         {
             Debug.LogWarning("GameManager.ResetGoldenCarrotProgress: Instance is null.");
             return;
@@ -262,25 +253,25 @@ public class GameManager : MonoBehaviour
             case PlayerType.Rabbit:
                 foreach (var day in Enum.GetValues(typeof(DayOfWeek)))
                 {
-                    _instance._goldenCarrotPickStateRabbit[(DayOfWeek)day] = false;
+                    Instance._goldenCarrotPickStateRabbit[(DayOfWeek)day] = false;
                 }
                 break;
             case PlayerType.Mole:
                 foreach (var day in Enum.GetValues(typeof(DayOfWeek)))
                 {
-                    _instance._goldenCarrotPickStateMole[(DayOfWeek)day] = false;
+                    Instance._goldenCarrotPickStateMole[(DayOfWeek)day] = false;
                 }
                 break;
             default:
                 Debug.LogWarning("GameManager.ResetGoldenCarrotProgress: Unknown player type.");
                 return;
         }
-        _instance.SavePlayerPrefs();
+        Instance.SavePlayerPrefs();
     }
 
     public static void CompliteCurrentDay()
     {
-        if (_instance == null)
+        if (Instance == null)
         {
             Debug.LogWarning("GameManager.CompliteCurrentDay: Instance is null.");
             return;
@@ -294,10 +285,10 @@ public class GameManager : MonoBehaviour
         switch (GameInspector.CurrentPlayerOnStory)
         {
             case PlayerType.Rabbit:
-                SetStoryProgress(_instance._currentDayOfWeek, true);
+                SetStoryProgress(Instance._currentDayOfWeek, true);
                 break;
             case PlayerType.Mole:
-                SetStoryProgress(_instance._currentDayOfWeek, true);
+                SetStoryProgress(Instance._currentDayOfWeek, true);
                 break;
             default:
                 Debug.LogWarning("GameManager.CompliteCurrentDay: Unknown player type.");
@@ -310,7 +301,7 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public static object Get(string field)
     {
-        if (_instance == null)
+        if (Instance == null)
         {
             Debug.LogWarning("GameManager.Get: Instance is null.");
             return null;
@@ -354,27 +345,46 @@ public class GameManager : MonoBehaviour
     /// <param name="moleControlAgent">The control agent responsible for managing the mole player's actions.</param>
     public static void PlayGame(GameModeData gameMode, GameSceneManager.SceneType map, DayOfWeek day, PlayerType playerTypeForStory, PlayerControlAgent rabbitControlAgent, PlayerControlAgent moleControlAgent)
     {
-        _instance._currentDayOfWeek = day;
-        _instance._currentPlayerForStory = playerTypeForStory;
-        GameSceneManager.ChangeScene(map, 
-            () =>   // On Scene Start
-            {
-                Debug.Log("Play game -> On Scene Start");
-                PlayMusic(MusicType.Gameplay);
-                PlayerSpawnSystem.SpawnPlayers();
-            },
-            (scene) =>   // On Scene Load
+        Instance._currentDayOfWeek = day;
+        Instance._currentPlayerForStory = playerTypeForStory;
+        GameSceneManager.ChangeScene(
+            scene: map,
+            OnSceneLoad: (scene) =>  
             {
                 Debug.Log("Play game -> On Scene Load");
-                Instantiate(_instance.GameInspectorPrefab, scene);
+                Instantiate(Instance.GameInspectorPrefab, scene);
                 GameInspector.CurrentGameMode = gameMode;
                 GameInspector.CurrentPlayerOnStory = playerTypeForStory;
                 GameInspector.RabbitControlAgent = rabbitControlAgent;
                 GameInspector.MoleControlAgent = moleControlAgent;
                 PlayerSpawnSystem.CreateInstance(scene);
+            },
+            OnSceneStart: () =>   
+            {
+                Debug.Log("Play game -> On Scene Start");
+                PlayerSpawnSystem.SpawnPlayers();
+            },
+            OnSceneShow: () =>  
+            {
+                PlayMusic(MusicType.Gameplay);
+
             });
 
         Debug.Log($"GameManager: Starting game for {day}, Map: {GetSceneTypeDescription(map)}[{map}], Rabbit: {rabbitControlAgent}, Mole: {moleControlAgent}");
+    }
+
+    public static void GoToMainMenu() { 
+        GameSceneManager.ChangeScene(
+            scene: GameSceneManager.SceneType.MainMenu, 
+            OnSceneLoad:  null,
+            OnSceneStart: null,
+            OnSceneShow: () =>   
+            {
+                var rabbitVsMoleMenuSetup = FindFirstObjectByType<RabbitVsMoleMenuSetup>();
+                rabbitVsMoleMenuSetup?.ShowMenu();
+
+                PlayMusic(MusicType.MainMenu);
+            });
     }
 
     public static void RestartGame()
@@ -396,7 +406,7 @@ public class GameManager : MonoBehaviour
         PlayGame(
             GameInspector.CurrentGameMode, 
             sceneToRestart, 
-            _instance._currentDayOfWeek, 
+            Instance._currentDayOfWeek, 
             GameInspector.CurrentPlayerOnStory, 
             GameInspector.RabbitControlAgent, 
             GameInspector.MoleControlAgent
@@ -405,12 +415,12 @@ public class GameManager : MonoBehaviour
 
     internal static bool GetMoleProgress(DayOfWeek dayOfWeek)
     {
-        if(_instance == null)
+        if(Instance == null)
         {
             Debug.LogWarning("GameManager.GetMoleProgress: Instance is null.");
             return false;
         }
-         return _instance._playerStoryProgressMole[dayOfWeek];
+         return Instance._playerStoryProgressMole[dayOfWeek];
     }
 
     internal static void GamePlayTimeEnd()
@@ -425,7 +435,7 @@ public class GameManager : MonoBehaviour
 
     internal static void Pause()
     {
-        if (_instance == null)
+        if (Instance == null)
         {
             Debug.LogWarning("GameManager.Pause: Instance is null.");
             return;
@@ -435,7 +445,7 @@ public class GameManager : MonoBehaviour
 
     internal static void Unpause()
     {
-        if (_instance == null)
+        if (Instance == null)
         {
             Debug.LogWarning("GameManager.Unpause: Instance is null.");
             return;

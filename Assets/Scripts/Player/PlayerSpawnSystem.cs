@@ -98,17 +98,23 @@ public class PlayerSpawnSystem : MonoBehaviour
             return;
         }
 
-        _instance.StartCoroutine(_instance.SpawnPlayersCoroutine());
+        if(_instance == null)
+        {
+            Debug.LogError("PlayerSpawnSystem: SpawnPlayers error! Instance is null");
+            return;
+        }
+
+        _instance.InternalSpawnPlayers();
     }
 
-    private IEnumerator SpawnPlayersCoroutine()
+    private void InternalSpawnPlayers()
     {
         ClearSpawnedPlayers();
         RefreshAvailableGamepads();
 
         var gameMode = GameInspector.CurrentGameMode;
         if (gameMode == null)
-            yield break;
+            return;
 
         var rabbitAgent = GameInspector.RabbitControlAgent;
         var moleAgent = GameInspector.MoleControlAgent;
@@ -139,8 +145,6 @@ public class PlayerSpawnSystem : MonoBehaviour
                 DebugHelper.LogError(this, "Can not find spawnpoint for Rabbit");
             }
         }
-
-        yield return null;
     }
 
     private void RefreshAvailableGamepads()

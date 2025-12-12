@@ -59,8 +59,7 @@ public class RabbitVsMoleMenuSetup : MonoBehaviour
     [SerializeField] private List<GameModeData> duelGameModes;
 
     private bool IsStoryComplite => GameManager.GetStoryProgress(System.DayOfWeek.Sunday, PlayerType.Rabbit);
-
-    private void Start()
+    void Awake()
     {
         _menuManager = GetComponent<MainMenuManager>();
         if (_menuManager == null)
@@ -78,15 +77,18 @@ public class RabbitVsMoleMenuSetup : MonoBehaviour
             Debug.LogWarning("Input Action Asset is not assigned on RabbitVsMoleMenuSetup.");
         }
 
-        if(_versionLabel != null)
+        if (_versionLabel != null)
         {
             _versionLabel.text = "V " + Application.version;
         }
 
         SetupMenus();
         LocalizationSettings.SelectedLocaleChanged += OnLanguageChanged;
+    }
 
-        GameManager.PlayMusic(GameManager.MusicType.MainMenu);
+    public void ShowMenu()
+    {
+        _menuManager.ChangePanel(_mainMenu);
     }
 
     public void WebPageRedirect()
@@ -317,7 +319,6 @@ public class RabbitVsMoleMenuSetup : MonoBehaviour
             .AddExitButton()
             .Build();
 
-        _menuManager.ChangePanel(_mainMenu);
     }
 
     private void UpdateCredits()

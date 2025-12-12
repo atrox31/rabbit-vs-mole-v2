@@ -53,19 +53,19 @@ public class RabbitVsMoleInGameMenu : MonoBehaviour
     
     private void SetupMenu()
     {
-        _mainMenuRestartQuestion = _menuManager.CreatePanel("menu_restart_question")
+        _mainMenuRestartQuestion = _menuManager.CreatePanel(GetLocalizedString("menu_restart_question"))
             .AddLabel(GetLocalizedString("text_restart_question"))
             .AddButton(GetLocalizedString("button_yes"), OnRestartConfirmed)
             .AddButton(GetLocalizedString("button_no"), _menuManager.GoBack)
             .Build();
 
-        _mainMenuBackToMenuQuestion = _menuManager.CreatePanel("menu_back_to_main_menu_question")
+        _mainMenuBackToMenuQuestion = _menuManager.CreatePanel(GetLocalizedString("menu_back_to_main_menu_question"))
             .AddLabel(GetLocalizedString("text_back_to_main_menu_question"))
             .AddButton(GetLocalizedString("button_yes"), OnBackToMainMenuConfirmed)
             .AddButton(GetLocalizedString("button_no"), _menuManager.GoBack)
             .Build();
 
-        _mainMenu = _menuManager.CreatePanel("menu_in_game")
+        _mainMenu = _menuManager.CreatePanel(GetLocalizedString("menu_in_game"))
             .AddButton(GetLocalizedString("button_resume"), HideMenu)
             .AddButton(GetLocalizedString("button_restart"), _mainMenuRestartQuestion)
             .AddButton(GetLocalizedString("button_back_to_main_menu"), _mainMenuBackToMenuQuestion)
@@ -146,8 +146,7 @@ public class RabbitVsMoleInGameMenu : MonoBehaviour
     
     private void OnBackToMainMenuConfirmed()
     {
-        GameManager.Unpause();
-        GameSceneManager.ChangeScene(GameSceneManager.SceneType.MainMenu);
+        GameManager.Unpause();GameManager.GoToMainMenu();
     }
     
     #endregion

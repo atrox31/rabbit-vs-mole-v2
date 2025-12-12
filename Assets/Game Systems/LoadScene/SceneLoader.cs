@@ -3,94 +3,107 @@ using Extensions;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.Events;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.SceneManagement;
 
-public class SceneLoader : MonoBehaviour
+public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
 {
-    // singleton
-    private static SceneLoader _instance;
+    private const string LOADING_SCENE_NAME = "Loading";
+    private const string TRANSITION_TEMPLATE_PATH = "Assets/Game Systems/EasyTransitions/Prefabs/TransitionTemplate.prefab";
+    
+    // Progress constants
+    private const int PROGRESS_SCENE_LOADED = 50;
+    private const int PROGRESS_MATERIALS_START = 75;
+    private const int PROGRESS_MATERIALS_END = 99;
+    private const int PROGRESS_COMPLETE = 100;
+    private const float SCENE_ACTIVATION_DELAY = 1.0f;
+    private const float SCENE_LOAD_PROGRESS_THRESHOLD = 0.9f;
 
-    // settings
-    [SerializeField] TransitionSettings transitionSettings;
-    [SerializeField] private string LOADING_SCENE_NAME = "Loading";
+    [SerializeField] private TransitionSettings transitionSettings;
 
-    // transition variables
     private bool _isTransitioning = false;
-    private bool _blocker = false;
     private Scene _previousScene;
+    private Scene _targetScene;
+    private AsyncOperation _targetSceneAsyncOperation;
+    private bool _isWaitingForTransition = false;
 
-    private void Awake()
+    private void SetProgressBlocked(bool blocked)
     {
-        if (_instance == null)
-        {
-            _instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            DestroyImmediate(gameObject);
-            return;
-        }
+        _isWaitingForTransition = blocked;
+    }
 
-        if (transitionSettings == null)
+    private IEnumerator WaitForTransition()
+    {
+        while (_isWaitingForTransition)
         {
-            Debug.LogError("SceneLoader: Awake error! Transition Settings not assigned in SceneLoader.");
-            DestroyImmediate(gameObject);
-            return;
+            yield return null;
         }
     }
 
-    public static void ChangeScene(string targetSceneName, UnityAction<Scene> onNewSceneLoad, UnityAction onNewSceneStart, UnityAction<int> loadingProgress)
+    protected override void Ready()
     {
-        if (_instance == null)
+        if (transitionSettings == null)
         {
-            Debug.LogError("SceneLoader: ChangeScene called but SceneLoader instance is null! Make sure SceneLoader exists in the scene.");
+            Debug.LogError("SceneLoader: Transition Settings not assigned in SceneLoader.");
+            DestroyImmediate(gameObject);
+        }
+    }
+
+    public override void OnGameStart() { }
+
+    public static void ChangeScene(
+        string targetSceneName, 
+        UnityAction<Scene> onNewSceneLoad, 
+        UnityAction onNewSceneStart,
+        UnityAction onNewSceneShow, 
+        UnityAction<int> loadingProgress)
+    {
+        if (Instance == null)
+        {
+            Debug.LogError("SceneLoader: ChangeScene error! SceneLoader instance is null. Make sure SceneLoader exists in the initial scene.");
             return;
         }
 
-        if (_instance._isTransitioning)
+        if (Instance._isTransitioning)
         {
             Debug.LogWarning("Scene transition already in progress. Ignoring ChangeScene call.");
             return;
         }
 
-        _instance.StartCoroutine(_instance.LoadSceneWithLoadingScreen(targetSceneName, onNewSceneLoad, onNewSceneStart, loadingProgress));
+        Instance.StartCoroutine(Instance.LoadSceneWithLoadingScreen(
+            targetSceneName, onNewSceneLoad, onNewSceneStart, onNewSceneShow, loadingProgress));
     }
 
-    private IEnumerator LoadSceneWithLoadingScreen(string targetSceneName, UnityAction<Scene> onNewSceneLoad, UnityAction onNewSceneStart, UnityAction<int> loadingProgress)
+    private IEnumerator LoadSceneWithLoadingScreen(
+        string targetSceneName, 
+        UnityAction<Scene> onNewSceneLoad, 
+        UnityAction onNewSceneStart, 
+        UnityAction onNewSceneShow,
+        UnityAction<int> loadingProgress)
     {
         _isTransitioning = true;
 
         try
         {
-            // Store reference to current scene (excluding Loading scene)
-            Scene currentActiveScene = SceneManager.GetActiveScene();
-            if (currentActiveScene.name != LOADING_SCENE_NAME)
+            if (targetSceneName == LOADING_SCENE_NAME)
             {
-                _previousScene = currentActiveScene;
+                Debug.LogError("SceneLoader: Target scene name cannot be the same as Loading scene name.");
+                throw new Exception("Target scene name cannot be the same as Loading scene name.");
             }
 
+            _previousScene = SceneManager.GetActiveScene();
+            _targetSceneAsyncOperation = null;
+
             loadingProgress?.Invoke(0);
-            Debug.Log("LoadSceneWithLoadingScreen: StartCoroutine(ShowLoadingScreen())");
-            yield return StartCoroutine(ShowLoadingScreen());    
-            
-            yield return null;
-
-            Debug.Log("LoadSceneWithLoadingScreen: StartCoroutine(LoadNewScene(loadingProgress, onNewSceneLoad))");
-            yield return StartCoroutine(LoadNewScene(targetSceneName, loadingProgress, onNewSceneLoad, onNewSceneStart)); 
-
-            yield return null;
+            yield return StartCoroutine(ShowLoadingScreen());
+            yield return StartCoroutine(LoadNewScene(targetSceneName, loadingProgress, onNewSceneLoad));
+            yield return StartCoroutine(ActivateNewScene(onNewSceneStart, onNewSceneShow));
         }
         finally
         {
-            // Always reset transition state, even if error occurred
             _isTransitioning = false;
             Time.timeScale = 1.0f;
         }
@@ -102,42 +115,48 @@ public class SceneLoader : MonoBehaviour
         Scene currentScene = SceneManager.GetActiveScene();
         Scene loadingScene = SceneManager.GetSceneByName(LOADING_SCENE_NAME);
 
-        if (currentScene.name == LOADING_SCENE_NAME)
+        if (currentScene.name == LOADING_SCENE_NAME && loadingScene.IsValid())
         {
-            if (loadingScene.IsValid())
-            {
-                SceneManager.SetActiveScene(loadingScene);
-            }
+            SceneManager.SetActiveScene(loadingScene);
             yield break;
         }
 
-        var transitionManager = TransitionManager.Instance();
+        var transitionManager = GetTransitionManager();
         if (transitionManager == null)
         {
-            Debug.LogError("SceneLoader: TransitionManager.Instance() returned null!");
             yield break;
         }
 
-        _blocker = true;
-        transitionManager.onTransitionEnd += UnLockProgress;
+        SetProgressBlocked(true);
+        transitionManager.onTransitionEnd += OnLoadingTransitionEnd;
         transitionManager.Transition(LOADING_SCENE_NAME, transitionSettings, 0.0f);
+        
+        yield return null;
+        yield return StartCoroutine(WaitForTransition());
+    }
 
-        while(_blocker)
-            yield return null;
-
-        transitionManager.onTransitionEnd -= UnLockProgress;
+    private void OnLoadingTransitionEnd()
+    {
+        var transitionManager = GetTransitionManager();
+        if (transitionManager != null)
+        {
+            transitionManager.onTransitionEnd -= OnLoadingTransitionEnd;
+        }
+        SetProgressBlocked(false);
     }
 
 
-    private IEnumerator LoadNewScene(string targetSceneName, UnityAction<int> loadingProgress, UnityAction<Scene> onNewSceneLoad, UnityAction onNewSceneStart)
+    private IEnumerator LoadNewScene(string targetSceneName, UnityAction<int> loadingProgress, UnityAction<Scene> onNewSceneLoad)
     {
-        // Check if scene already exists
+        if (_previousScene.IsValid() && _previousScene.name != LOADING_SCENE_NAME)
+        {
+            yield return SceneManager.UnloadSceneAsync(_previousScene);
+        }
+
         var existingScene = SceneManager.GetSceneByName(targetSceneName);
-        if (existingScene.IsValid() && existingScene.isLoaded)
+        if (existingScene.IsValid())
         {
             Debug.LogWarning($"SceneLoader: Scene '{targetSceneName}' is already loaded!");
-            onNewSceneLoad?.Invoke(existingScene);
-            onNewSceneStart?.Invoke();
             yield break;
         }
 
@@ -147,133 +166,118 @@ public class SceneLoader : MonoBehaviour
             Debug.LogError($"SceneLoader: Failed to start loading scene '{targetSceneName}'. Scene may not exist in build settings.");
             yield break;
         }
-        
+
+        _targetSceneAsyncOperation = newSceneProcess;
         newSceneProcess.allowSceneActivation = false;
 
-        // Wait until target scene loads (up to 90%)
-        while (newSceneProcess.progress < 0.9f)
+        while (newSceneProcess.progress < SCENE_LOAD_PROGRESS_THRESHOLD)
         {
-            loadingProgress?.Invoke((int)newSceneProcess.progress.Map(.0f, 90.0f, .0f, 50.0f));
-
+            int progress = (int)newSceneProcess.progress.Map(0.0f, 90.0f, 0.0f, PROGRESS_SCENE_LOADED);
+            loadingProgress?.Invoke(progress);
             yield return null;
         }
 
-        loadingProgress?.Invoke(50);
+        loadingProgress?.Invoke(PROGRESS_SCENE_LOADED);
         yield return null;
 
         var newSceneObject = SceneManager.GetSceneByName(targetSceneName);
-        if (!newSceneObject.IsValid())
+        if (!ValidateScene(newSceneObject, targetSceneName))
         {
-            DebugHelper.LogError(this, $"Scene '{targetSceneName}' is not valid!");
             yield break;
         }
-        
+
         onNewSceneLoad?.Invoke(newSceneObject);
-
-        loadingProgress?.Invoke(55);
+        loadingProgress?.Invoke(PROGRESS_MATERIALS_START);
         yield return null;
 
-        yield return StartCoroutine(
-            PreloadMaterialAssets(
-                newSceneObject,
-                loadingProgress,
-                55, 90));
+        yield return StartCoroutine(PreloadMaterialAssets(
+            newSceneObject, loadingProgress, PROGRESS_MATERIALS_START, PROGRESS_MATERIALS_END));
 
         yield return null;
-        loadingProgress?.Invoke(90);
+        loadingProgress?.Invoke(PROGRESS_COMPLETE);
+        _targetScene = newSceneObject;
+    }
 
-        
-        var transitionManager = TransitionManager.Instance();
-        if (transitionManager == null)
+    private IEnumerator ActivateNewScene(UnityAction onNewSceneStart, UnityAction onNewSceneShow)
+    {
+        if (!ValidateScene(_targetScene, "target scene"))
         {
-            Debug.LogError("SceneLoader: TransitionManager.Instance() returned null!");
             yield break;
         }
 
-        transitionManager.onTransitionCutPointReached += UnLockProgress;
-        transitionManager.onTransitionEnd += UnloadLoadingSceneCoroutine;
-        transitionManager.Transition(transitionSettings, 0.0f);
-
-        _blocker = true;
-        while (_blocker)
-            yield return null;
-        transitionManager.onTransitionCutPointReached -= UnLockProgress;
-
-        // Set time scale to 0 to prevent any updates during scene activation
         Time.timeScale = 0.0f;
+        _targetSceneAsyncOperation.allowSceneActivation = true;
 
-        // Activate the scene
-        newSceneProcess.allowSceneActivation = true;
-
-        // Wait for scene to fully load (Awake and OnEnable will be called)
-        while (!newSceneProcess.isDone)
+        while (!_targetSceneAsyncOperation.isDone)
         {
             yield return null;
         }
 
-        // Wait one more frame to ensure all Awake/OnEnable methods have completed
-        yield return null;
-
-        loadingProgress?.Invoke(100);   // all ready
-
-        yield return null;
-        SceneManager.SetActiveScene(newSceneObject);
-
+        SceneManager.SetActiveScene(_targetScene);
         yield return null;
         onNewSceneStart?.Invoke();
 
-        // Reset time scale after scene is ready
+        yield return new WaitForSecondsRealtime(SCENE_ACTIVATION_DELAY);
         Time.timeScale = 1.0f;
 
-        // Unload previous scene if it exists and is not the Loading scene
-        if (_previousScene.IsValid() && _previousScene.name != LOADING_SCENE_NAME)
+        var transitionManager = GetTransitionManager();
+        if (transitionManager == null)
         {
-            yield return SceneManager.UnloadSceneAsync(_previousScene);
-        }
-    }
-
-    void UnloadLoadingSceneCoroutine()
-    {
-        StartCoroutine(UnloadLoadingSceneCoroutineInternal());
-    }
-
-    IEnumerator UnloadLoadingSceneCoroutineInternal()
-    {
-        // Unsubscribe from event first to avoid multiple calls
-        var transitionManager = TransitionManager.Instance();
-        if (transitionManager != null)
-        {
-            transitionManager.onTransitionEnd -= UnloadLoadingSceneCoroutine;
+            yield break;
         }
 
+        SetProgressBlocked(true);
+        transitionManager.onTransitionCutPointReached += OnTransitionCutPointReached;
+        transitionManager.onTransitionEnd += OnTransitionEnd;
+        transitionManager.Transition(transitionSettings, 0.0f);
+
+        yield return null;
+        yield return StartCoroutine(WaitForTransition());
+        onNewSceneShow?.Invoke();
+    }
+
+    private void OnTransitionCutPointReached()
+    {
+        var transitionManager = GetTransitionManager();
         if (transitionManager != null)
         {
+            transitionManager.onTransitionCutPointReached -= OnTransitionCutPointReached;
+        }
+        StartCoroutine(DestroyLoadingScene());
+    }
+
+    private void OnTransitionEnd()
+    {
+        SetProgressBlocked(false);
+        var transitionManager = GetTransitionManager();
+        if (transitionManager != null)
+        {
+            transitionManager.onTransitionEnd -= OnTransitionEnd;
             Destroy(transitionManager.gameObject);
         }
-
+    }
+    private IEnumerator DestroyLoadingScene()
+    {
         var loadScreenScene = SceneManager.GetSceneByName(LOADING_SCENE_NAME);
         if (!loadScreenScene.IsValid())
         {
             DebugHelper.LogError(this, $"Scene '{LOADING_SCENE_NAME}' is not valid!");
             yield break;
         }
-        
         yield return SceneManager.UnloadSceneAsync(loadScreenScene);
     }
 
     private void CreateTransitionManager()
     {
-        // Check if TransitionManager already exists
-        var existingManager = TransitionManager.Instance();
-        if (existingManager != null)
+        if (TransitionManager.IsInstanceAvailable())
         {
             return;
         }
 
         var go = new GameObject("TransitionManager");
-        var transitionManager = go.AddComponent<TransitionManager>(); 
+        var transitionManager = go.AddComponent<TransitionManager>();
         
-        var handle = Addressables.LoadAssetAsync<GameObject>("Assets/Game Systems/EasyTransitions/Prefabs/TransitionTemplate.prefab");
+        var handle = Addressables.LoadAssetAsync<GameObject>(TRANSITION_TEMPLATE_PATH);
         var prefab = handle.WaitForCompletion();
         if (prefab == null)
         {
@@ -281,110 +285,104 @@ public class SceneLoader : MonoBehaviour
             Destroy(go);
             return;
         }
-        transitionManager.transitionTemplate = prefab;
 
+        transitionManager.transitionTemplate = prefab;
         DontDestroyOnLoad(go);
     }
-    private void UnLockProgress()
+
+    private TransitionManager GetTransitionManager()
     {
-        _blocker = false;
+        var transitionManager = TransitionManager.Instance();
+        if (transitionManager == null)
+        {
+            Debug.LogError("SceneLoader: TransitionManager.Instance() returned null!");
+        }
+        return transitionManager;
     }
 
-    List<Material> GetAllMaterialsInScene(Scene scene)
+    private bool ValidateScene(Scene scene, string sceneName)
+    {
+        if (!scene.IsValid())
+        {
+            DebugHelper.LogError(this, $"Scene '{sceneName}' is not valid!");
+            return false;
+        }
+        return true;
+    }
+  
+    private List<Material> GetAllMaterialsInScene(Scene scene)
     {
         var uniqueMaterials = new HashSet<Material>();
-        foreach (var gameObject in GetAllGameObjectsInScene(scene))
+        
+        foreach (var rootObject in scene.GetRootGameObjects())
         {
-            if(gameObject.TryGetComponent(out MeshRenderer meshRenderer))
+            var meshRenderers = rootObject.GetComponentsInChildren<MeshRenderer>(true);
+            foreach (var meshRenderer in meshRenderers)
             {
                 foreach (var material in meshRenderer.sharedMaterials)
                 {
                     if (material != null)
+                    {
                         uniqueMaterials.Add(material);
+                    }
                 }
             }
         }
+
+        Debug.Log($"SceneLoader: Found {uniqueMaterials.Count} unique materials in scene '{scene.name}'");
         return new List<Material>(uniqueMaterials);
     }
 
-    List<GameObject> GetAllGameObjectsInScene(Scene scene)
+
+    private IEnumerator PreloadMaterialAssets(Scene scene, UnityAction<int> loadingProgress, int progressFrom, int progressTo)
     {
-        var gameObjectSet = new HashSet<GameObject>(); // Use HashSet to avoid duplicates
-
-        foreach (var rootObject in scene.GetRootGameObjects())
-        {
-            // GetComponentsInChildren includes the root object itself
-            Transform[] transforms = rootObject.GetComponentsInChildren<Transform>(true);
-
-            foreach (var transform in transforms)
-            {
-                gameObjectSet.Add(transform.gameObject);
-            }
-        }
-
-        return new List<GameObject>(gameObjectSet);
-    }
-
-
-    IEnumerator PreloadMaterialAssets(Scene scene, UnityAction<int> loadingProgress, int progressFrom, int progressTo)
-    {
-        List<AsyncOperationHandle<Material>> handlesToWaitFor = new List<AsyncOperationHandle<Material>>();
+        var handlesToWaitFor = new List<AsyncOperationHandle<Material>>();
         
-        // Try to preload materials from Addressables (only if they exist there)
         foreach (var material in GetAllMaterialsInScene(scene))
         {
             if (material != null && !string.IsNullOrEmpty(material.name))
             {
                 try
                 {
-                    // Check if material exists in Addressables before trying to load
                     var handle = Addressables.LoadAssetAsync<Material>(material.name);
                     handlesToWaitFor.Add(handle);
                 }
                 catch (Exception ex)
                 {
-                    // Material not in Addressables, skip it
                     Debug.LogWarning($"SceneLoader: Material '{material.name}' not found in Addressables, skipping preload. {ex.Message}");
                 }
             }
         }
 
-        var itemsCount = handlesToWaitFor.Count;
-        if (itemsCount == 0)
+        if (handlesToWaitFor.Count == 0)
         {
-            // No materials to load from Addressables, skip to end
             loadingProgress?.Invoke(progressTo);
+            Debug.Log("SceneLoader: No materials to preload from Addressables.");
             yield break;
         }
 
+        Debug.Log($"SceneLoader: Preloading {handlesToWaitFor.Count} materials from Addressables...");
         yield return null;
-        // Start at the beginning of the range
         loadingProgress?.Invoke(progressFrom);
 
-        var counter = 0;
+        int counter = 0;
         foreach (var handle in handlesToWaitFor)
         {
-            while (!handle.IsDone)
-            {
-                yield return null;
-            }
+            yield return handle;
 
-            // Check if load was successful
             if (handle.Status == AsyncOperationStatus.Failed)
             {
                 Debug.LogWarning($"SceneLoader: Failed to load material from Addressables. Status: {handle.Status}");
             }
 
             counter++;
-
-            // Calculate progress: 0.0 to 1.0 based on loaded items
-            float progressPercent = (float)counter / (float)itemsCount;
-            // Map 0.0-1.0 to progressFrom-progressTo range
+            float progressPercent = (float)counter / handlesToWaitFor.Count;
             int currentProgress = progressFrom + (int)((progressTo - progressFrom) * progressPercent);
             loadingProgress?.Invoke(currentProgress);
         }
 
-        // Release handles to prevent memory leaks
+        Debug.Log("SceneLoader: Finished preloading materials from Addressables.");
+
         foreach (var handle in handlesToWaitFor)
         {
             if (handle.IsValid())
@@ -393,6 +391,7 @@ public class SceneLoader : MonoBehaviour
             }
         }
 
+        Debug.Log("SceneLoader: Released Addressables material handles.");
         yield return null;
         loadingProgress?.Invoke(progressTo);
     }

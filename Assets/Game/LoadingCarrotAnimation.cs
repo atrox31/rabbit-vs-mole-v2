@@ -23,7 +23,7 @@ public class LoadingCarrotAnimation : MonoBehaviour
 
     void FixedUpdate()
     {
-        _timer += Time.fixedDeltaTime;
+        _timer += Time.unscaledDeltaTime;
         if (_timer >= 1f / _frameRate)
         {
             _timer -= 1f / _frameRate;
@@ -41,7 +41,7 @@ public class LoadingCarrotAnimation : MonoBehaviour
         while (_spriteRenderer.transform.localScale.x < 1f)
         {
             yield return new WaitForFixedUpdate();
-            _spriteRenderer.transform.localScale += Vector3.one * _growRate * Time.fixedDeltaTime;
+            _spriteRenderer.transform.localScale += Vector3.one * _growRate * Time.unscaledDeltaTime;
         }
         _spriteRenderer.transform.localScale = Vector3.one;
     }
@@ -51,7 +51,7 @@ public class LoadingCarrotAnimation : MonoBehaviour
         float elapsed = 0f;
         while (elapsed < _shakeDuration)
         {
-            elapsed += Time.fixedDeltaTime;
+            elapsed += Time.unscaledDeltaTime;
             float progress = elapsed / _shakeDuration;
             float shakeAmount = _shakeIntensity * (1f - progress);
             Vector3 randomOffset = new Vector3(

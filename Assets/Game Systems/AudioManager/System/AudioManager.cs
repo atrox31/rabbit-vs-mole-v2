@@ -26,9 +26,8 @@ using Random = UnityEngine.Random;
  * 7. Create MusicPlaylistSO assets using standard AudioClip references.
  */
 
-public class AudioManager : MonoBehaviour
+public class AudioManager : SingletonMonoBehaviour<AudioManager>
 {
-    private static AudioManager _instance;
     public enum AudioChannel { Music, SFX, Dialogue, Ambient}
 
     [Header("Audio Mixer")]
@@ -63,7 +62,7 @@ public class AudioManager : MonoBehaviour
 
     // Audio lisner in scene
     private AudioListener _selfAudioLisner;
-    private int AudioLisnerCount => _instance._registeredPlayerListeners.Count;
+    private int AudioLisnerCount => Instance._registeredPlayerListeners.Count;
     private bool HaveSingleLisner => (AudioLisnerCount == 1);
     private List<AudioListener> _registeredPlayerListeners = new List<AudioListener>();
 
@@ -93,31 +92,24 @@ public class AudioManager : MonoBehaviour
     private List<AudioClip> _cachedPlayableTracks = new List<AudioClip>(16);
 
     // getters
-    internal static AudioMixerGroup AmbienceMixerGrup => _instance != null ? _instance.ambientGroup : null;
-    internal static bool IsInstanceActive => _instance != null;
+    internal static AudioMixerGroup AmbienceMixerGrup => Instance != null ? Instance.ambientGroup : null;
+    internal static bool IsInstanceActive => Instance != null;
 
     #region --- Unity Methods (Initialization) ---
 
-    void Awake()
+    protected override void Ready()
     {
         Debug.Log("AudioManager: Awake called.");
-        // Implement the Singleton pattern
-        if (_instance == null)
-        {
-            _instance = this;
-            DontDestroyOnLoad(gameObject);
-            InitializeAudioSources();
-            InitializeSfxPool();
-            _selfAudioLisner = gameObject.GetOrAddComponent<AudioListener>();
-            // AudioManager's listener is enabled by default (for menu, splitscreen, etc.)
-            _selfAudioLisner.enabled = true;
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
+        InitializeAudioSources();
+        InitializeSfxPool();
+        _selfAudioLisner = gameObject.GetOrAddComponent<AudioListener>();
+        // AudioManager's listener is enabled by default (for menu, splitscreen, etc.)
+        _selfAudioLisner.enabled = true;
+
         Debug.Log("AudioManager: Singleton instance set.");
     }
+
+    public override void OnGameStart() { }
 
     void Update()
     {
@@ -208,55 +200,55 @@ public class AudioManager : MonoBehaviour
     // Static Setters    
     public static void SetMasterVolume(float volume)
     {
-        if (_instance == null) return;
-        _instance.SetVolume("Master", volume);
+        if (Instance == null) return;
+        Instance.SetVolume("Master", volume);
     }
     public static void SetMusicVolume(float volume)
     {
-        if (_instance == null) return;
-        _instance.SetVolume("Music", volume);
+        if (Instance == null) return;
+        Instance.SetVolume("Music", volume);
     }
     public static void SetSFXVolume(float volume)
     {
-        if (_instance == null) return;
-        _instance.SetVolume("SFX", volume);
+        if (Instance == null) return;
+        Instance.SetVolume("SFX", volume);
     }
     public static void SetDialoguesVolume(float volume)
     {
-        if (_instance == null) return;
-        _instance.SetVolume("Dialogues", volume);
+        if (Instance == null) return;
+        Instance.SetVolume("Dialogues", volume);
     }
     public static void SetAmbientVolume(float volume)
     {
-        if (_instance == null) return;
-        _instance.SetVolume("Ambient", volume);
+        if (Instance == null) return;
+        Instance.SetVolume("Ambient", volume);
     }
 
     // Static Getters
     public static float GetMasterVolume()
     {
-        if (_instance == null) return 0f;
-        return _instance.GetVolume("Master");
+        if (Instance == null) return 0f;
+        return Instance.GetVolume("Master");
     }
     public static float GetMusicVolume()
     {
-        if (_instance == null) return 0f;
-        return _instance.GetVolume("Music");
+        if (Instance == null) return 0f;
+        return Instance.GetVolume("Music");
     }
     public static float GetSFXVolume()
     {
-        if (_instance == null) return 0f;
-        return _instance.GetVolume("SFX");
+        if (Instance == null) return 0f;
+        return Instance.GetVolume("SFX");
     }
     public static float GetDialoguesVolume()
     {
-        if (_instance == null) return 0f;
-        return _instance.GetVolume("Dialogues");
+        if (Instance == null) return 0f;
+        return Instance.GetVolume("Dialogues");
     }
     public static float GetAmbientVolume()
     {
-        if (_instance == null) return 0f;
-        return _instance.GetVolume("Ambient");
+        if (Instance == null) return 0f;
+        return Instance.GetVolume("Ambient");
     }
 
     #endregion
@@ -270,16 +262,16 @@ public class AudioManager : MonoBehaviour
     /// <param name="loop">Should this track loop?</param>
     public static void PlayMusic(AudioClip clip, bool loop = true)
     {
-        if (_instance == null) return;
+        if (Instance == null) return;
         if (clip == null) return;
         
         // Get or cache non-Addressable clips to prevent reloading from disk
-        AudioClip cachedClip = _instance.GetOrCacheNonAddressableClip(clip);
+        AudioClip cachedClip = Instance.GetOrCacheNonAddressableClip(clip);
         
-        _instance._isPlaylistPlaying = false;
+        Instance._isPlaylistPlaying = false;
         // The _lastPlayedTrack is set to the clip itself
-        _instance._lastPlayedTrack = cachedClip;
-        _instance.StartMusicFade(cachedClip, loop);
+        Instance._lastPlayedTrack = cachedClip;
+        Instance.StartMusicFade(cachedClip, loop);
     }
 
     /// <summary>
@@ -288,17 +280,17 @@ public class AudioManager : MonoBehaviour
     /// <param name="playlist">The ScriptableObject containing the music list.</param>
     public static void PlayMusicPlaylist(MusicPlaylistSO playlist)
     {
-        if (_instance == null) return;
+        if (Instance == null) return;
         if (playlist == null || playlist.musicTracks.Count == 0)
         {
             Debug.LogError("AudioManager: Playlist is null or empty.");
             return;
         }
 
-        _instance._currentPlaylist = playlist;
-        _instance._isPlaylistPlaying = true;
-        _instance._lastPlayedTrack = null; // Clear last played track on new playlist
-        _instance.PlayNextInPlaylist();
+        Instance._currentPlaylist = playlist;
+        Instance._isPlaylistPlaying = true;
+        Instance._lastPlayedTrack = null; // Clear last played track on new playlist
+        Instance.PlayNextInPlaylist();
     }
 
     /// <summary>
@@ -306,10 +298,10 @@ public class AudioManager : MonoBehaviour
     /// </summary>
     public static void StopMusic()
     {
-        if (_instance == null) return;
-        _instance._isPlaylistPlaying = false;
-        _instance._lastPlayedTrack = null;
-        _instance.StartMusicFade(null, false);
+        if (Instance == null) return;
+        Instance._isPlaylistPlaying = false;
+        Instance._lastPlayedTrack = null;
+        Instance.StartMusicFade(null, false);
     }
 
     /// <summary>
@@ -317,10 +309,10 @@ public class AudioManager : MonoBehaviour
     /// </summary>
     public static void PauseMusic()
     {
-        if (_instance == null) return;
-        if (_instance._activeMusicSource.isPlaying)
+        if (Instance == null) return;
+        if (Instance._activeMusicSource.isPlaying)
         {
-            _instance._activeMusicSource.Pause();
+            Instance._activeMusicSource.Pause();
         }
     }
 
@@ -329,10 +321,10 @@ public class AudioManager : MonoBehaviour
     /// </summary>
     public static void ResumeMusic()
     {
-        if (_instance == null) return;
-        if (!_instance._activeMusicSource.isPlaying && _instance._activeMusicSource.clip != null)
+        if (Instance == null) return;
+        if (!Instance._activeMusicSource.isPlaying && Instance._activeMusicSource.clip != null)
         {
-            _instance._activeMusicSource.UnPause();
+            Instance._activeMusicSource.UnPause();
         }
     }
 
@@ -454,13 +446,13 @@ public class AudioManager : MonoBehaviour
     /// </summary>
     public static void PlaySoundUI(AudioClip clip, float volumeScale = 1.0f)
     {
-        if (_instance == null) return;
+        if (Instance == null) return;
         if (clip == null) return;
         
         // Get or cache non-Addressable clips to prevent reloading from disk
-        AudioClip cachedClip = _instance.GetOrCacheNonAddressableClip(clip);
+        AudioClip cachedClip = Instance.GetOrCacheNonAddressableClip(clip);
         
-        _instance._uiSfxSource.PlayOneShot(cachedClip, volumeScale);
+        Instance._uiSfxSource.PlayOneShot(cachedClip, volumeScale);
     }
 
     /// <summary>
@@ -469,7 +461,7 @@ public class AudioManager : MonoBehaviour
     // Restored: SFX 2D with Addressables
     public static async Task PlaySoundUI(string addressableKey, float volumeScale = 1.0f)
     {
-        if (_instance == null) return;
+        if (Instance == null) return;
         AudioClip clip = await LoadClipAsync(addressableKey);
         if (clip != null)
         {
@@ -482,17 +474,17 @@ public class AudioManager : MonoBehaviour
     /// </summary>
     public static void PlaySound3D(AudioClip clip, Vector3 position, AudioChannel channel = AudioChannel.SFX)
     {
-        if (_instance == null) return;
+        if (Instance == null) return;
         if (clip == null) return;
         
         // Get or cache non-Addressable clips to prevent reloading from disk
-        AudioClip cachedClip = _instance.GetOrCacheNonAddressableClip(clip);
+        AudioClip cachedClip = Instance.GetOrCacheNonAddressableClip(clip);
         
-        _instance.PlaySoundAtPosition(
+        Instance.PlaySoundAtPosition(
             cachedClip, 
-            _instance.HaveSingleLisner
+            Instance.HaveSingleLisner
                 ? position 
-                : _instance.transform.position, 
+                : Instance.transform.position, 
             channel);
     }
 
@@ -501,12 +493,12 @@ public class AudioManager : MonoBehaviour
     /// </summary>
     public static async void PlaySound3D(string addressableKey, Vector3 position, AudioChannel channel = AudioChannel.SFX)
     {
-        if (_instance == null) return;
-        await _instance.InternalPlaySoundAtPositionAsync(
+        if (Instance == null) return;
+        await Instance.InternalPlaySoundAtPositionAsync(
             addressableKey, 
-            _instance.HaveSingleLisner
+            Instance.HaveSingleLisner
                 ? position 
-                : _instance.transform.position, 
+                : Instance.transform.position, 
             channel);
     }
     
@@ -515,43 +507,43 @@ public class AudioManager : MonoBehaviour
     /// </summary>
     public static void PlayDialogue3D(AudioClip clip, Vector3 position)
     {
-        if (_instance == null) return;
+        if (Instance == null) return;
         if (clip == null) return;
         
         // Get or cache non-Addressable clips to prevent reloading from disk
-        AudioClip cachedClip = _instance.GetOrCacheNonAddressableClip(clip);
+        AudioClip cachedClip = Instance.GetOrCacheNonAddressableClip(clip);
         
-        _instance.PlaySoundAtPosition(
+        Instance.PlaySoundAtPosition(
             cachedClip, 
-            _instance.HaveSingleLisner
+            Instance.HaveSingleLisner
                 ? position 
-                : _instance.transform.position, 
+                : Instance.transform.position, 
             AudioChannel.Dialogue);
 
     }
     /// <summary>
     /// Plays a dialogue line (Uses Dialogue Group).
     /// </summary>
-    public static void PlayDialogue(AudioClip clip) => PlayDialogue3D(clip, _instance.transform.position);
+    public static void PlayDialogue(AudioClip clip) => PlayDialogue3D(clip, Instance.transform.position);
 
     /// <summary>
     /// Loads and plays a 3D dialogue line from Addressables (Uses Dialogue Group).
     /// </summary>
     public static async void PlayDialogue3D(string addressableKey, Vector3 position)
     {
-        if (_instance == null) return;
-        await _instance.InternalPlaySoundAtPositionAsync(
+        if (Instance == null) return;
+        await Instance.InternalPlaySoundAtPositionAsync(
             addressableKey, 
-            _instance.HaveSingleLisner
+            Instance.HaveSingleLisner
                 ? position 
-                : _instance.transform.position, 
+                : Instance.transform.position, 
             AudioChannel.Dialogue);
     }
 
     /// <summary>
     /// Plays a dialogue line from Addressables (Uses Dialogue Group).
     /// </summary>
-    public static void PlayDialogue(string addressableKey) => PlayDialogue3D(addressableKey, _instance.transform.position);
+    public static void PlayDialogue(string addressableKey) => PlayDialogue3D(addressableKey, Instance.transform.position);
 
     // --- Private Implementation ---
 
@@ -688,7 +680,7 @@ public class AudioManager : MonoBehaviour
     // Restored: Addressables loading using string key
     public static async Task<AudioClip> LoadClipAsync(string key)
     {
-        if (_instance == null)
+        if (Instance == null)
         {
             Debug.LogError("AudioManager: Instance is not yet initialized for loading.");
             return null;
@@ -697,24 +689,24 @@ public class AudioManager : MonoBehaviour
         if (string.IsNullOrEmpty(key)) return null;
 
         Task<AudioClip> loadTask = null;
-        lock (_instance._cacheLock)
+        lock (Instance._cacheLock)
         {
             // Fast path: Check cache first
-            if (_instance._loadedClips.TryGetValue(key, out AudioClip clip))
+            if (Instance._loadedClips.TryGetValue(key, out AudioClip clip))
             {
                 return clip; // Return immediately from cache
             }
 
             // Check if already loading - join existing task
-            if (_instance._loadingTasks.TryGetValue(key, out loadTask))
+            if (Instance._loadingTasks.TryGetValue(key, out loadTask))
             {
                 // Already loading, join the existing task
             }
             else
             {
                 // Start new load task
-                loadTask = _instance.LoadAndCacheClipAsync(key);
-                _instance._loadingTasks.Add(key, loadTask);
+                loadTask = Instance.LoadAndCacheClipAsync(key);
+                Instance._loadingTasks.Add(key, loadTask);
             }
         }
         try
@@ -771,20 +763,20 @@ public class AudioManager : MonoBehaviour
     // Restored: Clearing SFX cache
     public static void ClearSoundCache()
     {
-        if (_instance == null) return;
+        if (Instance == null) return;
 
-        lock (_instance._cacheLock)
+        lock (Instance._cacheLock)
         {
-            foreach (var pair in _instance._loadedClips)
+            foreach (var pair in Instance._loadedClips)
             {
                 Addressables.Release(pair.Value);
             }
-            _instance._loadedClips.Clear();
+            Instance._loadedClips.Clear();
             Debug.Log("AudioManager: Sound cache cleared.");
         }
         
         // Clear non-Addressable clip cache (ConcurrentDictionary.Clear is thread-safe)
-        _instance._nonAddressableClipCache.Clear();
+        Instance._nonAddressableClipCache.Clear();
         Debug.Log("AudioManager: Non-Addressable sound cache cleared.");
     }
     
@@ -861,13 +853,13 @@ public class AudioManager : MonoBehaviour
     /// </summary>
     public static void PreloadClips(params AudioClip[] clips)
     {
-        if (_instance == null || clips == null) return;
+        if (Instance == null || clips == null) return;
         
         foreach (AudioClip clip in clips)
         {
             if (clip != null)
             {
-                _instance.GetOrCacheNonAddressableClip(clip, forceLoad: true);
+                Instance.GetOrCacheNonAddressableClip(clip, forceLoad: true);
             }
         }
     }
@@ -878,13 +870,13 @@ public class AudioManager : MonoBehaviour
     /// </summary>
     public static void PreloadClips(List<AudioClip> clips)
     {
-        if (_instance == null || clips == null) return;
+        if (Instance == null || clips == null) return;
         
         foreach (AudioClip clip in clips)
         {
             if (clip != null)
             {
-                _instance.GetOrCacheNonAddressableClip(clip, forceLoad: true);
+                Instance.GetOrCacheNonAddressableClip(clip, forceLoad: true);
             }
         }
     }
@@ -896,7 +888,7 @@ public class AudioManager : MonoBehaviour
     /// </summary>
     public static AudioClip LoadClipSync(string key)
     {
-        if (_instance == null)
+        if (Instance == null)
         {
             Debug.LogError("AudioManager: Instance is not yet initialized for loading.");
             return null;
@@ -904,10 +896,10 @@ public class AudioManager : MonoBehaviour
 
         if (string.IsNullOrEmpty(key)) return null;
 
-        lock (_instance._cacheLock)
+        lock (Instance._cacheLock)
         {
             // Fast path: Check cache first
-            if (_instance._loadedClips.TryGetValue(key, out AudioClip clip))
+            if (Instance._loadedClips.TryGetValue(key, out AudioClip clip))
             {
                 return clip; // Return immediately from cache
             }
@@ -920,11 +912,11 @@ public class AudioManager : MonoBehaviour
         if (handle.Status == AsyncOperationStatus.Succeeded)
         {
             AudioClip clip = handle.Result;
-            lock (_instance._cacheLock)
+            lock (Instance._cacheLock)
             {
-                if (!_instance._loadedClips.ContainsKey(key))
+                if (!Instance._loadedClips.ContainsKey(key))
                 {
-                    _instance._loadedClips[key] = clip;
+                    Instance._loadedClips[key] = clip;
                 }
             }
             return clip;
@@ -945,7 +937,7 @@ public class AudioManager : MonoBehaviour
     /// </summary>
     public static void RegisterNewAudioLisner(AudioListener listener)
     {
-        if (_instance == null)
+        if (Instance == null)
         {
             Debug.LogError("AudioManager: Instance is not yet initialized.");
             return;
@@ -957,19 +949,19 @@ public class AudioManager : MonoBehaviour
             return;
         }
 
-        if (_instance._registeredPlayerListeners.Contains(listener))
+        if (Instance._registeredPlayerListeners.Contains(listener))
         {
             Debug.LogWarning("AudioManager: AudioListener already registered.");
             return;
         }
 
-        _instance._registeredPlayerListeners.Add(listener);
-        _instance.UpdateListenerStates();
+        Instance._registeredPlayerListeners.Add(listener);
+        Instance.UpdateListenerStates();
     }
 
     public static void UnregisterAudioLisner(AudioListener listener)
     {
-        if (_instance == null)
+        if (Instance == null)
         {
             Debug.LogError("AudioManager: Instance is not yet initialized.");
             return;
@@ -981,10 +973,10 @@ public class AudioManager : MonoBehaviour
             return;
         }
 
-        if (!_instance._registeredPlayerListeners.Remove(listener))
+        if (!Instance._registeredPlayerListeners.Remove(listener))
             Debug.LogWarning("AudioManager: Attempted to unregister AudioListener that was not registered.");
         
-        _instance.UpdateListenerStates();
+        Instance.UpdateListenerStates();
     }
 
     private void UpdateListenerStates()

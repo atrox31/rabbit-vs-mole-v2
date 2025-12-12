@@ -4,6 +4,7 @@ using UnityEngine.SceneManagement;
 public class GameProperStartup : MonoBehaviour
 {
     private static bool hasStarted = false;
+    public static void BootstrapSceneActivation() { hasStarted = true; }
     void Awake()
     {
         if (hasStarted)
@@ -12,6 +13,6 @@ public class GameProperStartup : MonoBehaviour
             return;
         }
         hasStarted = true;
-        SceneManager.LoadScene("Loading", LoadSceneMode.Single);
+        SceneManager.LoadScene(0, LoadSceneMode.Single);
     }
 }

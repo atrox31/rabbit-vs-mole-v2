@@ -23,6 +23,11 @@ namespace EasyTransition
             instance = this;
         }
 
+        public static bool IsInstanceAvailable()
+        {
+            return instance != null;
+        }
+
         public static TransitionManager Instance()
         {
             if (instance == null)

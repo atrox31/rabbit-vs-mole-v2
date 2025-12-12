@@ -1,3 +1,6 @@
+using NUnit.Framework;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -7,13 +10,33 @@ using UnityEngine.SceneManagement;
 /// </summary>
 public class BootstrapScene : MonoBehaviour
 {
-    private const string LOADING_SCENE_NAME = "Loading";
-    
-    private void Start()
+    [SerializeField] List<CoreBootstrapComponent> _coreGameObjects = new List<CoreBootstrapComponent>();
+
+    void Awake()
     {
-        // Immediately load Loading scene as the first real scene
-        // This allows Loading to be properly unloaded later since it's not build index 0
-        SceneManager.LoadScene(LOADING_SCENE_NAME, LoadSceneMode.Single);
+        // in case when game start on Bootstrap scene, desactivate proper startup mechanism
+        GameProperStartup.BootstrapSceneActivation();
+    }
+
+    IEnumerator Start()
+    {
+        // wait 1 frame to let everything initialize properly
+        yield return null;
+
+        foreach (var item in _coreGameObjects)
+        {
+            while (!item.IsReady)
+            {
+                yield return null;
+            }
+        }
+
+        yield return null;
+        foreach (var item in _coreGameObjects)
+        {
+            item.OnGameStart();
+        }
+
     }
 }
 
