@@ -33,7 +33,7 @@ namespace GameObjects
             _particles = _model.GetComponentInChildren<ParticleSystem>();
             if (_particles == null)
             {
-                Debug.LogWarning("Warning: No ParticleSystem found in 'Model' child object.", this);
+                DebugHelper.LogWarning(this, "Warning: No ParticleSystem found in 'Model' child object.");
             }
         }
 

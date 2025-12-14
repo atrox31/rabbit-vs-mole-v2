@@ -43,14 +43,14 @@ namespace GameObjects.FarmField.States
                 yield break;
             }
 
-            Debug.Log("Waiting..");
+            DebugHelper.Log(null, "Waiting..");
             yield return new WaitForSeconds(3);
             
-            Debug.Log($"Starting action {action.ActionType}..");
+            DebugHelper.Log(null, $"Starting action {action.ActionType}..");
             var result = action.Func(field);
             onDone(result);
             IsBusy = false;
-            Debug.Log("Done!");
+            DebugHelper.Log(null, "Done!");
 
             yield return null;
         }
@@ -106,7 +106,7 @@ namespace GameObjects.FarmField.States
         }
 
         private void LogWarning(string action)
-            => Debug.LogWarning($"You cannot {action} in the current state: {GetType().Name}");
+            => DebugHelper.LogWarning(null, $"You cannot {action} in the current state: {GetType().Name}");
 
         private FarmFieldActionMapEntry GetActionMapEntry(PlayerType playerType)
             => GetActionMap().GetValueOrDefault(playerType);

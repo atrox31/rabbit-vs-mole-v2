@@ -304,7 +304,7 @@ namespace DialogueSystem.Editor
                 var portNames = TriggerDataTypeHelper.GetOutputPortNames(triggerDataType);
                 if (portNames == null || portNames.Length == 0)
                 {
-                    Debug.LogWarning($"TriggerDataNodeView: No output ports found for {dataTypeName}");
+                    DebugHelper.LogWarning(null, $"TriggerDataNodeView: No output ports found for {dataTypeName}");
                     _isRefreshing = false;
                     return;
                 }
@@ -349,7 +349,7 @@ namespace DialogueSystem.Editor
                             }
                             catch (Exception ex)
                             {
-                                Debug.LogWarning($"TriggerDataNodeView: Failed to get port type from data instance: {ex.Message}");
+                                DebugHelper.LogWarning(null, $"TriggerDataNodeView: Failed to get port type from data instance: {ex.Message}");
                             }
                         }
                     }
@@ -357,7 +357,7 @@ namespace DialogueSystem.Editor
                     // Skip if still no type found
                     if (portType == null)
                     {
-                        Debug.LogWarning($"TriggerDataNodeView: Could not determine port type for {portName} in {dataTypeName}");
+                        DebugHelper.LogWarning(null, $"TriggerDataNodeView: Could not determine port type for {portName} in {dataTypeName}");
                         continue;
                     }
 
@@ -710,7 +710,7 @@ namespace DialogueSystem.Editor
             graphView.AddElement(newNodeView);
 
             _editor.SetDirty();
-            Debug.Log("Trigger data node duplicated.");
+            DebugHelper.Log(null, "Trigger data node duplicated.");
         }
 
         private void DeleteNode()
@@ -732,7 +732,7 @@ namespace DialogueSystem.Editor
             graphView.RemoveElement(this);
 
             _editor.SetDirty();
-            Debug.Log("Trigger data node deleted.");
+            DebugHelper.Log(null, "Trigger data node deleted.");
         }
     }
 }

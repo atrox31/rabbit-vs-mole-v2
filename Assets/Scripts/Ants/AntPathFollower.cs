@@ -22,7 +22,7 @@ public class AntPathFollower : MonoBehaviour
         antParticleSystem = GetComponent<ParticleSystem>();
         if (antParticleSystem == null)
         {
-            Debug.LogWarning("AntPathFollower: Start() -> Particle system not found.");
+            DebugHelper.LogWarning(this, "AntPathFollower: Start() -> Particle system not found.");
             Demolish();
             return;
         }
@@ -30,7 +30,7 @@ public class AntPathFollower : MonoBehaviour
         List<Transform> _pathPointsTransfrom = GetComponentsInChildren<Transform>().Skip(1).ToList();
         if (!_pathPointsTransfrom.Any())
         {
-            Debug.LogWarning("AntPathFollower: Start() -> No child objects found to define the path.");
+            DebugHelper.LogWarning(this, "AntPathFollower: Start() -> No child objects found to define the path.");
             Demolish();
             return;
         }
@@ -38,7 +38,7 @@ public class AntPathFollower : MonoBehaviour
         _pathPoints = _pathPointsTransfrom.Select(t => t.position).ToArray();
         if (_pathPoints.Length < 2)
         {
-            Debug.LogWarning("AntPathFollower: Start() -> Path requires at least 2 points.");
+            DebugHelper.LogWarning(this, "AntPathFollower: Start() -> Path requires at least 2 points.");
             Demolish();
             return;
         }

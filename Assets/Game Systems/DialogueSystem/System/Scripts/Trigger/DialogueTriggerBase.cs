@@ -20,7 +20,7 @@ namespace DialogueSystem.Trigger
         {
             if (Args == null)
             {
-                Debug.LogWarning($"{GetType().Name}: Arguments error.");
+                DebugHelper.LogWarning(null, $"{GetType().Name}: Arguments error.");
                 return;
             }
 

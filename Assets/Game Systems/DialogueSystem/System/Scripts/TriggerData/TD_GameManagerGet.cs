@@ -42,7 +42,7 @@ namespace DialogueSystem.TriggerData
             }
             else
             {
-                Debug.LogWarning("TD_GameManagerGet: OnGetValue event is not subscribed. Subscribe to DialogueSystem.TriggerData.TD_GameManagerGet.OnGetValue in your GameManager.");
+                DebugHelper.LogWarning(null, "TD_GameManagerGet: OnGetValue event is not subscribed. Subscribe to DialogueSystem.TriggerData.TD_GameManagerGet.OnGetValue in your GameManager.");
                 return null;
             }
 
@@ -68,7 +68,7 @@ namespace DialogueSystem.TriggerData
             }
             catch
             {
-                Debug.LogWarning($"TD_GameManagerGet: Failed to convert value to {TypedData.DataType}");
+                DebugHelper.LogWarning(null, $"TD_GameManagerGet: Failed to convert value to {TypedData.DataType}");
                 return null;
             }
         }

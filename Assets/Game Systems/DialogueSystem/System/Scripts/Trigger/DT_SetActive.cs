@@ -17,7 +17,7 @@ namespace DialogueSystem.Trigger
         {
             if (Args.Object == null)
             {
-                Debug.LogWarning("DT_SetActive: Object is not set.");
+                DebugHelper.LogWarning(null, "DT_SetActive: Object is not set.");
                 return false;
             }
             return true;

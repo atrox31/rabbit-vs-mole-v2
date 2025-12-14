@@ -99,14 +99,14 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
 
     protected override void Ready()
     {
-        Debug.Log("AudioManager: Awake called.");
+        DebugHelper.Log(this, "AudioManager: Awake called.");
         InitializeAudioSources();
         InitializeSfxPool();
         _selfAudioLisner = gameObject.GetOrAddComponent<AudioListener>();
         // AudioManager's listener is enabled by default (for menu, splitscreen, etc.)
         _selfAudioLisner.enabled = true;
 
-        Debug.Log("AudioManager: Singleton instance set.");
+        DebugHelper.Log(this, "AudioManager: Singleton instance set.");
     }
 
     public override void OnGameStart() { }
@@ -151,7 +151,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
     {
         if (_sfx3DPrefab == null)
         {
-            Debug.LogWarning("AudioManager: 'sfx3DPrefab' is not set. 3D sounds will be created dynamically (less optimal).");
+            DebugHelper.LogWarning(this, "AudioManager: 'sfx3DPrefab' is not set. 3D sounds will be created dynamically (less optimal).");
             return;
         }
 
@@ -620,7 +620,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         // Pool is empty, create a new one if prefab is set
         if (_sfx3DPrefab != null)
         {
-            Debug.LogWarning("SFX Pool was empty. Creating new instance.");
+            DebugHelper.LogWarning(this, "SFX Pool was empty. Creating new instance.");
             return CreatePooledSource();
         }
 
@@ -772,12 +772,12 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
                 Addressables.Release(pair.Value);
             }
             Instance._loadedClips.Clear();
-            Debug.Log("AudioManager: Sound cache cleared.");
+            DebugHelper.Log(Instance, "AudioManager: Sound cache cleared.");
         }
         
         // Clear non-Addressable clip cache (ConcurrentDictionary.Clear is thread-safe)
         Instance._nonAddressableClipCache.Clear();
-        Debug.Log("AudioManager: Non-Addressable sound cache cleared.");
+        DebugHelper.Log(Instance, "AudioManager: Non-Addressable sound cache cleared.");
     }
     
     /// <summary>
@@ -842,7 +842,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         }
         catch (Exception ex)
         {
-            Debug.LogWarning($"AudioManager: Could not force load AudioClip '{clip.name}': {ex.Message}");
+            DebugHelper.LogWarning(this, $"AudioManager: Could not force load AudioClip '{clip.name}': {ex.Message}");
         }
     }
     
@@ -917,6 +917,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
                 if (!Instance._loadedClips.ContainsKey(key))
                 {
                     Instance._loadedClips[key] = clip;
+                    DebugHelper.Log(null, $"AmbientSoundSource loaded clip synchronously: {key}");
                 }
             }
             return clip;
@@ -951,7 +952,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
 
         if (Instance._registeredPlayerListeners.Contains(listener))
         {
-            Debug.LogWarning("AudioManager: AudioListener already registered.");
+            DebugHelper.LogWarning(Instance, "AudioManager: AudioListener already registered.");
             return;
         }
 
@@ -969,12 +970,12 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
 
         if (listener == null)
         {
-            Debug.LogWarning("AudioManager: Attempted to unregister null AudioListener.");
+            DebugHelper.LogWarning(Instance, "AudioManager: Attempted to unregister null AudioListener.");
             return;
         }
 
         if (!Instance._registeredPlayerListeners.Remove(listener))
-            Debug.LogWarning("AudioManager: Attempted to unregister AudioListener that was not registered.");
+            DebugHelper.LogWarning(Instance, "AudioManager: Attempted to unregister AudioListener that was not registered.");
         
         Instance.UpdateListenerStates();
     }

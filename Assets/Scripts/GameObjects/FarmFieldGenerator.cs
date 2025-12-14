@@ -59,7 +59,7 @@ namespace GameObjects
         {
             if (_linkedFieldGenerator == null)
             {
-                Debug.LogWarning("Linked Field Generator is not assigned in the Inspector.", this);
+                DebugHelper.LogWarning(this, "Linked Field Generator is not assigned in the Inspector.");
                 return;
             }
 

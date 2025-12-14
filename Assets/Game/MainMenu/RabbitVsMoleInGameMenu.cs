@@ -1,8 +1,10 @@
 using Interface;
-using UnityEngine;
-using UnityEngine.Localization;
-using UnityEngine.InputSystem;
+using System;
 using System.Collections;
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.Localization;
+using UnityEngine.Localization.Tables;
 
 /// <summary>
 /// Manages the in-game pause menu that appears during gameplay.
@@ -20,13 +22,12 @@ public class RabbitVsMoleInGameMenu : MonoBehaviour
     private GUIPanel _mainMenu;
     private GUIPanel _mainMenuRestartQuestion;
     private GUIPanel _mainMenuBackToMenuQuestion;
-    
+
     private bool _isMenuVisible = false;
-    
     #endregion
-    
+    LocalizedString GetLocalizedString(string key) => new LocalizedString(_localizationTableName, key);
     #region Unity Lifecycle
-    
+
     private void Start()
     {
         InitializeComponents();
@@ -50,7 +51,7 @@ public class RabbitVsMoleInGameMenu : MonoBehaviour
             Debug.LogError("RabbitVsMoleInGameMenu: MainMenuManager not found!");
         }
     }
-    
+
     private void SetupMenu()
     {
         _mainMenuRestartQuestion = _menuManager.CreatePanel(GetLocalizedString("menu_restart_question"))
@@ -66,7 +67,7 @@ public class RabbitVsMoleInGameMenu : MonoBehaviour
             .Build();
 
         _mainMenu = _menuManager.CreatePanel(GetLocalizedString("menu_in_game"))
-            .AddButton(GetLocalizedString("button_resume"), HideMenu)
+            .AddButton(GetLocalizedString("button_resume"), () => HideMenu(_mainMenu))
             .AddButton(GetLocalizedString("button_restart"), _mainMenuRestartQuestion)
             .AddButton(GetLocalizedString("button_back_to_main_menu"), _mainMenuBackToMenuQuestion)
             .Build();
@@ -97,40 +98,41 @@ public class RabbitVsMoleInGameMenu : MonoBehaviour
     {
         if (_isMenuVisible)
         {
-            HideMenu();
+            HideMenu(_mainMenu);
         }
         else
         {
-            ShowMenu();
+            ShowMenu(_mainMenu);
         }
     }
     
-    private void ShowMenu()
+    private void ShowMenu(GUIPanel menu)
     {
-        if (_mainMenu == null || _menuManager == null) return;
-        if (_isMenuVisible && _mainMenu.IsVisible) return;
+        if (GameManager.IsPaused) return;
+        if (menu == null || _menuManager == null) return;
+        if (_isMenuVisible && menu.IsVisible) return;
         
         _isMenuVisible = true;
         GameManager.Pause();
         
-        if (!_mainMenu.gameObject.activeInHierarchy)
+        if (!menu.gameObject.activeInHierarchy)
         {
-            _mainMenu.gameObject.SetActive(true);
+            menu.gameObject.SetActive(true);
         }
         
-        _menuManager.ChangePanel(_mainMenu);
+        _menuManager.ChangePanel(menu);
     }
     
-    private void HideMenu()
+    private void HideMenu(GUIPanel menu)
     {
         if (!_isMenuVisible) return;
         
         _isMenuVisible = false;
         GameManager.Unpause();
         
-        if (_mainMenu != null)
+        if (menu != null)
         {
-            _menuManager.ClosePanel(_mainMenu);
+            _menuManager.ClosePanel(menu);
         }
     }
     
@@ -146,20 +148,10 @@ public class RabbitVsMoleInGameMenu : MonoBehaviour
     
     private void OnBackToMainMenuConfirmed()
     {
-        GameManager.Unpause();GameManager.GoToMainMenu();
+        GameManager.Unpause();
+        GameManager.GoToMainMenu();
     }
     
     #endregion
     
-    #region Helpers
-    
-    private LocalizedString GetLocalizedString(string key)
-    {
-        var localizedString = new LocalizedString();
-        localizedString.TableReference = _localizationTableName;
-        localizedString.TableEntryReference = key;
-        return localizedString;
-    }
-    
-    #endregion
 }

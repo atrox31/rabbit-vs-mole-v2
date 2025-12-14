@@ -537,7 +537,7 @@ namespace DialogueSystem.Editor
             graphView.AddElement(newNodeView);
 
             _editor.SetDirty();
-            Debug.Log("Trigger node duplicated.");
+            DebugHelper.Log(null, "Trigger node duplicated.");
         }
 
         private void DeleteNode()
@@ -559,7 +559,7 @@ namespace DialogueSystem.Editor
             graphView.RemoveElement(this);
 
             _editor.SetDirty();
-            Debug.Log("Trigger node deleted.");
+            DebugHelper.Log(null, "Trigger node deleted.");
         }
     }
 }

@@ -18,7 +18,7 @@ namespace Extensions
 
             if (targetIndex == -1)
             {
-                Debug.LogWarning($"Target substring '{target}' not found in the source string.");
+                DebugHelper.LogWarning(null, $"Target substring '{target}' not found in the source string.");
                 return source;
             }
 

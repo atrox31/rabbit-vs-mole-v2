@@ -1,12 +1,13 @@
-using System.Collections.Generic;
-using UnityEngine;
+using Extensions;
 using Interface;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.Localization;
 using UnityEngine.Localization.Settings;
-using UnityEngine.InputSystem;
-using System.Linq;
-using System;
-using Extensions;
+using static GameManager;
 
 public class RabbitVsMoleMenuSetup : MonoBehaviour
 {
@@ -33,12 +34,18 @@ public class RabbitVsMoleMenuSetup : MonoBehaviour
             private GUIPanel _playPanelDuelOnline;
 
     private GUIPanel _creditsPanel;
+
+    private GUIPanel _mainInputPrompt;
+    private Action<PlayGameSettings> _fallbackAfterSelect;
+    private PlayGameSettings _playGameSettings;
+
     private List<Interface.Element.GUILabel> _creditLabels = new List<Interface.Element.GUILabel>();
 
     [SerializeField] private TMPro.TextMeshProUGUI _versionLabel;
 
     [Header("Localization Settings")]
     [SerializeField] private string _localizationTableName = "Interface";
+    LocalizedString GetLocalizedString(string key) => new LocalizedString(_localizationTableName, key);
 
     [Header("Key Bindings")]
     [SerializeField] private InputActionAsset inputActions;
@@ -74,7 +81,7 @@ public class RabbitVsMoleMenuSetup : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("Input Action Asset is not assigned on RabbitVsMoleMenuSetup.");
+            DebugHelper.LogWarning(this, "Input Action Asset is not assigned on RabbitVsMoleMenuSetup.");
         }
 
         if (_versionLabel != null)
@@ -96,15 +103,14 @@ public class RabbitVsMoleMenuSetup : MonoBehaviour
         Application.OpenURL("https://gamejolt.com/@atrox_studio");
     }
 
-    /// <summary>
-    /// Helper method to create a LocalizedString from a table and key
-    /// </summary>
-    private LocalizedString GetLocalizedString(string key)
+    public void ShowInputPrompt(Action<PlayGameSettings> fallbackAfterSelect, PlayGameSettings playGameSettings)
     {
-        var localizedString = new LocalizedString();
-        localizedString.TableReference = _localizationTableName;
-        localizedString.TableEntryReference = key;
-        return localizedString;
+        if (fallbackAfterSelect == null)
+            throw new ArgumentNullException(nameof(fallbackAfterSelect));
+
+        _fallbackAfterSelect = fallbackAfterSelect;
+        _playGameSettings = playGameSettings;
+        _menuManager.ChangePanel(_mainInputPrompt);
     }
 
     private int GetMaxStoryProgress(PlayerType playerType)
@@ -131,7 +137,7 @@ public class RabbitVsMoleMenuSetup : MonoBehaviour
     {
         if(index < 0 || index > 6)
         {
-            Debug.LogWarning("GetDayFromSelectedIndex: Index out of range, returning Monday as default.");
+            DebugHelper.LogWarning(this, "GetDayFromSelectedIndex: Index out of range, returning Monday as default.");
             return DayOfWeek.Monday;
         }
 
@@ -186,12 +192,25 @@ public class RabbitVsMoleMenuSetup : MonoBehaviour
             map: GameSceneManager.SceneType.GamePlay_Duel,
             day: System.DayOfWeek.Monday.SelectRandom(),
             playerTypeForStory: playerType,
-            rabbitControlAgent: playerType == PlayerType.Rabbit ? PlayerControlAgent.Human : PlayerControlAgent.AI,
-            moleControlAgent: playerType == PlayerType.Mole ? PlayerControlAgent.Human : PlayerControlAgent.AI);
+            rabbitControlAgent: playerType == PlayerType.Rabbit ? PlayerControlAgent.Human : PlayerControlAgent.Bot,
+            moleControlAgent: playerType == PlayerType.Mole ? PlayerControlAgent.Human : PlayerControlAgent.Bot);
     }
 
     private void SetupMenus()
     {
+        _mainInputPrompt = _menuManager.CreatePanel(GetLocalizedString("menu_input_selector"))    //cursor: fill serialization table. eng: Select Player to use Gamepad
+          .AddLabel(GetLocalizedString("text_input_selector_header")) //cursor: fill serialization table.eng: Gamepad detected,setelct player to use gamepad
+          .AddSpacer()
+          .AddButton(GetLocalizedString("button_play_duel_as_rabbit"), () =>   
+          {
+              _fallbackAfterSelect?.Invoke(_playGameSettings.SetGamepadForPlayer(PlayerType.Rabbit));
+          })
+          .AddButton(GetLocalizedString("button_play_duel_as_mole"), () =>
+          {
+              _fallbackAfterSelect?.Invoke(_playGameSettings.SetGamepadForPlayer(PlayerType.Mole));
+          })
+          .Build();
+
         _playPanelStoryMole = _menuManager.CreatePanel(GetLocalizedString("menu_play_story_mole"))
             .AddCustomElement(gameModeSelectorPrefab, rabbitStoryGameModes.GetRange(0, GetMaxStoryProgress(PlayerType.Mole)))
                 .SetId("PlayPanelStoryMole")

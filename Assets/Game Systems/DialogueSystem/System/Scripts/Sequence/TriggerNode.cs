@@ -144,7 +144,7 @@ namespace DialogueSystem.Nodes
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogWarning($"TriggerNode.ResolveDataConnections: Failed to set field '{connection.TargetFieldName}': {ex.Message}");
+                        DebugHelper.LogWarning(null, $"TriggerNode.ResolveDataConnections: Failed to set field '{connection.TargetFieldName}': {ex.Message}");
                     }
                 }
             }

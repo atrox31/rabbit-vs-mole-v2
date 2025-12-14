@@ -67,7 +67,7 @@ namespace GameObjects.Misc
 
             fadePanel.gameObject.SetActive(false); 
 
-            Debug.Log("Efekt Fade-In zakoñczony. Scena jest widoczna.");
+            DebugHelper.Log(this, "Efekt Fade-In zakoñczony. Scena jest widoczna.");
         }
     }
 }

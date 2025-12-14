@@ -20,13 +20,13 @@ namespace DialogueSystem
                 {
                     GameObject loadedPrefab = op.Result;
                     Instantiate(loadedPrefab, Vector3.zero, Quaternion.identity, _activeDialogueInstance.transform);
-                    Debug.Log($"DialogueSystemMain->LoadCanvasPrefab: Prefab loaded successfully using Address: {PATH_TO_VIEW_PREFAB}");
+                    DebugHelper.Log(this, $"Prefab loaded successfully using Address: {PATH_TO_VIEW_PREFAB}");
                     Addressables.Release(handle);
                     succes = true;
                 }
                 else
                 {
-                    Debug.LogError($"DialogueSystemMain->LoadCanvasPrefab: Failed to load asset at address: {PATH_TO_VIEW_PREFAB}");
+                    Debug.LogError($"Failed to load asset at address: {PATH_TO_VIEW_PREFAB}");
                     Debug.LogError($"Tip: Try to change PATH_TO_VIEW_PREFAB");
                     succes = false;
                 }
@@ -122,7 +122,7 @@ namespace DialogueSystem
 
             HideBackgroundImageAndText();
 
-            Debug.Log($"Dialogue System created for sequence: {sequenceToPlay.name}");
+            DebugHelper.Log(this, $"Dialogue System created for sequence: {sequenceToPlay.name}");
             _currentCoroutine = StartCoroutine(PlayDialogueRoutine());
             return true;
         }
@@ -156,7 +156,7 @@ namespace DialogueSystem
 
                 if (dialogueLine._actor == null)
                 {
-                    Debug.LogWarning($"DialogueSystemMain->Setup->PrepareActorModels: null actor for line: {lineNumberForDebugErrorMessage.ToString()}");
+                    DebugHelper.LogWarning(this, $"DialogueSystemMain->Setup->PrepareActorModels: null actor for line: {lineNumberForDebugErrorMessage.ToString()}");
                     _actors.Add(new Universal.Pair<Actor, GameObject>(dialogueLine._actor, null));
                     continue;
                 }

@@ -26,7 +26,7 @@ namespace DialogueSystem
                 return matchingEntry.clip;
             }
 
-            Debug.LogWarning($"Pose '{poseName}' not found for actor {actorName}.");
+            DebugHelper.LogWarning(null, $"Pose '{poseName}' not found for actor {actorName}.");
             return null;
         }
     }

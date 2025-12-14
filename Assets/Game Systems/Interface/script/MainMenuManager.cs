@@ -58,7 +58,7 @@ namespace Interface
         {
             if (_panels.ContainsKey(panelName))
             {
-                Debug.LogWarning($"Panel '{panelName}' already exists!");
+                DebugHelper.LogWarning(this, $"Panel '{panelName}' already exists!");
                 return new PanelBuilder(this, _panels[panelName]);
             }
 
@@ -85,7 +85,7 @@ namespace Interface
             string panelKey = localizedPanelName.TableEntryReference.Key;
             if (_panels.ContainsKey(panelKey))
             {
-                Debug.LogWarning($"Panel '{panelKey}' already exists!");
+                DebugHelper.LogWarning(this, $"Panel '{panelKey}' already exists!");
                 return new PanelBuilder(this, _panels[panelKey]);
             }
 
@@ -175,7 +175,7 @@ namespace Interface
         {
             if (_panelHistory.Count == 0)
             {
-                Debug.LogWarning("No previous panel to go back to!");
+                DebugHelper.LogWarning(this, "No previous panel to go back to!");
                 return;
             }
             

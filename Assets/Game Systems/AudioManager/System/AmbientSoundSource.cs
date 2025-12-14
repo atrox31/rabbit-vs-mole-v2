@@ -94,7 +94,6 @@ public class AmbientSoundSource : MonoBehaviour
             if (clip != null)
             {
                 SetAudioCLip(clip);
-                Debug.Log($"AmbientSoundSource loaded clip synchronously in Awake: {addressableKey}");
             }
             else
             {
@@ -104,7 +103,7 @@ public class AmbientSoundSource : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning($"AmbientSoundSource on {gameObject.name}: No AudioClip or Addressable Key provided.");
+            DebugHelper.LogWarning(this, $"AmbientSoundSource on {gameObject.name}: No AudioClip or Addressable Key provided.");
         }
     }
 

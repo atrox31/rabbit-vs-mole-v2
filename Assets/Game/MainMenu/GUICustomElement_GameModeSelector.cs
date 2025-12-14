@@ -47,7 +47,7 @@ public partial class GUICustomElement_GameModeSelector : Interface.Element.Local
         }
         else
         {
-            Debug.LogWarning($"GameModeSelector: Invalid argument type. Expected List<GameModeData> or GameModeData[], got {argument?.GetType()}");
+            DebugHelper.LogWarning(this, $"GameModeSelector: Invalid argument type. Expected List<GameModeData> or GameModeData[], got {argument?.GetType()}");
             return;
         }
 
@@ -196,7 +196,7 @@ public partial class GUICustomElement_GameModeSelector : Interface.Element.Local
 
             if (button == null)
             {
-                Debug.LogWarning($"GameModeSelector: Button component not found in template for mode {i}");
+                DebugHelper.LogWarning(this, $"GameModeSelector: Button component not found in template for mode {i}");
                 return;
             }
 
@@ -285,7 +285,7 @@ public partial class GUICustomElement_GameModeSelector : Interface.Element.Local
     {
         if (index < 0 || index >= _gameModes.Count)
         {
-            Debug.LogWarning($"GameModeSelector: Invalid mode index {index}");
+            DebugHelper.LogWarning(this, $"GameModeSelector: Invalid mode index {index}");
             return;
         }
 

@@ -359,7 +359,7 @@ namespace DialogueSystem.Editor
                     }
                     else
                     {
-                        Debug.LogWarning($"Target node with GUID {link.TargetNodeGUID} not found during graph loading.");
+                        DebugHelper.LogWarning(null, $"Target node with GUID {link.TargetNodeGUID} not found during graph loading.");
                     }
                 }
             }
@@ -398,7 +398,7 @@ namespace DialogueSystem.Editor
                     }
                     else
                     {
-                        Debug.LogWarning($"Target node with GUID {link.TargetNodeGUID} not found during graph loading.");
+                        DebugHelper.LogWarning(null, $"Target node with GUID {link.TargetNodeGUID} not found during graph loading.");
                     }
                 }
             }
@@ -1030,7 +1030,7 @@ namespace DialogueSystem.Editor
             _isDirty = false;
             UpdateTitle();
 
-            Debug.Log("Dialogue Graph saved successfully.");
+            DebugHelper.Log(null, "Dialogue Graph saved successfully.");
         }
         private void OnDisable()
         {

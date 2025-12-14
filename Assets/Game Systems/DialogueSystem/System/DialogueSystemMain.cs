@@ -213,7 +213,7 @@ namespace DialogueSystem
 
         private IEnumerator PlayDialogueRoutine()
         {
-            Debug.Log("Dialogue sequence started.");
+            DebugHelper.Log(this, "Dialogue sequence started.");
             bool[] hasAppeared = new bool[Enum.GetValues(typeof(ActorSideOnScreen)).Length];
 
             // Always start from StartNode
@@ -235,7 +235,7 @@ namespace DialogueSystem
 
             if (currentNode == null)
             {
-                Debug.LogWarning("DialogueSystemMain->PlayDialogueRoutine: StartNode has no connections. Ending dialogue.");
+                DebugHelper.LogWarning(this, "DialogueSystemMain->PlayDialogueRoutine: StartNode has no connections. Ending dialogue.");
                 Cleanup();
                 Destroy(gameObject);
                 yield break;
@@ -252,11 +252,11 @@ namespace DialogueSystem
                     if (trigger != null)
                     {
                         trigger.Execute();
-                        Debug.Log($"Trigger executed: {trigger.GetType().Name}");
+                        DebugHelper.Log(this, $"Trigger executed: {trigger.GetType().Name}");
                     }
                     else
                     {
-                        Debug.LogWarning($"TriggerNode {triggerNode.GUID} has no valid trigger assigned.");
+                        DebugHelper.LogWarning(this, $"TriggerNode {triggerNode.GUID} has no valid trigger assigned.");
                     }
 
                     // Move to next node
@@ -305,17 +305,17 @@ namespace DialogueSystem
                                 }
                                 catch (Exception ex)
                                 {
-                                    Debug.LogWarning($"DialogueSystemMain: Failed to convert condition value to bool: {ex.Message}. Using default value: {logicNode.Condition}");
+                                    DebugHelper.LogWarning(this, $"DialogueSystemMain: Failed to convert condition value to bool: {ex.Message}. Using default value: {logicNode.Condition}");
                                 }
                             }
                         }
                         else
                         {
-                            Debug.LogWarning($"DialogueSystemMain: LogicNode {logicNode.GUID} has ConditionDataConnection but source node not found. Using default value: {logicNode.Condition}");
+                            DebugHelper.LogWarning(this, $"DialogueSystemMain: LogicNode {logicNode.GUID} has ConditionDataConnection but source node not found. Using default value: {logicNode.Condition}");
                         }
                     }
 
-                    Debug.Log($"LogicNode {logicNode.GUID} evaluated condition: {conditionValue}");
+                    DebugHelper.Log(this, $"LogicNode {logicNode.GUID} evaluated condition: {conditionValue}");
 
                     // Route to appropriate output based on condition
                     List<NodeLink> exitPorts = conditionValue ? logicNode.ExitPortsTrue : logicNode.ExitPortsFalse;
@@ -333,7 +333,7 @@ namespace DialogueSystem
                     else
                     {
                         // No exit port for this condition branch
-                        Debug.LogWarning($"DialogueSystemMain: LogicNode {logicNode.GUID} has no exit port for {(conditionValue ? "True" : "False")} condition. Ending dialogue.");
+                        DebugHelper.LogWarning(this, $"DialogueSystemMain: LogicNode {logicNode.GUID} has no exit port for {(conditionValue ? "True" : "False")} condition. Ending dialogue.");
                         currentNode = null;
                     }
                 }
@@ -393,7 +393,7 @@ namespace DialogueSystem
             yield return new WaitForSeconds(ACTOR_FADE_IN_DURATION);
 
             // --- DIALOGUE ENDING ---
-            Debug.Log("Dialogue sequence finished.");
+            DebugHelper.Log(this, "Dialogue sequence finished.");
             Cleanup();
             Destroy(gameObject);
         }

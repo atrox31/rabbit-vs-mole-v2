@@ -54,7 +54,7 @@ namespace WalkingImmersionSystem
             {
                 // Store the result (a list of all loaded Scriptable Objects)
                 _loadedSoundConfigs = new List<TerrainLayerData>(_loadHandle.Result);
-                Debug.Log($"SoundConfigLoader->InitializeConfigsAsync (SUCCESS): Loaded {_loadedSoundConfigs.Count} sound configuration objects.");
+                DebugHelper.Log(this, $"SoundConfigLoader->InitializeConfigsAsync (SUCCESS): Loaded {_loadedSoundConfigs.Count} sound configuration objects.");
                 return true;
             }
             else
@@ -69,7 +69,7 @@ namespace WalkingImmersionSystem
             if (_loadHandle.IsValid())
             {
                 Addressables.Release(_loadHandle);
-                Debug.Log("Released Addressables sound configurations handle.");
+                DebugHelper.Log(this, "Released Addressables sound configurations handle.");
             }
         }
     }

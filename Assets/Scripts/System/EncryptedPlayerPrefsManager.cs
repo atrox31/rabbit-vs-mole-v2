@@ -185,7 +185,7 @@ public static class EncryptedPlayerPrefsManager
             // Data is valid
             if (storedVersionValue != currentVersionValue)
             {
-                Debug.LogWarning($"EncryptedPlayerPrefsManager: Data for '{key}' accepted from older version ({storedVersionValue}). Ready for re-save.");
+                DebugHelper.LogWarning(null, $"EncryptedPlayerPrefsManager: Data for '{key}' accepted from older version ({storedVersionValue}). Ready for re-save.");
                 // Optionally auto-save with new version
                 SaveEncryptedInt(key, data, dataBitsCount);
             }
@@ -193,7 +193,7 @@ public static class EncryptedPlayerPrefsManager
         }
         else
         {
-            Debug.LogWarning($"EncryptedPlayerPrefsManager: Data for '{key}' is corrupt (Stored Version: {storedVersionValue}, Checksum Fail). Returning default.");
+            DebugHelper.LogWarning(null, $"EncryptedPlayerPrefsManager: Data for '{key}' is corrupt (Stored Version: {storedVersionValue}, Checksum Fail). Returning default.");
             return defaultValue;
         }
     }
@@ -215,14 +215,14 @@ public static class EncryptedPlayerPrefsManager
 
         if (boolArray == null || boolArray.Length == 0)
         {
-            Debug.LogWarning($"EncryptedPlayerPrefsManager: boolArray is null or empty for key '{key}'");
+            DebugHelper.LogWarning(null, $"EncryptedPlayerPrefsManager: boolArray is null or empty for key '{key}'");
             SaveEncryptedInt(key, 0, maxSize);
             return;
         }
 
         if (boolArray.Length > maxSize)
         {
-            Debug.LogWarning($"EncryptedPlayerPrefsManager: boolArray length ({boolArray.Length}) exceeds maxSize ({maxSize}). Truncating.");
+            DebugHelper.LogWarning(null, $"EncryptedPlayerPrefsManager: boolArray length ({boolArray.Length}) exceeds maxSize ({maxSize}). Truncating.");
         }
 
         // Pack bools into bits
@@ -307,7 +307,7 @@ public static class EncryptedPlayerPrefsManager
             // Data is valid
             if (storedVersionValue != currentVersionValue)
             {
-                Debug.LogWarning($"EncryptedPlayerPrefsManager: Bool array data for '{key}' accepted from older version ({storedVersionValue}). Ready for re-save.");
+                DebugHelper.LogWarning(null, $"EncryptedPlayerPrefsManager: Bool array data for '{key}' accepted from older version ({storedVersionValue}). Ready for re-save.");
             }
 
             // Unpack bits into bool array
@@ -320,7 +320,7 @@ public static class EncryptedPlayerPrefsManager
         }
         else
         {
-            Debug.LogWarning($"EncryptedPlayerPrefsManager: Bool array data for '{key}' is corrupt (Stored Version: {storedVersionValue}, Checksum Fail). Returning default.");
+            DebugHelper.LogWarning(null, $"EncryptedPlayerPrefsManager: Bool array data for '{key}' is corrupt (Stored Version: {storedVersionValue}, Checksum Fail). Returning default.");
             return new bool[maxSize];
         }
     }

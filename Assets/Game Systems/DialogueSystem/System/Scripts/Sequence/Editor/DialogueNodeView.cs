@@ -264,14 +264,14 @@ namespace DialogueSystem.Editor
                 ScreenPosition = NodeData.ScreenPosition,
                 text = NodeData.text
             };
-            Debug.Log("Node content copied.");
+            DebugHelper.Log(null, "Node content copied.");
         }
 
         private void PasteNodeContent()
         {
             if (_copiedNodeContent == null)
             {
-                Debug.LogWarning("No node content to paste.");
+                DebugHelper.LogWarning(null, "No node content to paste.");
                 return;
             }
 
@@ -324,7 +324,7 @@ namespace DialogueSystem.Editor
             if (_dialogueText != null) _dialogueText.value = NodeData.text;
 
             _editor.SetDirty();
-            Debug.Log("Node content pasted.");
+            DebugHelper.Log(null, "Node content pasted.");
         }
 
         private void DuplicateNode()
@@ -353,7 +353,7 @@ namespace DialogueSystem.Editor
             graphView.AddElement(newNodeView);
 
             _editor.SetDirty();
-            Debug.Log("Node duplicated.");
+            DebugHelper.Log(null, "Node duplicated.");
         }
 
         private void DeleteNode()
@@ -380,7 +380,7 @@ namespace DialogueSystem.Editor
             graphView.RemoveElement(this);
 
             _editor.SetDirty();
-            Debug.Log("Node deleted.");
+            DebugHelper.Log(null, "Node deleted.");
         }
     }
 }

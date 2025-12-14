@@ -30,6 +30,8 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
     private AsyncOperation _targetSceneAsyncOperation;
     private bool _isWaitingForTransition = false;
 
+    private Action OnSceneUnload;
+
     private void SetProgressBlocked(bool blocked)
     {
         _isWaitingForTransition = blocked;
@@ -50,6 +52,16 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
             Debug.LogError("SceneLoader: Transition Settings not assigned in SceneLoader.");
             DestroyImmediate(gameObject);
         }
+    }
+
+    public static void SetOnSceneUnload(Action onSceneUnload)
+    {
+        if (Instance == null)
+        {
+            Debug.LogError("SceneLoader: SetOnSceneUnload error! SceneLoader instance is null. Make sure SceneLoader exists in the initial scene.");
+            return;
+        }
+        Instance.OnSceneUnload = onSceneUnload;
     }
 
     public override void OnGameStart() { }
@@ -133,6 +145,7 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
         
         yield return null;
         yield return StartCoroutine(WaitForTransition());
+        OnSceneUnload?.Invoke();
     }
 
     private void OnLoadingTransitionEnd()
@@ -261,7 +274,7 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
         var loadScreenScene = SceneManager.GetSceneByName(LOADING_SCENE_NAME);
         if (!loadScreenScene.IsValid())
         {
-            DebugHelper.LogError(this, $"Scene '{LOADING_SCENE_NAME}' is not valid!");
+            DebugHelper.LogError(null, $"Scene '{LOADING_SCENE_NAME}' is not valid!");
             yield break;
         }
         yield return SceneManager.UnloadSceneAsync(loadScreenScene);
@@ -304,7 +317,7 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
     {
         if (!scene.IsValid())
         {
-            DebugHelper.LogError(this, $"Scene '{sceneName}' is not valid!");
+            Debug.LogError($"Scene '{sceneName}' is not valid!");
             return false;
         }
         return true;
@@ -329,7 +342,7 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
             }
         }
 
-        Debug.Log($"SceneLoader: Found {uniqueMaterials.Count} unique materials in scene '{scene.name}'");
+        DebugHelper.LogWarning(this, $"SceneLoader: Found {uniqueMaterials.Count} unique materials in scene '{scene.name}'");
         return new List<Material>(uniqueMaterials);
     }
 
@@ -357,11 +370,11 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
         if (handlesToWaitFor.Count == 0)
         {
             loadingProgress?.Invoke(progressTo);
-            Debug.Log("SceneLoader: No materials to preload from Addressables.");
+            DebugHelper.LogWarning(this, "SceneLoader: No materials to preload from Addressables.");
             yield break;
         }
 
-        Debug.Log($"SceneLoader: Preloading {handlesToWaitFor.Count} materials from Addressables...");
+        DebugHelper.Log(this, $"SceneLoader: Preloading {handlesToWaitFor.Count} materials from Addressables...");
         yield return null;
         loadingProgress?.Invoke(progressFrom);
 
@@ -381,7 +394,7 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
             loadingProgress?.Invoke(currentProgress);
         }
 
-        Debug.Log("SceneLoader: Finished preloading materials from Addressables.");
+        DebugHelper.Log(this, "SceneLoader: Finished preloading materials from Addressables.");
 
         foreach (var handle in handlesToWaitFor)
         {
@@ -391,7 +404,7 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
             }
         }
 
-        Debug.Log("SceneLoader: Released Addressables material handles.");
+        DebugHelper.Log(this, "SceneLoader: Released Addressables material handles.");
         yield return null;
         loadingProgress?.Invoke(progressTo);
     }

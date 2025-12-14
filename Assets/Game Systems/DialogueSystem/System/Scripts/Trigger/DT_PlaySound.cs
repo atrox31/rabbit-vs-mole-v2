@@ -16,7 +16,7 @@ namespace DialogueSystem.Trigger
         {
             if (Args.Clip == null)
             {
-                Debug.LogWarning("DT_PlaySound: AudioClip is not set.");
+                DebugHelper.LogWarning(null, "DT_PlaySound: AudioClip is not set.");
                 return false;
             }
             return true;

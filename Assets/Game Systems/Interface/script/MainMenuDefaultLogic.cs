@@ -16,7 +16,7 @@ namespace Interface
             {
                 Resolution res = resolutions[index];
                 Screen.SetResolution(res.width, res.height, Screen.fullScreen);
-                Debug.Log($"Resolution changed to: {res.width}x{res.height}");
+                DebugHelper.Log(null, $"Resolution changed to: {res.width}x{res.height}");
             }
             PlayerPrefs.SetInt(PlayerPrefsConst.RESOLUTION_WIDTH, Screen.width);
             PlayerPrefs.SetInt(PlayerPrefsConst.RESOLUTION_HEIGHT, Screen.height);
@@ -66,7 +66,7 @@ namespace Interface
             Screen.fullScreen = isFullScreen;
             PlayerPrefs.SetInt(PlayerPrefsConst.FULLSCREEN, isFullScreen ? 1 : 0);
             PlayerPrefs.Save();
-            Debug.Log($"FullScreen changed to: {isFullScreen}");
+            DebugHelper.Log(null, $"FullScreen changed to: {isFullScreen}");
         }
 
         public static bool GetFullScreenCurrentMode()
@@ -83,7 +83,7 @@ namespace Interface
             QualitySettings.SetQualityLevel(qualityIndex);
             PlayerPrefs.SetInt(PlayerPrefsConst.GRAPHICS_QUALITY, qualityIndex);
             PlayerPrefs.Save();
-            Debug.Log($"Quality changed to: {QualitySettings.names[qualityIndex]}");
+            DebugHelper.Log(null, $"Quality changed to: {QualitySettings.names[qualityIndex]}");
         }
 
         public static List<string> GetAvailableQualitySettings()
@@ -114,7 +114,7 @@ namespace Interface
             PlayerPrefs.SetFloat(PlayerPrefsConst.MASTER_VOLUME, volume);
             PlayerPrefs.Save();
             AudioManager.SetMasterVolume(volume);
-            Debug.Log($"Master volume changed to: {volume}");
+            DebugHelper.Log(null, $"Master volume changed to: {volume}");
         }
 
         public static float GetMasterVolume()
@@ -131,7 +131,7 @@ namespace Interface
             PlayerPrefs.SetFloat(PlayerPrefsConst.MUSIC_VOLUME, volume);
             PlayerPrefs.Save();
             AudioManager.SetMusicVolume(volume);
-            Debug.Log($"Music volume changed to: {volume}");
+            DebugHelper.Log(null, $"Music volume changed to: {volume}");
         }
 
         public static void HandleSFXVolume(float volume)
@@ -139,7 +139,7 @@ namespace Interface
             PlayerPrefs.SetFloat(PlayerPrefsConst.SFX_VOLUME, volume);
             PlayerPrefs.Save();
             AudioManager.SetSFXVolume(volume);
-            Debug.Log($"SFX volume changed to: {volume}");
+            DebugHelper.Log(null, $"SFX volume changed to: {volume}");
         }
 
         public static float GetMusicVolume()
@@ -164,7 +164,7 @@ namespace Interface
             PlayerPrefs.SetFloat(PlayerPrefsConst.DIALOGUES_VOLUME, volume);
             PlayerPrefs.Save();
             AudioManager.SetDialoguesVolume(volume);
-            Debug.Log($"Dialogue volume changed to: {volume}");
+            DebugHelper.Log(null, $"Dialogue volume changed to: {volume}");
         }
 
         public static float GetDialogueVolume()
@@ -181,7 +181,7 @@ namespace Interface
             PlayerPrefs.SetFloat(PlayerPrefsConst.AMBIENT_VOLUME, volume);
             PlayerPrefs.Save();
             AudioManager.SetAmbientVolume(volume);
-            Debug.Log($"Ambient volume changed to: {volume}");
+            DebugHelper.Log(null, $"Ambient volume changed to: {volume}");
         }
 
         public static float GetAmbientVolume()
@@ -198,7 +198,7 @@ namespace Interface
             PlayerPrefs.SetInt(PlayerPrefsConst.VSYNC, value ? 1 : 0);
             PlayerPrefs.Save();
             QualitySettings.vSyncCount = value ? 1 : 0;
-            Debug.Log($"VSync changed to: {value}");
+            DebugHelper.Log(null, $"VSync changed to: {value}");
         }
 
         public static bool GetVSync()
@@ -218,7 +218,7 @@ namespace Interface
                 LocalizationSettings.SelectedLocale = locales[index];
                 PlayerPrefs.SetString(PlayerPrefsConst.LANGUAGE, locales[index].Identifier.Code);
                 PlayerPrefs.Save();
-                Debug.Log($"Language changed to: {locales[index].Identifier}");
+                DebugHelper.Log(null, $"Language changed to: {locales[index].Identifier}");
             }
         }
 

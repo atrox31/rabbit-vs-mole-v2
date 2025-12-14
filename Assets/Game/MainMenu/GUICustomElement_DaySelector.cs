@@ -205,7 +205,7 @@ public class GUICustomElement_DaySelector : Interface.Element.InterfaceElement
         int dayIndex = GetDayIndex(previousDay);
         if (dayIndex < 0 || dayIndex > 6)
         {
-            Debug.LogWarning($"Invalid day calculated: {previousDay}, resetting to Saturday");
+            DebugHelper.LogWarning(this, $"Invalid day calculated: {previousDay}, resetting to Saturday");
             previousDay = DayOfWeek.Saturday;
         }
         
@@ -223,7 +223,7 @@ public class GUICustomElement_DaySelector : Interface.Element.InterfaceElement
         int dayIndex = GetDayIndex(nextDay);
         if (dayIndex < 0 || dayIndex > 6)
         {
-            Debug.LogWarning($"Invalid day calculated: {nextDay}, resetting to Sunday");
+            DebugHelper.LogWarning(this, $"Invalid day calculated: {nextDay}, resetting to Sunday");
             nextDay = DayOfWeek.Sunday;
         }
         
@@ -259,7 +259,7 @@ public class GUICustomElement_DaySelector : Interface.Element.InterfaceElement
         int dayIndex = GetDayIndex(newDay);
         if (dayIndex < 0 || dayIndex > 6)
         {
-            Debug.LogWarning($"Attempted to set invalid day: {newDay}, keeping current day: {_currentDay}");
+            DebugHelper.LogWarning(this, $"Attempted to set invalid day: {newDay}, keeping current day: {_currentDay}");
             return;
         }
 

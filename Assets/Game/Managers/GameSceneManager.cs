@@ -62,7 +62,7 @@ public class GameSceneManager : MonoBehaviour
                 OnSceneLoad, 
                 OnSceneStart, 
                 OnSceneShow,
-                (i) => { Debug.Log($"loading: {i}%"); });
+                (i) => { DebugHelper.Log(null, $"loading: {i}%"); });
         }
     }
 }

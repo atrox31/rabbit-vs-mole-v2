@@ -27,7 +27,7 @@ namespace WalkingImmersionSystem
             {
                 if (_particlesQueue.Count == 0)
                 {
-                    Debug.LogWarning("FootParticleSystem: Pool is empty! Returning null.");
+                    DebugHelper.LogWarning(null, "FootParticleSystem: Pool is empty! Returning null.");
                     return null;
                 }
                 return _particlesQueue.Dequeue();

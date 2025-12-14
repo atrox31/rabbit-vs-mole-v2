@@ -36,7 +36,7 @@ namespace EasyTransition
                 instance = FindFirstObjectByType<TransitionManager>();
                 if (instance == null)
                 {
-                    Debug.LogWarning("TransitionManager instance not found. Make sure TransitionManager exists in the scene.");
+                    DebugHelper.LogWarning(null, "TransitionManager instance not found. Make sure TransitionManager exists in the scene.");
                 }
             }
 

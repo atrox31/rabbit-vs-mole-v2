@@ -58,7 +58,6 @@ namespace GameObjects.Misc
             yield return new WaitForFixedUpdate();
             while (m_hasPhysics && (m_currendActiveTime < m_activeTime) && !m_isBeingDeleted)
             {
-                Debug.Log(m_rigBody.linearVelocity.sqrMagnitude);
                 m_currendActiveTime += Time.deltaTime;
                 // Check if velocity is nearly zero
                 if (m_rigBody.linearVelocity.sqrMagnitude < 0.01f)

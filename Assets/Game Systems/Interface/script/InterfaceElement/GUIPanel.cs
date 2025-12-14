@@ -7,6 +7,7 @@ using UnityEngine.Localization;
 using UnityEngine.Localization.Components;
 using System.Collections;
 using System.Linq;
+using System;
 
 namespace Interface
 {
@@ -423,24 +424,7 @@ namespace Interface
 
             AudioManager.PlaySoundUI(_showSound);
         }
-        
-        private IEnumerator EnsureButtonsInteractableAfterDelay()
-        {
-            // Wait for animation to complete using unscaled time
-            float delay = _animationDuration > 0f ? _animationDuration + 0.1f : 0.35f;
-            yield return new WaitForSecondsRealtime(delay);
-            
-            // Wait until animation is actually done using unscaled time
-            float timeout = 5f;
-            float elapsed = 0f;
-            while (_isAnimating && elapsed < timeout)
-            {
-                elapsed += Time.unscaledDeltaTime;
-                yield return null;
-            }
-            
-            //EnsureButtonsInteractable();
-        }
+
 
         public void HidePanel()
         {
@@ -837,7 +821,7 @@ namespace Interface
             else if (!_enableScrollWhenNeeded)
             {
                 // Scroll is disabled, so auto-scroll cannot work
-                Debug.LogWarning("Auto-scroll requested but scroll is disabled on this panel.");
+                DebugHelper.LogWarning(this, "Auto-scroll requested but scroll is disabled on this panel.");
             }
         }
 
@@ -932,71 +916,6 @@ namespace Interface
                 
                 yield return null;
             }
-        }
-
-        private void EnsureButtonsInteractable()
-        {
-            // Ensure CanvasGroup doesn't block raycasts - check all CanvasGroups in hierarchy
-            CanvasGroup[] canvasGroups = GetComponentsInChildren<CanvasGroup>(true);
-            foreach (var canvasGroup in canvasGroups)
-            {
-                if (canvasGroup != null)
-                {
-                    canvasGroup.blocksRaycasts = true;
-                    canvasGroup.interactable = true;
-                }
-            }
-            
-            // Preserve disabled state for buttons that should be disabled (like challenges button)
-            UnityEngine.UI.Button[] buttons = GetComponentsInChildren<UnityEngine.UI.Button>(true);
-            System.Collections.Generic.Dictionary<UnityEngine.UI.Button, bool> buttonDisabledStates = 
-                new System.Collections.Generic.Dictionary<UnityEngine.UI.Button, bool>();
-            
-            foreach (var button in buttons)
-            {
-                if (button != null)
-                {
-                    var guiButton = button.GetComponent<Interface.Element.GUIButton>();
-                    if (guiButton != null)
-                    {
-                        buttonDisabledStates[button] = !button.interactable;
-                    }
-                }
-            }
-            
-            // Set all buttons to interactable
-            foreach (var button in buttons)
-            {
-                if (button != null)
-                {
-                    button.interactable = true;
-                    if (!button.gameObject.activeInHierarchy)
-                    {
-                        button.gameObject.SetActive(true);
-                    }
-                    
-                    var buttonImage = button.GetComponent<UnityEngine.UI.Image>();
-                    if (buttonImage != null)
-                    {
-                        buttonImage.raycastTarget = true;
-                    }
-                }
-            }
-            
-            // Restore disabled state for buttons that should be disabled
-            foreach (var kvp in buttonDisabledStates)
-            {
-                if (kvp.Value)
-                {
-                    kvp.Key.interactable = false;
-                    var buttonImage = kvp.Key.GetComponent<UnityEngine.UI.Image>();
-                    if (buttonImage != null)
-                    {
-                        buttonImage.raycastTarget = true;
-                    }
-                }
-            }
-            
         }
 
         private void OnDestroy()

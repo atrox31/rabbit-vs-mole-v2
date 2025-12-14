@@ -25,7 +25,7 @@ namespace DialogueSystem.TriggerData
 
             if (gameObject == null)
             {
-                Debug.LogWarning($"TD_GameObject: GameObject with name '{TypedData.GameObjectName}' not found in DialogueSequence.");
+                DebugHelper.LogWarning(null, $"TD_GameObject: GameObject with name '{TypedData.GameObjectName}' not found in DialogueSequence.");
                 return null;
             }
 

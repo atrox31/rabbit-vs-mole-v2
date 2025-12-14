@@ -30,7 +30,7 @@ namespace WalkingImmersionSystem
             // Check if the user selected a path
             if (string.IsNullOrEmpty(chosenFullPath))
             {
-                Debug.Log("Operation cancelled by the user.");
+                DebugHelper.LogError(null, "Operation cancelled by the user.");
                 return;
             }
 
@@ -87,7 +87,7 @@ namespace WalkingImmersionSystem
             // This is necessary to persist the changes in the Addressables configuration
             settings.SetDirty(AddressableAssetSettings.ModificationEvent.EntryModified, settings, true);
 
-            Debug.Log($"SUCCESS: Assigned label '{REQUIRED_LABEL}' to {labeledCount} asset(s) in folder: {relativeUnityPath}");
+            DebugHelper.Log(null, $"SUCCESS: Assigned label '{REQUIRED_LABEL}' to {labeledCount} asset(s) in folder: {relativeUnityPath}");
             EditorUtility.DisplayDialog("Gotowe!", $"Pomyœlnie oznaczono {assetGuids.Length} obiektów typu 'TerrainLayerData' etykiet¹ '{REQUIRED_LABEL}'.", "OK");
         }
     }

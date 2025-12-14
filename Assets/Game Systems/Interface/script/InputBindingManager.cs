@@ -34,7 +34,7 @@ namespace Interface
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"Failed to load input bindings: {ex.Message}. Clearing old bindings.");
+                DebugHelper.LogWarning(null, $"Failed to load input bindings: {ex.Message}. Clearing old bindings.");
                 // Clear old bindings if they're incompatible
                 ClearInputBindings(asset);
             }
@@ -56,7 +56,7 @@ namespace Interface
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"Failed to save input bindings: {ex.Message}");
+                DebugHelper.LogWarning(null, $"Failed to save input bindings: {ex.Message}");
             }
         }
 
@@ -86,7 +86,7 @@ namespace Interface
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"Cannot find action map '{actionMapName}': {ex.Message}");
+                DebugHelper.LogWarning(null, $"Cannot find action map '{actionMapName}': {ex.Message}");
                 return null;
             }
         }
@@ -251,7 +251,7 @@ namespace Interface
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"Failed to start rebinding for action '{action?.name}': {ex.Message}");
+                DebugHelper.LogWarning(null, $"Failed to start rebinding for action '{action?.name}': {ex.Message}");
                 // Re-enable action if it was enabled before
                 if (action.enabled == false && action.actionMap != null)
                 {
@@ -274,7 +274,7 @@ namespace Interface
                 return;
 
             SaveInputBindings(action.actionMap.asset);
-            Debug.Log($"Binding updated for '{action.name}' ({bindingIndex}): {spriteName}");
+            DebugHelper.Log(null, $"Binding updated for '{action.name}' ({bindingIndex}): {spriteName}");
         }
 
         /// <summary>

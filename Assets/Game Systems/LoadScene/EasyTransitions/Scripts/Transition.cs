@@ -41,7 +41,7 @@ namespace EasyTransition
 
             //Checking if the materials were correctly set
             if (multiplyColorMaterial == null || additiveColorMaterial == null)
-                Debug.LogWarning("There are no color tint materials set for the transition. Changing the color tint will not affect the transition anymore!");
+                DebugHelper.LogWarning(this, "There are no color tint materials set for the transition. Changing the color tint will not affect the transition anymore!");
 
             //Changing the color of the transition
             if (!transitionSettings.isCutoutTransition)

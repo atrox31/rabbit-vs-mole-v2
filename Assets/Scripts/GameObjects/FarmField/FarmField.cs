@@ -82,13 +82,13 @@ namespace GameObjects.FarmField
         {
             if (State is PlantedField && !_seed.IsReady())
             {
-                Debug.Log("Can't interact because seed is not ready");
+                DebugHelper.LogError(this, "Can't interact because seed is not ready");
                 return;
             }
 
             if (State is GrownField && !CanHarvestCarrot)
             {
-                Debug.Log("Can't interact because carrot is not grown");
+                DebugHelper.LogError(this, "Can't interact because carrot is not grown");
                 return;
             }
 

@@ -67,6 +67,16 @@ public class GameInspector : MonoBehaviour
         }
     }
 
+    public static bool IsSplitScreen
+    {
+        get
+        {
+            if (_instance == null) return false;
+            return _instance._rabbitControlAgent == PlayerControlAgent.Human &&
+                   _instance._moleControlAgent == PlayerControlAgent.Human;
+        }
+    }
+
     private void Awake()
     {
         if(_instance != null && _instance != this)
@@ -74,7 +84,7 @@ public class GameInspector : MonoBehaviour
             Destroy(this.gameObject);
             return;
         }
-        Debug.Log("GameInspektor is alive!");
+        DebugHelper.Log(this, "GameInspektor is alive!");
         _instance = this;
     }
 
@@ -96,23 +106,35 @@ public class GameInspector : MonoBehaviour
             Debug.LogError("GameInspector: No GameModeData assigned!");
             return;
         }
+    }
 
-        if(CurrentGameMode.timeLimitInMinutes > 0)      
-            _gameTimerCoroutine = StartCoroutine(GameTimer());
-        
+    public static void StartGameTimer()
+    {
+        if (_instance == null)
+        {
+            DebugHelper.LogWarning(null, "GameInspector.StartGameTimer: Instance is null.");
+            return;
+        }
+        if (_instance._gameTimerCoroutine != null)
+        {
+            _instance.StopCoroutine(_instance._gameTimerCoroutine);
+        }
+
+        if (CurrentGameMode.timeLimitInMinutes > 0)
+            _instance._gameTimerCoroutine = _instance.StartCoroutine(_instance.GameTimer());
     }
 
     IEnumerator GameTimer()
     {
         if (_instance == null)
         {
-            Debug.LogWarning("GameInspector.GameTimer: Instance is null.");
+            DebugHelper.LogWarning(this, "GameInspector.GameTimer: Instance is null.");
             yield break;
         }
 
         if (CurrentGameMode == null)
         {
-            Debug.LogWarning("GameInspector.GameTimer: CurrentGameMode is null.");
+            DebugHelper.LogWarning(this, "GameInspector.GameTimer: CurrentGameMode is null.");
             yield break;
         }
 
@@ -122,7 +144,7 @@ public class GameInspector : MonoBehaviour
         float timeLimitInSeconds = _currentGameMode.timeLimitInMinutes * 60f;
         float elapsedTime = 0f;
 
-        Debug.Log($"Count down started for: {timeLimitInSeconds} secconds");
+        DebugHelper.Log(this, $"Count down started for: {timeLimitInSeconds} secconds");
         // Count down using Time.deltaTime, which respects Time.timeScale
         // When Time.timeScale = 0 (paused), Time.deltaTime = 0, so timer stops
         while (elapsedTime < timeLimitInSeconds)
@@ -131,7 +153,7 @@ public class GameInspector : MonoBehaviour
             yield return null;
         }
 
-        Debug.Log($"Time end");
+        DebugHelper.Log(this, $"Time end");
         GameManager.GamePlayTimeEnd();
     }
 
@@ -139,17 +161,17 @@ public class GameInspector : MonoBehaviour
     {
         if (_instance == null)
         {
-            Debug.LogWarning("GameInspector.CarrotPicked: Instance is null.");
+            DebugHelper.LogWarning(null, "GameInspector.CarrotPicked: Instance is null.");
             return;
         }
 
         if (CurrentGameMode == null)
         {
-            Debug.LogWarning("GameInspector.CarrotPicked: CurrentGameMode is null.");
+            DebugHelper.LogWarning(null, "GameInspector.CarrotPicked: CurrentGameMode is null.");
             return;
         }
 
-        Debug.Log($"{player} picked the carrot!");
+        DebugHelper.Log(null, $"{player} picked the carrot!");
 
         if(CurrentGameMode.carrotGoal == 0)
             return;

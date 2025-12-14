@@ -12,21 +12,16 @@ public static class DebugHelper
     /// <param name="sourceObject">The <see cref="MonoBehaviour"/> instance associated with the error. This object will be highlighted in the Unity
     /// Editor when the error is clicked in the Console.</param>
     /// <param name="message">The error message to log.</param>
+    [UnityEngine.HideInCallstack]
     public static void LogError(MonoBehaviour sourceObject, string message)
     {
-        // 1. Get the calling method's name
-        // StackFrame(1) looks one level up the call stack (i.e., the method that called THIS method).
-        var method = new StackFrame().GetMethod();
+        var method = new StackFrame(1).GetMethod();
         string methodName = method.DeclaringType.Name + "." + method.Name;
-
-        // 2. Format the output string
-        string formattedMessage = $"[{sourceObject.gameObject.name} -> {methodName}] {message}";
-
-        // 3. Call the standard Unity Debug.LogError, passing the object context 
-        // to enable double-clicking the console error to highlight the object.
-        UnityEngine.Debug.LogError(formattedMessage, sourceObject.gameObject);
+        string objectName = sourceObject == null ? "undefined" : sourceObject?.gameObject.name;
+        string formattedMessage = $"[{objectName} -> {methodName}] {message}";
+        UnityEngine.Debug.LogError(formattedMessage, sourceObject?.gameObject);
     }
-    
+
     /// <summary>
     /// Logs a formatted message to the Unity console, including the name of the source object and the calling method.
     /// </summary>
@@ -36,19 +31,14 @@ public static class DebugHelper
     /// <param name="sourceObject">The <see cref="MonoBehaviour"/> instance associated with the log entry. This object is used as the context for
     /// the log message.</param>
     /// <param name="message">The message to log. This will be prefixed with the source object's name and the calling method's name.</param>
+    [UnityEngine.HideInCallstack]
     public static void Log(MonoBehaviour sourceObject, string message)
     {
-        // 1. Get the calling method's name
-        // StackFrame(1) looks one level up the call stack (i.e., the method that called THIS method).
         var method = new StackFrame(1).GetMethod();
         string methodName = method.DeclaringType.Name + "." + method.Name;
-
-        // 2. Format the output string
-        string formattedMessage = $"[{sourceObject.gameObject.name} -> {methodName}] {message}";
-
-        // 3. Call the standard Unity Debug.LogError, passing the object context 
-        // to enable double-clicking the console error to highlight the object.
-        UnityEngine.Debug.Log(formattedMessage, sourceObject.gameObject);
+        string objectName = sourceObject == null ? "undefined" : sourceObject?.gameObject.name;
+        string formattedMessage = $"[{objectName} -> {methodName}] {message}";
+        UnityEngine.Debug.Log(formattedMessage, sourceObject?.gameObject);
     }
 
     /// <summary>
@@ -61,18 +51,13 @@ public static class DebugHelper
     /// highlighted in the Unity Editor when the log message is clicked.</param>
     /// <param name="message">The warning message to log. This message will be prefixed with the name of the source object  and the calling
     /// method for additional context.</param>
+    [UnityEngine.HideInCallstack]
     public static void LogWarning(MonoBehaviour sourceObject, string message)
     {
-        // 1. Get the calling method's name
-        // StackFrame(1) looks one level up the call stack (i.e., the method that called THIS method).
         var method = new StackFrame(1).GetMethod();
         string methodName = method.DeclaringType.Name + "." + method.Name;
-
-        // 2. Format the output string
-        string formattedMessage = $"[{sourceObject.gameObject.name} -> {methodName}] {message}";
-
-        // 3. Call the standard Unity Debug.LogError, passing the object context 
-        // to enable double-clicking the console error to highlight the object.
-        UnityEngine.Debug.LogWarning(formattedMessage, sourceObject.gameObject);
+        string objectName = sourceObject == null ? "undefined" : sourceObject?.gameObject.name;
+        string formattedMessage = $"[{objectName} -> {methodName}] {message}";
+        UnityEngine.Debug.LogWarning(formattedMessage, sourceObject?.gameObject);
     }
 }
