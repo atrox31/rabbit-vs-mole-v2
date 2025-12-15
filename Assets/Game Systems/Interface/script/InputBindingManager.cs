@@ -170,7 +170,7 @@ namespace Interface
                 }
 
                 var operation = action.PerformInteractiveRebinding(bindingIndex)
-                    .WithCancelingThrough("<Keyboard>/escape")
+                    .WithCancelingThrough("<Keyboard>/escape,<Gamepad>/start")
                     .OnMatchWaitForAnother(waitForAnother)
                     .OnComplete(op =>
                     {

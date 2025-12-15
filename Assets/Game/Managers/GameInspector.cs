@@ -1,5 +1,7 @@
+using PlayerManagementSystem;
 using System;
 using System.Collections;
+using UnityEditor.Build.Pipeline;
 using UnityEngine;
 
 public class GameInspector : MonoBehaviour
@@ -8,6 +10,9 @@ public class GameInspector : MonoBehaviour
     public static bool IsActive => _instance != null;
 
     GameModeData _currentGameMode;
+    InputDeviceManager _inputDeviceManager = new InputDeviceManager();
+    public static InputDeviceManager InputDeviceManager => _instance?._inputDeviceManager;
+
     public static GameModeData CurrentGameMode
     {
         get

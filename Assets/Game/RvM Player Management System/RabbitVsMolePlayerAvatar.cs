@@ -2,12 +2,13 @@ using UnityEngine;
 using GameObjects.Misc;
 using Enums;
 using System;
+using PlayerManagementSystem;
 
 /// <summary>
 /// PlayerAvatar - handles movement, animations and interactions for player character.
 /// Can be controlled by PlayerController (human input), AI, or network input.
 /// </summary>
-public class PlayerAvatar : MonoBehaviour
+public class RabbitVsMolePlayerAvatar : PlayerAvatar
 {
     [Header("Player Type")]
     public PlayerType playerType;
@@ -42,7 +43,7 @@ public class PlayerAvatar : MonoBehaviour
     private static readonly int StopWalkHash = Animator.StringToHash("StopWalk");
     private static readonly int BlendHash = Animator.StringToHash("Blend");
 
-    public PlayerType GetPlayerType() => playerType;
+    public PlayerType PlayerType => playerType;
     public bool IsPerformingAction => _isPerformingAction;
 
     private void Awake()

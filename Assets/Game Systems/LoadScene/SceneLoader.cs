@@ -15,7 +15,8 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
     private const string TRANSITION_TEMPLATE_PATH = "Assets/Game Systems/EasyTransitions/Prefabs/TransitionTemplate.prefab";
     
     // Progress constants
-    private const int PROGRESS_SCENE_LOADED = 50;
+    private const int PROGRESS_SCENE_DESERIALIZED = 50;
+    private const int PROGRESS_SCENE_LOAD = 60;
     private const int PROGRESS_MATERIALS_START = 75;
     private const int PROGRESS_MATERIALS_END = 99;
     private const int PROGRESS_COMPLETE = 100;
@@ -112,7 +113,7 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
             loadingProgress?.Invoke(0);
             yield return StartCoroutine(ShowLoadingScreen());
             yield return StartCoroutine(LoadNewScene(targetSceneName, loadingProgress, onNewSceneLoad));
-            yield return StartCoroutine(ActivateNewScene(onNewSceneStart, onNewSceneShow));
+            yield return StartCoroutine(ActivateNewScene(loadingProgress, onNewSceneStart, onNewSceneShow));
         }
         finally
         {
@@ -185,12 +186,12 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
 
         while (newSceneProcess.progress < SCENE_LOAD_PROGRESS_THRESHOLD)
         {
-            int progress = (int)newSceneProcess.progress.Map(0.0f, 90.0f, 0.0f, PROGRESS_SCENE_LOADED);
+            int progress = (int)newSceneProcess.progress.Map(0.0f, 90.0f, 0.0f, PROGRESS_SCENE_DESERIALIZED);
             loadingProgress?.Invoke(progress);
             yield return null;
         }
 
-        loadingProgress?.Invoke(PROGRESS_SCENE_LOADED);
+        loadingProgress?.Invoke(PROGRESS_SCENE_DESERIALIZED);
         yield return null;
 
         var newSceneObject = SceneManager.GetSceneByName(targetSceneName);
@@ -200,18 +201,13 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
         }
 
         onNewSceneLoad?.Invoke(newSceneObject);
-        loadingProgress?.Invoke(PROGRESS_MATERIALS_START);
         yield return null;
 
-        yield return StartCoroutine(PreloadMaterialAssets(
-            newSceneObject, loadingProgress, PROGRESS_MATERIALS_START, PROGRESS_MATERIALS_END));
-
-        yield return null;
-        loadingProgress?.Invoke(PROGRESS_COMPLETE);
+        loadingProgress?.Invoke(PROGRESS_SCENE_LOAD);
         _targetScene = newSceneObject;
     }
 
-    private IEnumerator ActivateNewScene(UnityAction onNewSceneStart, UnityAction onNewSceneShow)
+    private IEnumerator ActivateNewScene(UnityAction<int> loadingProgress, UnityAction onNewSceneStart, UnityAction onNewSceneShow)
     {
         if (!ValidateScene(_targetScene, "target scene"))
         {
@@ -226,10 +222,14 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
             yield return null;
         }
 
+        yield return MaterialPreloader.PreloadMaterialAssets(
+            _targetScene, loadingProgress, PROGRESS_MATERIALS_START, PROGRESS_MATERIALS_END);
+
         SceneManager.SetActiveScene(_targetScene);
         yield return null;
         onNewSceneStart?.Invoke();
 
+        loadingProgress?.Invoke(PROGRESS_COMPLETE);
         yield return new WaitForSecondsRealtime(SCENE_ACTIVATION_DELAY);
         Time.timeScale = 1.0f;
 
@@ -321,91 +321,5 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
             return false;
         }
         return true;
-    }
-  
-    private List<Material> GetAllMaterialsInScene(Scene scene)
-    {
-        var uniqueMaterials = new HashSet<Material>();
-        
-        foreach (var rootObject in scene.GetRootGameObjects())
-        {
-            var meshRenderers = rootObject.GetComponentsInChildren<MeshRenderer>(true);
-            foreach (var meshRenderer in meshRenderers)
-            {
-                foreach (var material in meshRenderer.sharedMaterials)
-                {
-                    if (material != null)
-                    {
-                        uniqueMaterials.Add(material);
-                    }
-                }
-            }
-        }
-
-        DebugHelper.LogWarning(this, $"SceneLoader: Found {uniqueMaterials.Count} unique materials in scene '{scene.name}'");
-        return new List<Material>(uniqueMaterials);
-    }
-
-
-    private IEnumerator PreloadMaterialAssets(Scene scene, UnityAction<int> loadingProgress, int progressFrom, int progressTo)
-    {
-        var handlesToWaitFor = new List<AsyncOperationHandle<Material>>();
-        
-        foreach (var material in GetAllMaterialsInScene(scene))
-        {
-            if (material != null && !string.IsNullOrEmpty(material.name))
-            {
-                try
-                {
-                    var handle = Addressables.LoadAssetAsync<Material>(material.name);
-                    handlesToWaitFor.Add(handle);
-                }
-                catch (Exception ex)
-                {
-                    Debug.LogWarning($"SceneLoader: Material '{material.name}' not found in Addressables, skipping preload. {ex.Message}");
-                }
-            }
-        }
-
-        if (handlesToWaitFor.Count == 0)
-        {
-            loadingProgress?.Invoke(progressTo);
-            DebugHelper.LogWarning(this, "SceneLoader: No materials to preload from Addressables.");
-            yield break;
-        }
-
-        DebugHelper.Log(this, $"SceneLoader: Preloading {handlesToWaitFor.Count} materials from Addressables...");
-        yield return null;
-        loadingProgress?.Invoke(progressFrom);
-
-        int counter = 0;
-        foreach (var handle in handlesToWaitFor)
-        {
-            yield return handle;
-
-            if (handle.Status == AsyncOperationStatus.Failed)
-            {
-                Debug.LogWarning($"SceneLoader: Failed to load material from Addressables. Status: {handle.Status}");
-            }
-
-            counter++;
-            float progressPercent = (float)counter / handlesToWaitFor.Count;
-            int currentProgress = progressFrom + (int)((progressTo - progressFrom) * progressPercent);
-            loadingProgress?.Invoke(currentProgress);
-        }
-
-        DebugHelper.Log(this, "SceneLoader: Finished preloading materials from Addressables.");
-
-        foreach (var handle in handlesToWaitFor)
-        {
-            if (handle.IsValid())
-            {
-                Addressables.Release(handle);
-            }
-        }
-
-        DebugHelper.Log(this, "SceneLoader: Released Addressables material handles.");
-        yield return null;
-        loadingProgress?.Invoke(progressTo);
     }
 }

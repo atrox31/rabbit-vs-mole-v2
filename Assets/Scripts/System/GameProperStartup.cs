@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -13,6 +14,7 @@ public class GameProperStartup : MonoBehaviour
             return;
         }
         hasStarted = true;
+        Console.Clear();
         SceneManager.LoadScene(0, LoadSceneMode.Single);
     }
 }

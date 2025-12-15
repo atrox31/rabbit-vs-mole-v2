@@ -167,6 +167,18 @@ namespace Interface
             }
         }
 
+        public GameObject GetFirstButton()
+        {
+            foreach (var element in _elements.Concat(_bottomElements))
+            {
+                if(element.TryGetComponent(out GUIButton button))
+                {
+                    return button.gameObject;
+                }
+            }
+            return null;
+        }
+
         public InterfaceElement AddElement(InterfaceElement element, bool isBottomElement = false)
         {
             if (element == null) return null;

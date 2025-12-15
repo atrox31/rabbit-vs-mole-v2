@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Interface.Element;
 using TMPro;
 using UnityEngine;
@@ -8,10 +9,11 @@ using UnityEngine.UI;
 using UnityEngine.Localization;
 using UnityEngine.Localization.Settings;
 using UnityEngine.InputSystem;
+using UnityEngine.EventSystems;
 
 namespace Interface
 {
-    public class MainMenuManager : MonoBehaviour
+    public class MainMenuManager : MonoBehaviour, ICancelHandler
     {
         [Header("Prefabs")]
         [SerializeField] private GameObject _panelPrefab;
@@ -45,12 +47,79 @@ namespace Interface
         private Dictionary<string, GUIPanel> _panels = new Dictionary<string, GUIPanel>();
         private Stack<GUIPanel> _panelHistory = new Stack<GUIPanel>();
         private GUIPanel _currentPanel = null;
+        private EventSystem _eventSystem;
+        private InputAction _cancelAction;
 
         private void Awake()
         {
             if (_panelsParent == null)
             {
                 _panelsParent = transform;
+            }
+            _eventSystem = GetComponentInChildren<EventSystem>();
+            if(_eventSystem == null)
+            {
+                DebugHelper.LogError(this, "Event system is not found");
+            }
+            
+            // Setup Cancel action from Input System
+            SetupCancelAction();
+        }
+
+        private void SetupCancelAction()
+        {
+            // Try to get Cancel action from InputSystemUIInputModule first
+            var inputModule = _eventSystem?.currentInputModule as UnityEngine.InputSystem.UI.InputSystemUIInputModule;
+            if (inputModule != null && inputModule.cancel != null)
+            {
+                _cancelAction = inputModule.cancel.action;
+                if (_cancelAction != null)
+                {
+                    _cancelAction.performed += OnCancelPerformed;
+                    _cancelAction.Enable();
+                    return;
+                }
+            }
+            
+            // Fallback: Try to get Cancel action from Input System directly
+            var inputActionsAsset = UnityEngine.InputSystem.InputSystem.actions;
+            if (inputActionsAsset != null)
+            {
+                var uiMap = inputActionsAsset.FindActionMap("UI");
+                if (uiMap != null)
+                {
+                    _cancelAction = uiMap.FindAction("Cancel");
+                    if (_cancelAction != null)
+                    {
+                        _cancelAction.performed += OnCancelPerformed;
+                        _cancelAction.Enable();
+                        return;
+                    }
+                }
+            }
+            
+            // Last resort: Create a new InputAction for Cancel
+            _cancelAction = new InputAction("Cancel", InputActionType.Button);
+            _cancelAction.AddBinding("<Keyboard>/escape");
+            _cancelAction.AddBinding("<Gamepad>/buttonEast");
+            _cancelAction.performed += OnCancelPerformed;
+            _cancelAction.Enable();
+        }
+
+        private void OnCancelPerformed(InputAction.CallbackContext context)
+        {
+            if (context.performed)
+            {
+                GoBack();
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_cancelAction != null)
+            {
+                _cancelAction.performed -= OnCancelPerformed;
+                _cancelAction.Disable();
             }
         }
 
@@ -169,6 +238,13 @@ namespace Interface
 
             _currentPanel = newPanel;
             newPanel?.ShowPanel();
+            yield return null;
+            _eventSystem.SetSelectedGameObject(newPanel?.GetFirstButton());
+        }
+
+        public void OnCancel(BaseEventData eventData)
+        {
+            GoBack();
         }
 
         public void GoBack()
@@ -197,6 +273,8 @@ namespace Interface
 
             _currentPanel = _panelHistory.Pop();
             _currentPanel.ShowPanel();
+            yield return null;
+            _eventSystem.SetSelectedGameObject(_currentPanel?.GetFirstButton());
         }
 
         internal InterfaceElement CreateButton(string text, Action onClick)

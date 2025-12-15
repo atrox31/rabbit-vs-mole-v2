@@ -1,4 +1,5 @@
 using Extensions;
+using PlayerManagementSystem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,8 +8,6 @@ using UnityEngine.InputSystem;
 
 public partial class GameManager
 {
-
-
     public struct PlayGameSettings
     {
         public GameModeData gameMode;
@@ -17,6 +16,9 @@ public partial class GameManager
         public PlayerType playerTypeForStory;
         public Dictionary<PlayerType, PlayerControlAgent> playerControlAgent;
         public Dictionary<PlayerType, bool> playerGamepadUsing;
+
+        public readonly bool IsAllHumanAgents => playerControlAgent.Select(kv => kv.Value).All(v => v == PlayerControlAgent.Human);
+
         public PlayGameSettings(
             GameModeData gameMode,
             GameSceneManager.SceneType map,
@@ -31,10 +33,10 @@ public partial class GameManager
             this.playerTypeForStory = playerTypeForStory;
             this.playerGamepadUsing = new Dictionary<PlayerType, bool>().PopulateWithEnumValues();
             this.playerControlAgent = new Dictionary<PlayerType, PlayerControlAgent>()
-            {
-                { PlayerType.Rabbit, rabbitControlAgent },
-                { PlayerType.Mole, moleControlAgent }
-            };
+                        {
+                            { PlayerType.Rabbit, rabbitControlAgent },
+                            { PlayerType.Mole, moleControlAgent }
+                        };
         }
         public PlayerControlAgent GetPlayerControlAgent(PlayerType playerType)
         {
@@ -50,20 +52,26 @@ public partial class GameManager
             else
                 return false;
         }
-        public bool IsAllHumanAgents => playerControlAgent.Select(kv => kv.Value).All(v => v == PlayerControlAgent.Human);
+        public PlayerType? GetSplitscreenOnlyGamepadPlayerType()
+        {
+            var gamepadUsers = playerGamepadUsing.Where(kv => kv.Value).Select(kv => kv.Key).ToList();
+            if (gamepadUsers.Count == 1)
+                return gamepadUsers[0];
+            return null;
+        }
         public PlayGameSettings SetGamepadForPlayer(PlayerType playerType)
         {
             playerGamepadUsing[PlayerType.Rabbit] = false;
             playerGamepadUsing[PlayerType.Mole] = false;
 
-            if(GameManager.GamepadCount > 0)
+            if (InputDeviceManager.GamepadCount > 0)
                 playerGamepadUsing[playerType] = true;
 
             return this;
         }
         public PlayGameSettings SetGamepadForBoth()
         {
-            if (GameManager.GamepadCount >= 2)
+            if (InputDeviceManager.GamepadCount >= 2)
             {
                 playerGamepadUsing[PlayerType.Rabbit] = true;
                 playerGamepadUsing[PlayerType.Mole] = true;

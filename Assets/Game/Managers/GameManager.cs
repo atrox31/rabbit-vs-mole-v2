@@ -1,3 +1,4 @@
+using PlayerManagementSystem;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -16,11 +17,11 @@ public partial class GameManager : SingletonMonoBehaviour<GameManager>
     private PlayerType _currentPlayerForStory;
     public static PlayerType CurrentPlayerForStory { get { return Instance._currentPlayerForStory; } private set { Instance._currentPlayerForStory = value; } }
 
+    // Last used settings for current gameplay session, used by RestartGame
+    private PlayGameSettings _lastPlayGameSettings;
+
     private DayOfWeek _currentDayOfWeek = DayOfWeek.Monday;
     public static DayOfWeek CurrentDayOfWeek { get { return Instance._currentDayOfWeek; } private set { Instance._currentDayOfWeek = value; } }
-    public static int GamepadCount => Gamepad.all.Count;
-    public static InputDevice GetKeyboardDevice() => InputSystem.devices.Where(x => x is Keyboard).FirstOrDefault();
-    public static InputDevice GetGamepadDevice(int index) => InputSystem.devices.Where(x => x is Gamepad).ElementAtOrDefault(index);
 
     [Header("Game Inspector")]
     [SerializeField] private GameObject GameInspectorPrefab;
@@ -210,7 +211,7 @@ public partial class GameManager : SingletonMonoBehaviour<GameManager>
             DebugHelper.LogWarning(null, "GameManager.GetStoryProgress: Instance is null.");
             return false;
         }
-
+        
         switch(playerType)
         {
             case PlayerType.Rabbit:
@@ -372,7 +373,7 @@ public partial class GameManager : SingletonMonoBehaviour<GameManager>
 
         if (isSplitScreen)
         {
-            switch (GamepadCount)
+            switch (InputDeviceManager.GamepadCount)
             {
                 case 0: PlayGameInternal(playGameSettings); return;
                 case 1: GetGamepadPlayerAndPlayGame(playGameSettings); return;
@@ -385,8 +386,32 @@ public partial class GameManager : SingletonMonoBehaviour<GameManager>
             PlayGameInternal(playGameSettings.SetGamepadForPlayer(playerTypeForStory));
         }
     }
+
+    public static void CreateAgentController(PlayGameSettings playGameSettings, PlayerType playerType)
+    {
+        switch (playGameSettings.GetPlayerControlAgent(playerType))
+        {
+            case PlayerControlAgent.None:
+                break;
+            case PlayerControlAgent.Human:
+                RabbitVsMoleHumanAgentController.CreateInstance(playGameSettings, playerType);
+                break;
+            case PlayerControlAgent.Bot:
+                //AIPlayerAgentController.CreateInstance(playerType);
+                break;
+            case PlayerControlAgent.Online:
+                //OnlineAgentController.CreateInstance(playerType);
+                break;
+            default:
+                break;
+        }
+    }
+
     private static void PlayGameInternal(PlayGameSettings playGameSettings)
     {
+        // Remember settings used to start this gameplay session (for RestartGame)
+        Instance._lastPlayGameSettings = playGameSettings;
+
         Instance._currentDayOfWeek = playGameSettings.day;
         Instance._currentPlayerForStory = playGameSettings.playerTypeForStory;
         GameSceneManager.ChangeScene(
@@ -402,7 +427,8 @@ public partial class GameManager : SingletonMonoBehaviour<GameManager>
             },
             OnSceneStart: () =>
             {
-                AgentController.CreateAgentControllerForAllPlayerTypes(playGameSettings);
+                CreateAgentController(playGameSettings, PlayerType.Rabbit);
+                CreateAgentController(playGameSettings, PlayerType.Mole);
             },
             OnSceneShow: () =>
             {
@@ -436,6 +462,12 @@ public partial class GameManager : SingletonMonoBehaviour<GameManager>
 
     public static void RestartGame()
     {
+        if (Instance == null)
+        {
+            Debug.LogError("GameManager.RestartGame: Instance is null! Cannot restart game.");
+            return;
+        }
+
         if (GameInspector.CurrentGameMode == null)
         {
             Debug.LogError("GameManager.RestartGame: CurrentGameMode is null! Cannot restart game.");
@@ -449,15 +481,10 @@ public partial class GameManager : SingletonMonoBehaviour<GameManager>
             Debug.LogError("GameManager.RestartGame: Cannot restart MainMenu scene. CurrentScene is not set correctly or you are trying to restart from MainMenu.");
             return;
         }
-        
-        PlayGame(
-            GameInspector.CurrentGameMode, 
-            sceneToRestart, 
-            Instance._currentDayOfWeek, 
-            GameInspector.CurrentPlayerOnStory, 
-            GameInspector.RabbitControlAgent, 
-            GameInspector.MoleControlAgent
-            );
+
+        // Restart with the same settings that were used to start this gameplay session.
+        // This preserves which player was using the gamepad without needing to ask again.
+        PlayGameInternal(Instance._lastPlayGameSettings);
     }
 
     internal static bool GetMoleProgress(DayOfWeek dayOfWeek)

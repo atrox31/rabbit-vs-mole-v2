@@ -1,11 +1,12 @@
+using Interface;
 using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.Localization;
 using UnityEngine.Localization.Components;
 using UnityEngine.UI;
-using Interface;
 
 namespace Interface.Element
 {
@@ -170,6 +171,9 @@ namespace Interface.Element
 
             string spriteName = InputBindingManager.GetBindingSpriteName(_action, _bindingIndex);
             _onKeyChanged?.Invoke(_action, _bindingIndex, spriteName);
+
+            var eventSystem = EventSystem.current;
+            eventSystem?.SetSelectedGameObject(_keyButton.gameObject);
         }
 
         private void OnRebindCanceled()
