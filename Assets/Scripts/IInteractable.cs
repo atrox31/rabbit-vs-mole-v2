@@ -1,5 +1,6 @@
 ﻿using System;
 using Enums;
+using RabbitVsMole;
 
 public interface IInteractable
 {

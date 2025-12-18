@@ -3,6 +3,7 @@ using System.Collections;
 using Enums;
 using GameObjects.Base;
 using GameObjects.FarmField.States;
+using RabbitVsMole;
 using UnityEngine;
 using UnityEngine.UI;
 using Random = UnityEngine.Random;

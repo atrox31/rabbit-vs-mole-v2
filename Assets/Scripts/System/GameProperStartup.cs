@@ -14,7 +14,7 @@ public class GameProperStartup : MonoBehaviour
             return;
         }
         hasStarted = true;
-        Console.Clear();
+        Debug.ClearDeveloperConsole();
         SceneManager.LoadScene(0, LoadSceneMode.Single);
     }
 }

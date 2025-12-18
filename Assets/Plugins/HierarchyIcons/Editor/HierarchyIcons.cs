@@ -26,7 +26,7 @@ namespace HierarchyIcons.Editor
 
         private static void HandleHierarchyWindowItemOnGUI(int instanceID, Rect selectionRect)
         {
-            var obj = EditorUtility.InstanceIDToObject(instanceID);
+            var obj = EditorUtility.EntityIdToObject(instanceID);
 
             if (Event.current.type == EventType.Layout)
             {
