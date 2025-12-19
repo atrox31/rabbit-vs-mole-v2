@@ -27,6 +27,8 @@ namespace RabbitVsMole
         private Rigidbody _rigidbody;
         private SpeedController _speedController;
         private Animator _animator;
+        private bool _haveCarrot;
+        public bool IsHaveCarrot => _haveCarrot;
 
         // Movement input (set externally by controller)
         private Vector2 _moveInput;
@@ -85,8 +87,8 @@ namespace RabbitVsMole
                 _interactableDown = null;
                 return;
             }
-            _interactableOnFront = FindInteractableWithRaycast(Vector3.down);
-            _interactableDown = FindInteractableWithRaycast(transform.forward);
+            _interactableOnFront = FindInteractableWithRaycast(transform.forward, Color.yellow);
+            _interactableDown = FindInteractableWithRaycast(Vector3.down, Color.red);
         }
 
         /// <summary>
@@ -189,17 +191,12 @@ namespace RabbitVsMole
             _isPerformingAction = false;
         }
 
-        private IInteractable FindInteractableWithRaycast(Vector3 direction)
+        private IInteractable FindInteractableWithRaycast(Vector3 direction, Color color)
         {
             Vector3 rayOrigin = transform.position;
+            Debug.DrawRay(rayOrigin, direction, color, 1.0f);
 
-            // Adjust ray origin slightly above ground for forward raycast
-            if (direction == transform.forward)
-            {
-                rayOrigin += Vector3.up * 0.5f;
-            }
-
-            if (Physics.Raycast(rayOrigin, direction, out RaycastHit hit, _raycastDistance, interactionLayerMask))
+            if (Physics.Raycast(rayOrigin, direction, out RaycastHit hit, _raycastDistance, interactionLayerMask,QueryTriggerInteraction.Collide))
             {
                 return hit.collider.GetComponent<IInteractable>();
             }

@@ -1,3 +1,4 @@
+using Unity.VisualScripting;
 using UnityEngine;
 
 namespace Extensions
@@ -45,6 +46,33 @@ namespace Extensions
 
             // 4. If the loop completes without finding anything
             return null;
+        }
+        
+        /// <summary>
+        /// Sets the tag of the specified <see cref="GameObject"/> to the provided value.
+        /// </summary>
+        /// <remarks>If <paramref name="newTag"/> is <c>null</c> or empty, the method logs a warning and
+        /// does not update the tag. If <paramref name="newTag"/> is not defined in the Tags &amp; Layers settings, an
+        /// error is logged and the tag is not updated.</remarks>
+        /// <param name="gameObject">The <see cref="GameObject"/> whose tag will be updated. Cannot be <c>null</c>.</param>
+        /// <param name="newTag">The new tag to assign to the <paramref name="gameObject"/>. Must be a non-empty string and defined in the
+        /// project's Tags &amp; Layers settings.</param>
+        public static void UpdateTag(this GameObject gameObject, string newTag)
+        {
+            if (string.IsNullOrEmpty(newTag))
+            {
+                Debug.LogWarning("Attempted to set an empty or null tag.");
+                return;
+            }
+
+            try
+            {
+                gameObject.tag = newTag;
+            }
+            catch (UnityException)
+            {
+                DebugHelper.LogError(gameObject?.GetComponent<MonoBehaviour>(), $"Tag '{newTag}' is not defined in the Tags & Layers settings.");
+            }
         }
     }
 }

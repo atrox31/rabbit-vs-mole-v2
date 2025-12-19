@@ -1,4 +1,6 @@
+using Extensions;
 using GameObjects.Base;
+using PlayerManagementSystem.AIBehaviour.Common;
 using UnityEngine;
 
 namespace GameObjects
@@ -25,6 +27,10 @@ namespace GameObjects
             DeleteCarrot();
             m_ParticleCarrotSteal.Stop();
             return true;
+        }
+        void Awake()
+        {
+            gameObject.UpdateTag(AIConsts.SUPPLY_TAG);
         }
 
     }

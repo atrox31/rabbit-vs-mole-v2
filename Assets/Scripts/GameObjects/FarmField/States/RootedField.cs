@@ -7,6 +7,11 @@ namespace GameObjects.FarmField.States
     public sealed class RootedField : FarmFieldStateBase
     {
         public override bool CanRemoveRoots => true;
+        
+        public RootedField()
+        {
+            AIPriority = new AIPriority(priority: 40, critical: 90, conditional: 3);
+        }
 
         protected override IReadOnlyDictionary<PlayerType, FarmFieldActionMapEntry> GetActionMap()
         {

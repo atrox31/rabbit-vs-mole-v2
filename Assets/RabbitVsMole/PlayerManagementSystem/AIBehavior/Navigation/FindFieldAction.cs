@@ -18,14 +18,32 @@ public partial class FindFieldAction : Action
     [SerializeReference] public BlackboardVariable<int> Inteligence;
     PlayerAvatar _playerAvatar;
 
+    class FarmFieldData
+    {
+        public FarmField field;
+        public int priority;
+        public float distance;
+        public FarmFieldData(FarmField field, int priority, float distance)
+        {
+            this.field = field;
+            this.priority = priority;
+            this.distance = distance;
+        }
+    }
+
     protected override Status OnStart()
     {
-        if (AvatarOfPlayer.Value == null)
+        if (AvatarOfPlayer == null || AvatarOfPlayer.Value == null)
         {
             Debug.LogError("FindFieldAction: PlayerAvatar is null");
             return Status.Failure;
         }
+
         _playerAvatar = AvatarOfPlayer.Value.GetComponent<PlayerAvatar>();
+        if (_playerAvatar == null)
+        {
+            return Status.Failure;
+        }
 
         // Find all farm fields in the scene
         FarmField[] allFields = GameObject.FindObjectsByType<FarmField>(FindObjectsSortMode.None);
@@ -40,27 +58,30 @@ public partial class FindFieldAction : Action
         // Count fields by state for priority modifiers
         int rootedFieldCount = allFields.Count(f => f.State is RootedField);
         int moundedFieldCount = allFields.Count(f => f.State is MoundedField);
+        int plantedFieldCount = allFields.Count(f => f.State is PlantedField);
+        int grownFieldCount = allFields.Count(f => f.State is GrownField);
+        int untouchedFieldCount = allFields.Count(f => f.State is UntouchedField);
 
         // Calculate base priority for each field
-        List<(FarmField field, float priority, float distance)> fieldData = new List<(FarmField, float, float)>();
+        List<FarmFieldData> fieldData = new List<FarmFieldData>();
         Vector3 agentPosition = _playerAvatar.transform.position;
 
-        foreach (var field in allFields)
+        foreach (FarmField field in allFields)
         {
-            float basePriority = GetBasePriority(field.State);
-            
-            // Apply count-based modifiers
-            if (field.State is RootedField && rootedFieldCount > 3)
+            int fieldCount = field.State switch
             {
-                basePriority = 90f;
-            }
-            else if (field.State is MoundedField && moundedFieldCount > 3)
-            {
-                basePriority = 80f;
-            }
+                RootedField => rootedFieldCount,
+                MoundedField => moundedFieldCount,
+                PlantedField => plantedFieldCount,
+                GrownField => grownFieldCount,
+                UntouchedField => untouchedFieldCount,
+                _ => 0
+            };
+
+            int basePriority = field.State.AIPriority.GetEffectivePriority(fieldCount);
 
             float distance = Vector3.Distance(agentPosition, field.transform.position);
-            fieldData.Add((field, basePriority, distance));
+            fieldData.Add(new (field, basePriority, distance));
         }
 
         // Get intelligence value (default to 50 if not set)
@@ -89,17 +110,7 @@ public partial class FindFieldAction : Action
     {
     }
 
-    private float GetBasePriority(IFarmFieldState state)
-    {
-        if (state is GrownField) return 100f;
-        if (state is PlantedField) return 70f;
-        if (state is MoundedField) return 60f;
-        if (state is UntouchedField) return 60f;
-        if (state is RootedField) return 50f;
-        return 0f;
-    }
-
-    private GameObject SelectField(List<(FarmField field, float priority, float distance)> fieldData, int intelligence)
+    private GameObject SelectField(List<FarmFieldData> fieldData, int intelligence)
     {
         if (fieldData.Count == 0) return null;
 
@@ -111,7 +122,7 @@ public partial class FindFieldAction : Action
         float intelligenceFactor = intelligence / 100f;
 
         // Group fields by priority and sort by priority (highest first)
-        var groupedByPriority = fieldData.GroupBy(f => f.priority)
+        List<IGrouping<int, FarmFieldData>> groupedByPriority = fieldData.GroupBy(f => f.priority)
             .OrderByDescending(g => g.Key)
             .ToList();
 
@@ -119,40 +130,7 @@ public partial class FindFieldAction : Action
         // Intelligence 100 = always highest priority group
         // Intelligence 0 = always lowest priority group
         // Intelligence 50 = weighted selection towards middle
-        int selectedPriorityGroupIndex;
-        
-        if (intelligence >= 100)
-        {
-            // Perfect intelligence: always highest priority
-            selectedPriorityGroupIndex = 0;
-        }
-        else if (intelligence <= 0)
-        {
-            // Worst intelligence: always lowest priority
-            selectedPriorityGroupIndex = groupedByPriority.Count - 1;
-        }
-        else
-        {
-            // Weighted selection based on intelligence
-            // Map intelligence [0-100] to selection index [worst to best]
-            // Use a curve that makes extreme values more likely to pick extremes
-            float normalizedIntelligence = intelligenceFactor;
-            
-            // For intelligence 50, we want balanced selection
-            // For intelligence > 50, bias towards higher priority
-            // For intelligence < 50, bias towards lower priority
-            
-            // Calculate target group index (0 = best, count-1 = worst)
-            float targetIndex = (1f - normalizedIntelligence) * (groupedByPriority.Count - 1);
-            
-            // Add some randomness based on how far from 50 we are
-            // Closer to 50 = more random, closer to extremes = more deterministic
-            float randomness = Mathf.Abs(normalizedIntelligence - 0.5f) * 2f; // 0 at 50, 1 at extremes
-            float randomOffset = (UnityEngine.Random.Range(0f, 1f) - 0.5f) * (1f - randomness) * (groupedByPriority.Count * 0.5f);
-            
-            selectedPriorityGroupIndex = Mathf.RoundToInt(targetIndex + randomOffset);
-            selectedPriorityGroupIndex = Mathf.Clamp(selectedPriorityGroupIndex, 0, groupedByPriority.Count - 1);
-        }
+        int selectedPriorityGroupIndex = GetIndexBaseOnInteligence(intelligenceFactor, groupedByPriority.Count);
 
         var selectedGroup = groupedByPriority[selectedPriorityGroupIndex];
         var fieldsInGroup = selectedGroup.ToList();
@@ -170,29 +148,36 @@ public partial class FindFieldAction : Action
         // Intelligence 100 = index 0 (closest)
         // Intelligence 0 = last index (farthest)
         // Intelligence 50 = middle index
+        int selectedIndex= GetIndexBaseOnInteligence(intelligenceFactor, fieldsInGroup.Count);
+        return fieldsInGroup[selectedIndex].field.gameObject;
+    }
+
+    private static int GetIndexBaseOnInteligence(float intelligenceFactor, int fieldsInGroupCount)
+    {
         int selectedIndex;
-        if (intelligence >= 100)
+
+        if (intelligenceFactor >= 98f)
         {
-            selectedIndex = 0; // Closest
+            // Perfect intelligence: always highest priority
+            return 0;
         }
-        else if (intelligence <= 0)
+        else if (intelligenceFactor <= 2f)
         {
-            selectedIndex = fieldsInGroup.Count - 1; // Farthest
-        }
-        else
-        {
-            // Map intelligence to index: 100 -> 0, 50 -> middle, 0 -> last
-            float targetIndex = (1f - intelligenceFactor) * (fieldsInGroup.Count - 1);
-            
-            // Add randomness based on distance from 50
-            float randomness = Mathf.Abs(intelligenceFactor - 0.5f) * 2f;
-            float randomOffset = (UnityEngine.Random.Range(0f, 1f) - 0.5f) * (1f - randomness) * (fieldsInGroup.Count * 0.3f);
-            
-            selectedIndex = Mathf.RoundToInt(targetIndex + randomOffset);
-            selectedIndex = Mathf.Clamp(selectedIndex, 0, fieldsInGroup.Count - 1);
+            // Worst intelligence: always lowest priority
+            return fieldsInGroupCount - 1;
         }
 
-        return fieldsInGroup[selectedIndex].field.gameObject;
+        // Map intelligence to index: 100 -> 0, 50 -> middle, 0 -> last
+        float targetIndex = (1f - intelligenceFactor) * (fieldsInGroupCount - 1);
+
+        // Add some randomness based on how far from 50 we are
+        // Closer to 50 = more random, closer to extremes = more deterministic
+        float randomness = Mathf.Abs(intelligenceFactor - 0.5f) * 2f;
+        float randomOffset = (UnityEngine.Random.Range(0f, 1f) - 0.5f) * (1f - randomness) * (fieldsInGroupCount * 0.3f);
+
+        var unclampedSelectedIndex = Mathf.RoundToInt(targetIndex + randomOffset);
+        selectedIndex = Mathf.Clamp(unclampedSelectedIndex, 0, fieldsInGroupCount - 1);
+        return selectedIndex;
     }
 }
 

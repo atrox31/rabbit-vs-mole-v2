@@ -7,6 +7,11 @@ namespace GameObjects.FarmField.States
     public sealed class GrownField : FarmFieldStateBase
     {
         public override bool CanHarvest => false;
+        
+        public GrownField()
+        {
+            AIPriority = new AIPriority(priority: 100);
+        }
 
         protected override IReadOnlyDictionary<PlayerType, FarmFieldActionMapEntry> GetActionMap()
         {

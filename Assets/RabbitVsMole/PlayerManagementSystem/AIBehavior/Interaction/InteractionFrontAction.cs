@@ -1,6 +1,6 @@
+using PlayerManagementSystem.AIBehaviour.Common;
 using RabbitVsMole;
 using System;
-using System.Collections;
 using Unity.Behavior;
 using Unity.Properties;
 using UnityEngine;
@@ -13,42 +13,21 @@ public partial class InteractionFrontAction : Action
     [SerializeReference] public BlackboardVariable<GameObject> AvatarOfPlayer;
     [SerializeReference] public BlackboardVariable<int> Int;
     PlayerAvatar _playerAvatar;
-    bool _isWaitComplite;
 
     protected override Status OnStart()
     {
-        if (AvatarOfPlayer == null || AvatarOfPlayer.Value == null)
-        {
+        if (!BlackboardManager.SetupVariable(out _playerAvatar, AvatarOfPlayer))
             return Status.Failure;
-        }
-
-        _playerAvatar = AvatarOfPlayer.Value.GetComponent<PlayerAvatar>();
-        if (_playerAvatar == null)
-        {
-            return Status.Failure;
-        }
-
-        _playerAvatar.StartCoroutine(Waiter());
-        return Status.Running;
 
         if (_playerAvatar.TryActionFront())
-        {
-            _playerAvatar.StartCoroutine(Waiter());
             return Status.Running;
-        }
         else
             return Status.Failure;
     }
 
-    IEnumerator Waiter()
-    {
-        yield return new WaitForSeconds(3);
-        _isWaitComplite = true;
-    }
-
     protected override Status OnUpdate()
     {
-        if (_playerAvatar.IsPerformingAction && !_isWaitComplite)
+        if (_playerAvatar.IsPerformingAction)
             return Status.Running;
 
         Int.Value += 3;

@@ -21,6 +21,8 @@ namespace GameObjects.FarmField.States
         public virtual bool CanRemoveRoots => false;
         public virtual bool CanEnterMound => false;
 
+        public virtual AIPriority AIPriority { get; protected set; }
+
         protected abstract IReadOnlyDictionary<PlayerType, FarmFieldActionMapEntry> GetActionMap();
         
         private CancellationTokenSource _actionCancellationTokenSource;
@@ -69,10 +71,10 @@ namespace GameObjects.FarmField.States
 
         protected virtual IFarmFieldState Water(FarmField field)
         {
-            var wateringSystem = new WateringSystem();
+            var wateringSystem = new WateringSystem(field);
             _actionCancellationTokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(1));
-            wateringSystem.StartWatering(field, null, _actionCancellationTokenSource.Token);
-            field.StartWatering();
+            wateringSystem.StartWatering(null, _actionCancellationTokenSource.Token);
+            // field.StartWatering();
             return new GrownField();
         }
 

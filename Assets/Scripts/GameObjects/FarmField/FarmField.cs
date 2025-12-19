@@ -51,6 +51,7 @@ namespace GameObjects.FarmField
         public bool CanHarvestCarrot => HasCarrot && _carrotObject.IsReady;
         public bool HaveRoots => _roots != null;
         public bool CanPlantRoots => !HaveRoots;
+        public Image WaterIndicator => _waterFillIndicator;
 
         private void Awake()
         {

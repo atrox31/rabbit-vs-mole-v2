@@ -1,6 +1,9 @@
 using Enums;
+using Extensions;
+using PlayerManagementSystem.AIBehaviour.Common;
 using RabbitVsMole;
 using System;
+using System.Collections;
 using UnityEngine;
 
 namespace GameObjects
@@ -9,19 +12,21 @@ namespace GameObjects
     {
         public void Interact(PlayerType type, Func<ActionType, bool> setActionType, Action<bool> changeIsBusy)
         {
-            return;
+
+            StartCoroutine(EnedueLikeFakeIWorkingState(setActionType, changeIsBusy));
         }
 
-        // Start is called once before the first execution of Update after the MonoBehaviour is created
-        void Start()
+        IEnumerator EnedueLikeFakeIWorkingState(Func<ActionType, bool> setActionType, Action<bool> changeIsBusy)
         {
-        
+            setActionType(ActionType.Harvest);
+            yield return new WaitForSeconds(2f);
+            changeIsBusy?.Invoke(true);
         }
 
-        // Update is called once per frame
-        void Update()
+        void Awake()
         {
-        
+            gameObject.UpdateTag(AIConsts.SUPPLY_TAG);
         }
+
     }
 }

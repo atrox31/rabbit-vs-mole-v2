@@ -1,3 +1,4 @@
+using PlayerManagementSystem.AIBehaviour.Common;
 using RabbitVsMole;
 using System;
 using Unity.Behavior;
@@ -15,16 +16,8 @@ public partial class InteractDownAction : Action
 
     protected override Status OnStart()
     {
-        if (AvatarOfPlayer == null || AvatarOfPlayer.Value == null)
-        {
+        if (!BlackboardManager.SetupVariable(out _playerAvatar, AvatarOfPlayer))
             return Status.Failure;
-        }
-
-        _playerAvatar = AvatarOfPlayer.Value.GetComponent<PlayerAvatar>();
-        if (_playerAvatar == null)
-        {
-            return Status.Failure;
-        }
 
         if (_playerAvatar.TryActionDown())
             return Status.Running;

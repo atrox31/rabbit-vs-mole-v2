@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.Events;
-using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.SceneManagement;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -16,9 +15,6 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
 {
     private const string LOADING_SCENE_NAME = "Loading";
     private const string TRANSITION_TEMPLATE_PATH = "Assets/Game Systems/EasyTransitions/Prefabs/TransitionTemplate.prefab";
-#if UNITY_EDITOR
-    private const string ADDRESSABLES_SCENE_PATH_TEMPLATE = "Assets/Scenes/Test/{0}.unity";
-#endif
     
     // Progress constants
     private const int PROGRESS_SCENE_DESERIALIZED = 50;
@@ -37,10 +33,6 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
     private Scene _targetScene;
     private AsyncOperation _targetSceneAsyncOperation;
     private bool _isWaitingForTransition = false;
-#if UNITY_EDITOR
-    private AsyncOperationHandle<UnityEngine.ResourceManagement.ResourceProviders.SceneInstance>? _currentSceneAddressablesHandle;
-    private bool _currentSceneWasFromAddressables = false;
-#endif
 
     private Action OnSceneUnload;
 
@@ -173,16 +165,6 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
 
     private IEnumerator LoadNewScene(string targetSceneName, UnityAction<int> loadingProgress, UnityAction<Scene> onNewSceneLoad)
     {
-        // Release previous Addressables handle if needed (from the scene we're leaving)
-#if UNITY_EDITOR
-        if (_currentSceneWasFromAddressables && _currentSceneAddressablesHandle.HasValue)
-        {
-            Addressables.Release(_currentSceneAddressablesHandle.Value);
-            _currentSceneAddressablesHandle = null;
-            _currentSceneWasFromAddressables = false;
-        }
-#endif
-
         if (_previousScene.IsValid() && _previousScene.name != LOADING_SCENE_NAME)
         {
             yield return SceneManager.UnloadSceneAsync(_previousScene);
@@ -195,69 +177,7 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
             yield break;
         }
 
-#if UNITY_EDITOR
-        // Check if scene exists in build settings first
-        bool sceneInBuildSettings = IsSceneInBuildSettings(targetSceneName);
-        
-        if (!sceneInBuildSettings)
-        {
-            // Scene not in build settings, try loading from Addressables
-            string addressablesPath = string.Format(ADDRESSABLES_SCENE_PATH_TEMPLATE, targetSceneName);
-            Debug.Log($"SceneLoader: Scene '{targetSceneName}' not found in build settings. Attempting to load from Addressables: {addressablesPath}");
-
-            var addressablesHandle = Addressables.LoadSceneAsync(addressablesPath, LoadSceneMode.Additive);
-            
-            if (addressablesHandle.IsValid())
-            {
-                while (!addressablesHandle.IsDone)
-                {
-                    float progress = addressablesHandle.PercentComplete;
-                    int progressInt = (int)(progress * PROGRESS_SCENE_DESERIALIZED);
-                    loadingProgress?.Invoke(progressInt);
-                    yield return null;
-                }
-
-                if (addressablesHandle.Status == AsyncOperationStatus.Failed)
-                {
-                    Debug.LogError($"SceneLoader: Failed to load scene '{targetSceneName}' from Addressables at path '{addressablesPath}'. Error: {addressablesHandle.OperationException}");
-                    Addressables.Release(addressablesHandle);
-                    yield break;
-                }
-
-                var sceneInstance = addressablesHandle.Result;
-                var addressablesScene = sceneInstance.Scene;
-                
-                if (!ValidateScene(addressablesScene, targetSceneName))
-                {
-                    Addressables.Release(addressablesHandle);
-                    yield break;
-                }
-
-                // Store handle for current scene (will be released on next scene change)
-                _currentSceneAddressablesHandle = addressablesHandle;
-                _currentSceneWasFromAddressables = true;
-
-                // Create a dummy AsyncOperation for compatibility with existing code
-                _targetSceneAsyncOperation = new DummyAsyncOperation();
-                loadingProgress?.Invoke(PROGRESS_SCENE_DESERIALIZED);
-                yield return null;
-
-                onNewSceneLoad?.Invoke(addressablesScene);
-                yield return null;
-
-                loadingProgress?.Invoke(PROGRESS_SCENE_LOAD);
-                _targetScene = addressablesScene;
-                yield break;
-            }
-            else
-            {
-                Debug.LogError($"SceneLoader: Failed to start loading scene '{targetSceneName}' from Addressables. Scene may not exist at path '{addressablesPath}'.");
-                yield break;
-            }
-        }
-#endif
-
-        // Load from build settings (normal path)
+        // Load from build settings
         var newSceneProcess = SceneManager.LoadSceneAsync(targetSceneName, LoadSceneMode.Additive);
         if (newSceneProcess == null)
         {
@@ -300,17 +220,11 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
 
         Time.timeScale = 0.0f;
         
-        // Check if scene was loaded from Addressables (DummyAsyncOperation means it's already activated)
-        bool isAddressablesScene = _targetSceneAsyncOperation is DummyAsyncOperation;
-        
-        if (!isAddressablesScene)
-        {
-            _targetSceneAsyncOperation.allowSceneActivation = true;
+        _targetSceneAsyncOperation.allowSceneActivation = true;
 
-            while (!_targetSceneAsyncOperation.isDone)
-            {
-                yield return null;
-            }
+        while (!_targetSceneAsyncOperation.isDone)
+        {
+            yield return null;
         }
         
         loadingProgress?.Invoke(PROGRESS_SCENE_ACTIVATION);
@@ -419,26 +333,4 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
         }
         return true;
     }
-
-#if UNITY_EDITOR
-    private bool IsSceneInBuildSettings(string sceneName)
-    {
-        foreach (var scene in EditorBuildSettings.scenes)
-        {
-            if (scene.enabled && System.IO.Path.GetFileNameWithoutExtension(scene.path) == sceneName)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-#endif
-}
-
-// Helper class for Addressables scene loading compatibility
-// Addressables scenes are already loaded and activated when LoadSceneAsync completes
-internal class DummyAsyncOperation : AsyncOperation
-{
-    // This class is only used as a marker to indicate the scene was loaded from Addressables
-    // The actual scene is already loaded and activated, so we don't need to do anything
 }

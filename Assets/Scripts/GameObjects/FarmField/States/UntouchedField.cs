@@ -8,6 +8,11 @@ namespace GameObjects.FarmField.States
     {
         public override bool CanPlant => true;
         public override bool CanDigMound => true;
+        
+        public UntouchedField()
+        {
+            AIPriority = new AIPriority(priority: 50);
+        }
 
         protected override IReadOnlyDictionary<PlayerType, FarmFieldActionMapEntry> GetActionMap()
         {

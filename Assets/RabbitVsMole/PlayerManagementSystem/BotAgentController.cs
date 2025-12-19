@@ -44,11 +44,16 @@ namespace RabbitVsMole
 
         private bool SetupBehaviorGraphAgent()
         {
-
+            
             if (!TryGetComponent<BehaviorGraphAgent>(out _graphAgent))
             {
                 DebugHelper.LogError(this, "Failed to find BehaviorGraphAgent");
                 return false;
+            }
+            
+            if(_playerType == PlayerType.Mole)
+            {
+                _graphAgent.enabled = false;
             }
 
             BlackboardReference blackboard = _graphAgent.BlackboardReference;
