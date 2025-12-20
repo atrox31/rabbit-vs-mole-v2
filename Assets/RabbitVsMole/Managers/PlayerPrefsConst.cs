@@ -1,5 +1,3 @@
-using System.Data;
-
 namespace RabbitVsMole
 {
     public static class PlayerPrefsConst

@@ -7,6 +7,7 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using TMPro;
 using Unity.Behavior;
 using Unity.Properties;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.AI;
 using Action = Unity.Behavior.Action;
@@ -59,16 +60,6 @@ public partial class MoveToTargetAction : Action
 
         GetAvatarInteractonRange(out _playerAvatarInteractionRadius);
 
-        if (_isTargetSupplyObject)
-        {
-            AIDebugOutput.LogMessage($"MoveToTarget {Target?.Name}");
-        }
-        if (_isTargetSupplyObject)
-        {
-            _target.TryGetComponent<FarmField>(out FarmField farmfield);
-            AIDebugOutput.LogMessage($"MoveToTarget {farmfield?.State}");
-        }
-
         DebugPathStatus();
         return Status.Running;
     }
@@ -97,6 +88,16 @@ public partial class MoveToTargetAction : Action
         var targetPosition = IsTargetStaticPosition
             ? TargetStaticPosition
             : _target.transform.position;
+
+        if (_isTargetSupplyObject)
+        {
+            AIDebugOutput.LogMessage($"MoveToTarget {Target?.Name}");
+        }
+        if (_isTargetSupplyObject)
+        {
+            _target.TryGetComponent<FarmField>(out FarmField farmfield);
+            AIDebugOutput.LogMessage($"MoveToTarget {farmfield?.State}");
+        }
 
         switch (CalculatePath(selfPosition, targetPosition))
         {
@@ -128,35 +129,46 @@ public partial class MoveToTargetAction : Action
             return Status.Failure;
         }
 
-        var distance = VectorDistanceMagnitude(_selfPosition, _targetPosition);
-
         if (_isTargetSupplyObject)
-            return HandleSupplyObject(distance);
+            return HandleSupplyObject();
 
         if (_isTargetFarmField)
-            return HandleFarmField(distance);
+            return HandleFarmField();
 
         if (_isTargetOtherPlayer)
-            return HandleOtherPlayer(distance);
+            return HandleOtherPlayer();
 
         return Status.Failure;
     }
 
-    private Status HandleOtherPlayer(float distance)
+    private Status HandleOtherPlayer()
     {
-        return Status.Success;
+        if (_playerAvatar.IsEnemyInRange)
+        {
+            _playerAvatar.SetMoveInput(Vector3.zero);
+            return Status.Success;
+        }
+        else
+        {
+            var pointsOnPath = _path.corners.Length;
+            if (pointsOnPath >= 1)
+            {
+                return MoveToTarget(_path.corners[1]);
+            }
+        }
+        return Status.Failure;
     }
 
-    private float VectorDistanceMagnitude(Vector3 pos1, Vector3 pos2)
+    private bool VectorDistanceMagnitude(Vector3 pos1, Vector3 pos2, float distance)
     {
         Vector2 diff = new Vector2(pos1.x - pos2.x, pos1.z - pos2.z);
-        return diff.sqrMagnitude;
+        return diff.sqrMagnitude < (distance * distance);
     }
 
-    private Status HandleFarmField(float distance)
+    private Status HandleFarmField()
     {
         const float minimuDistance = 0.5f;
-        if (distance < minimuDistance * minimuDistance)
+        if (VectorDistanceMagnitude(_selfPosition, _targetPosition, minimuDistance))
         {
             AIDebugOutput.LogMessage("Destynation reached");
             if (_playerAvatar.IsInteractionAvableDown)
@@ -181,7 +193,7 @@ public partial class MoveToTargetAction : Action
         return Status.Failure;
     }
 
-    Status HandleSupplyObject(float distance)
+    Status HandleSupplyObject()
     {
         float interactiveRadius;
         if (_target.TryGetComponent(out CapsuleCollider capsuleCollider))
@@ -194,7 +206,7 @@ public partial class MoveToTargetAction : Action
             return Status.Failure;
         }
 
-        if (distance < interactiveRadius * interactiveRadius)
+        if (VectorDistanceMagnitude(_selfPosition, _targetPosition, interactiveRadius))
         {
             if (_playerAvatar.IsInteractionAvableFront)
             {

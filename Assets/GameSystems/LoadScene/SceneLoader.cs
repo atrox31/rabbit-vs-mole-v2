@@ -2,7 +2,6 @@ using EasyTransition;
 using Extensions;
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.Events;
@@ -16,8 +15,8 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
     private const string LOADING_SCENE_NAME = "Loading";
     private const string TRANSITION_TEMPLATE_PATH = "Assets/Game Systems/EasyTransitions/Prefabs/TransitionTemplate.prefab";
     
-    // Progress constants
-    private const int PROGRESS_SCENE_DESERIALIZED = 50;
+// Progress constants
+private const int PROGRESS_SCENE_DESERIALIZED = 50;
     private const int PROGRESS_SCENE_LOAD = 60;
     private const int PROGRESS_SCENE_ACTIVATION = 70;
     private const int PROGRESS_MATERIALS_START = 71;
@@ -34,7 +33,7 @@ public class SceneLoader : SingletonMonoBehaviour<SceneLoader>
     private AsyncOperation _targetSceneAsyncOperation;
     private bool _isWaitingForTransition = false;
 
-    private Action OnSceneUnload;
+private Action OnSceneUnload;
 
     private void SetProgressBlocked(bool blocked)
     {

@@ -1,13 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using Interface.Element;
-using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.Localization;
-using UnityEngine.Localization.Settings;
 using UnityEngine.InputSystem;
 using UnityEngine.EventSystems;
 

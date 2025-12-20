@@ -34,8 +34,7 @@ namespace GameObjects.FarmField.States
         /// </remarks>
         AIPriority AIPriority { get; }
 
-        IEnumerator Interact(FarmField field,
-            PlayerType playerType,
+        IEnumerator Interact(PlayerType playerType,
             Func<ActionType, bool> notifyAndCheck,
             Action<IFarmFieldState> onDone);
 

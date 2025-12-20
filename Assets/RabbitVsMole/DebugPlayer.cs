@@ -2,7 +2,6 @@ using PlayerManagementSystem;
 using RabbitVsMole;
 using System;
 using UnityEngine;
-using UnityEngine.Localization;
 
 public class DebugPlayer : MonoBehaviour
 {

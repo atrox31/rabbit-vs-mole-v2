@@ -1,10 +1,8 @@
 using System;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using UnityEngine.Localization;
-using Interface;
 
 namespace Interface.Element
 {

@@ -1,7 +1,4 @@
 using UnityEngine;
-using GameObjects.Misc;
-using Enums;
-using System;
 
 namespace PlayerManagementSystem
 {

@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Threading;
 using Enums;
-using GameObjects.FarmField.Systems;
 using RabbitVsMole;
 using UnityEngine;
 
@@ -25,10 +23,14 @@ namespace GameObjects.FarmField.States
 
         protected abstract IReadOnlyDictionary<PlayerType, FarmFieldActionMapEntry> GetActionMap();
         
-        private CancellationTokenSource _actionCancellationTokenSource;
+        private readonly FarmField _farmField;
+
+        protected FarmFieldStateBase(FarmField farmField)
+        {
+            _farmField = farmField;
+        }
 
         public virtual IEnumerator Interact(
-            FarmField field,
             PlayerType playerType,
             Func<ActionType, bool> notifyAndCheck,
             Action<IFarmFieldState> onDone)
@@ -50,7 +52,7 @@ namespace GameObjects.FarmField.States
             yield return new WaitForSeconds(3);
             
             DebugHelper.Log(null, $"Starting action {action.ActionType}..");
-            var result = action.Func(field);
+            var result = action.Func();
             onDone(result);
             IsBusy = false;
             DebugHelper.Log(null, "Done!");
@@ -58,51 +60,44 @@ namespace GameObjects.FarmField.States
             yield return null;
         }
 
-        public void CancelAction()
+        public virtual void CancelAction() {}
+
+        protected virtual IFarmFieldState Plant()
         {
-            _actionCancellationTokenSource?.Cancel();
+            _farmField.PlantSeed();
+            return new PlantedField(_farmField);
         }
 
-        protected virtual IFarmFieldState Plant(FarmField field)
+        protected virtual IFarmFieldState Water()
         {
-            field.PlantSeed();
-            return new PlantedField();
+            return this;
         }
 
-        protected virtual IFarmFieldState Water(FarmField field)
+        protected virtual IFarmFieldState Harvest()
         {
-            var wateringSystem = new WateringSystem(field);
-            _actionCancellationTokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(1));
-            wateringSystem.StartWatering(null, _actionCancellationTokenSource.Token);
-            // field.StartWatering();
-            return new GrownField();
+            _farmField.HarvestCarrot();
+            return new UntouchedField(_farmField);
         }
 
-        protected virtual IFarmFieldState Harvest(FarmField field)
+        protected virtual IFarmFieldState CollapseMound()
         {
-            field.HarvestCarrot();
-            return new UntouchedField();
+            _farmField.DestroyMound();
+            return new UntouchedField(_farmField);
         }
 
-        protected virtual IFarmFieldState CollapseMound(FarmField field)
+        protected virtual IFarmFieldState DigMound()
         {
-            field.DestroyMound();
-            return new UntouchedField();
+            _farmField.CreateMound();
+            return new MoundedField(_farmField);
         }
 
-        protected virtual IFarmFieldState DigMound(FarmField field)
-        {
-            field.CreateMound();
-            return new MoundedField();
-        }
-
-        protected virtual IFarmFieldState RemoveRoots(FarmField field)
+        protected virtual IFarmFieldState RemoveRoots()
         {
             LogWarning(nameof(RemoveRoots));
             return this;
         }
 
-        protected virtual IFarmFieldState Enter(FarmField field)
+        protected virtual IFarmFieldState Enter()
         {
             LogWarning(nameof(Enter));
             return this;

@@ -51,8 +51,8 @@ namespace GameObjects
         /// <summary>
         /// Rozpoczyna proces wzrostu marchewki.
         /// </summary>
-        /// <param name="parentField">Pole, na którym roœnie marchewka.</param>
-        /// <returns>Zwraca true, jeœli wzrost siê rozpocz¹³, w przeciwnym razie false.</returns>
+        /// <param name="parentField">Pole, na ktï¿½rym roï¿½nie marchewka.</param>
+        /// <returns>Zwraca true, jeï¿½li wzrost siï¿½ rozpoczï¿½ï¿½, w przeciwnym razie false.</returns>
         public override bool Grow(FarmField.FarmField parentField)
         {
             if (_isBeingDestroyed || IsReady) return false;
@@ -62,16 +62,16 @@ namespace GameObjects
                 return false;
             }
 
-            // Zabezpieczenie przed wielokrotnym wywo³aniem wzrostu
+            // Zabezpieczenie przed wielokrotnym wywoï¿½aniem wzrostu
             if (_growthCoroutine != null) return false;
             _growthCoroutine = StartCoroutine(GrowthProcess(parentField));
             return true;
         }
 
         /// <summary>
-        /// Rozpoczyna proces usuwania marchewki (animacjê zanikania).
+        /// Rozpoczyna proces usuwania marchewki (animacjï¿½ zanikania).
         /// </summary>
-        /// <returns>Zwraca true, jeœli proces siê rozpocz¹³, w przeciwnym razie false.</returns>
+        /// <returns>Zwraca true, jeï¿½li proces siï¿½ rozpoczï¿½ï¿½, w przeciwnym razie false.</returns>
         public override bool Delete()
         {
             if (_isBeingDestroyed) return false;
@@ -91,9 +91,9 @@ namespace GameObjects
         }
 
         /// <summary>
-        /// Ustawia pocz¹tkow¹ i koñcow¹ pozycjê marchewki na podstawie pola, na którym siê pojawia.
+        /// Ustawia poczï¿½tkowï¿½ i koï¿½cowï¿½ pozycjï¿½ marchewki na podstawie pola, na ktï¿½rym siï¿½ pojawia.
         /// </summary>
-        /// <param name="spawnPosition">Pozycja, w której obiekt jest tworzony.</param>
+        /// <param name="spawnPosition">Pozycja, w ktï¿½rej obiekt jest tworzony.</param>
    
         public override void SetPosition(Vector3 spawnPosition)
         {
@@ -121,7 +121,7 @@ namespace GameObjects
             float elapsedTime = 0f;
             while (elapsedTime < _growthDuration)
             {
-                // Wstrzymujemy wzrost, jeœli pole nie ma wystarczaj¹cej iloœci wody
+                // Wstrzymujemy wzrost, jeï¿½li pole nie ma wystarczajï¿½cej iloï¿½ci wody
                 if (!parentField.HasWater)
                 {
                     yield return null;
@@ -138,7 +138,7 @@ namespace GameObjects
             }
 
             IsReady = true;
-            SetCarrotPosition(1.0f); // Zapewniamy, ¿e marchewka jest w pe³ni uformowana
+            SetCarrotPosition(1.0f); // Zapewniamy, ï¿½e marchewka jest w peï¿½ni uformowana
 
             if (_grownCarrotParticleEffect != null) _grownCarrotParticleEffect.Play();
             if (parentField.HasLinkedField) parentField.GetLinkedField().CreateCarrot();

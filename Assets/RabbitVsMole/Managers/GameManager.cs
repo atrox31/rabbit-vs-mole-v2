@@ -4,14 +4,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
-using System.Reflection;
-using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
 using WalkingImmersionSystem;
-using static RabbitVsMole.GameManager;
 
 namespace RabbitVsMole
 {

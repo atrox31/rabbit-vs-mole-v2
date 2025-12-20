@@ -18,7 +18,7 @@ namespace GameObjects
 
         IEnumerator EnedueLikeFakeIWorkingState(Func<ActionType, bool> setActionType, Action<bool> changeIsBusy)
         {
-            setActionType(ActionType.Harvest);
+            setActionType(ActionType.PickSeed);
             yield return new WaitForSeconds(2f);
             changeIsBusy?.Invoke(true);
         }

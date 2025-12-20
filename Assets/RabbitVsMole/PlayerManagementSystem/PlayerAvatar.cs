@@ -1,9 +1,12 @@
 using UnityEngine;
-using GameObjects.Misc;
 using Enums;
-using System;
+using GameObjects.Base;
+using GameObjects.FarmField;
+using GameObjects.FarmField.States;
+using GameObjects;
 using PlayerManagementSystem;
 using System.Collections;
+using System;
 
 namespace RabbitVsMole
 {
@@ -23,10 +26,12 @@ namespace RabbitVsMole
         [Header("Interaction Settings")]
         [SerializeField] private float _raycastDistance = 3f;
         [SerializeField] private LayerMask interactionLayerMask = -1;
+        [SerializeField] private ParticleSystem _hitParticles;
 
         private Rigidbody _rigidbody;
         private SpeedController _speedController;
         private Animator _animator;
+        public Backpack Backpack {  get; private set; } = new Backpack();
         private bool _haveCarrot;
         public bool IsHaveCarrot => _haveCarrot;
 
@@ -39,9 +44,13 @@ namespace RabbitVsMole
         private IInteractable _interactableOnFront;
         private IInteractable _interactableDown;
         private IInteractable _interactableNearby;
+        private PlayerAvatar _enemy;
+        public PlayerAvatar EnemyInRange => _enemy;
+        public bool EnemyIsInRange => _enemy != null;
 
         public bool IsInteractionAvableFront => _interactableOnFront != null;
         public bool IsInteractionAvableDown => _interactableDown != null;
+        public bool IsEnemyInRange => _enemy != null;
 
         public IInteractable NearbyInteractable => _interactableNearby;
 
@@ -77,6 +86,31 @@ namespace RabbitVsMole
         private void FixedUpdate()
         {
             HandleMovement();
+        }
+
+        private void OnTriggerEnter(Collider other)
+        {
+            if (other.isTrigger) return;
+            if (other.gameObject.TryGetComponent(out PlayerAvatar avatar))
+            {
+                if(avatar.playerType != playerType)
+                {
+                    _enemy = avatar;
+                }
+            }
+        }
+
+        private void OnTriggerExit(Collider other)
+        {
+            if (other.isTrigger) return;
+            if (_enemy != null 
+                && other.gameObject.TryGetComponent(out PlayerAvatar avatar))
+            {
+                if (avatar.playerType != playerType)
+                {
+                    _enemy = null;
+                }
+            }
         }
 
         private void ScanForInteractions()
@@ -131,14 +165,31 @@ namespace RabbitVsMole
         /// <summary>
         /// Tries to perform special action
         /// </summary>
-        public void TryActionSpecial()
+        public bool TryActionSpecial()
         {
             if (_isPerformingAction)
-                return;
+                return false;
 
-            // Special action doesn't require raycast - find nearest interactable
-            // IInteractable interactable = FindNearestInteractable();
-            // TODO: custom actions
+            if(EnemyIsInRange)
+            {
+                StartCoroutine(AttackCoorutine());
+                return true;
+            }
+            return false;
+        }
+
+        IEnumerator AttackCoorutine()
+        {
+            _isPerformingAction = true;
+            TriggerActionAnimation(ActionType.CollapseMound);
+            _enemy.Hit();
+            yield return new WaitForSeconds(2);
+            _isPerformingAction = false;
+        }
+
+        private void Hit()
+        {
+            _hitParticles?.Play();
         }
 
         private void HandleMovement()
@@ -174,8 +225,50 @@ namespace RabbitVsMole
             if (_isPerformingAction || interactable is null)
                 return false;
 
+            if (_haveCarrot && interactable is not StorageBase)
+                return false;
+
+            if(!CheckActionCost(interactable)) 
+                return false;
+
             _isPerformingAction = true;
             interactable.Interact(playerType, OnActionRequested, OnActionCompleted);
+            return true;
+        }
+
+        private bool CheckActionCost(IInteractable interactable)
+        {
+            /// THIS IS TEMPOLARY
+            // cost of things myst be moved to IInteractable
+            // i wrote this to test interactions and prevent conflicts
+            switch (playerType)
+            {
+                case PlayerType.Rabbit:
+                    {
+                        if(interactable is FarmField field)
+                        {
+                            switch (field.State)
+                            {
+                                case UntouchedField:
+                                    return Backpack.Seed.TryGet();
+
+                                case PlantedField:
+                                    return Backpack.Water.TryGet();
+                            }
+                        }
+
+                        if(interactable is FarmSeedSource)
+                            return Backpack.Seed.TryInsert(3);
+
+                        if(interactable is FarmWaterSource)
+                            return Backpack.Water.TryInsert(5);
+                    }
+                    break;
+                case PlayerType.Mole:
+
+                    break;
+            }
+
             return true;
         }
 
@@ -241,6 +334,7 @@ namespace RabbitVsMole
                     ActionType.Harvest => "Rabbit_Harvest",
                     ActionType.RemoveRoots => "Rabbit_RemoveRoots",
                     ActionType.CollapseMound => "Rabbit_CollapseMound",
+                    ActionType.PickSeed => "Rabbit_PickSeed",
                     _ => string.Empty
                 };
             }

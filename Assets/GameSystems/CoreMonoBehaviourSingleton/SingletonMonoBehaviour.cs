@@ -1,6 +1,3 @@
-using System.Linq;
-using UnityEngine;
-
 /// <summary>
 /// Generic Singleton implementation that forces core components to implement
 /// the CoreBootstrapComponent base class logic.

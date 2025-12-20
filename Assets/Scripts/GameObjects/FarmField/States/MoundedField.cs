@@ -6,13 +6,13 @@ namespace GameObjects.FarmField.States
 {
     public sealed class MoundedField : FarmFieldStateBase
     {
-        public override bool CanCollapseMound => true;
-        public override bool CanEnterMound => true;
-        
-        public MoundedField()
+        public MoundedField(FarmField farmField) : base(farmField)
         {
             AIPriority = new AIPriority(priority: 60, critical: 80, conditional: 3);
         }
+
+        public override bool CanCollapseMound => true;
+        public override bool CanEnterMound => true;
 
         protected override IReadOnlyDictionary<PlayerType, FarmFieldActionMapEntry> GetActionMap()
         {

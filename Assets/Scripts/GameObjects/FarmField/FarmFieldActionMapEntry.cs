@@ -7,9 +7,9 @@ namespace GameObjects.FarmField
     public class FarmFieldActionMapEntry
     {
         public ActionType ActionType { get; }
-        public Func<FarmField, IFarmFieldState> Func { get; }
+        public Func<IFarmFieldState> Func { get; }
 
-        public FarmFieldActionMapEntry(ActionType actionType, Func<FarmField, IFarmFieldState> func)
+        public FarmFieldActionMapEntry(ActionType actionType, Func<IFarmFieldState> func)
         {
             ActionType = actionType;
             Func = func;

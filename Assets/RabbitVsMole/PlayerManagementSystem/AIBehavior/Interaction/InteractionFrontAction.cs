@@ -2,16 +2,16 @@ using PlayerManagementSystem.AIBehaviour.Common;
 using RabbitVsMole;
 using System;
 using Unity.Behavior;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Properties;
 using UnityEngine;
 using Action = Unity.Behavior.Action;
 
 [Serializable, GeneratePropertyBag]
-[NodeDescription(name: "InteractionFront", story: "[AvatarOfPlayer] try to interact with front object and increment [int] value", category: "Action", id: "da692d53f644660a5f75b671f9d3449f")]
+[NodeDescription(name: "InteractionFront", story: "[AvatarOfPlayer] try to interact with front object", category: "Action", id: "da692d53f644660a5f75b671f9d3449f")]
 public partial class InteractionFrontAction : Action
 {
     [SerializeReference] public BlackboardVariable<GameObject> AvatarOfPlayer;
-    [SerializeReference] public BlackboardVariable<int> Int;
     PlayerAvatar _playerAvatar;
 
     protected override Status OnStart()
@@ -30,8 +30,22 @@ public partial class InteractionFrontAction : Action
         if (_playerAvatar.IsPerformingAction)
             return Status.Running;
 
-        Int.Value += 3;
-        return Status.Success;
+        if (GameObject.TryGetComponent<BehaviorGraphAgent>(out var agent))
+        {
+            var blackboard = agent.BlackboardReference;
+            switch (_playerAvatar.PlayerType)
+            {
+                case PlayerType.Rabbit:
+                    blackboard.SetVariableValue("SeedCount", _playerAvatar.Backpack.Seed.Count);
+                    blackboard.SetVariableValue("WaterCount", _playerAvatar.Backpack.Water.Count);
+                    break;
+                case PlayerType.Mole:
+                    break;
+            }
+            return Status.Success;
+        }
+
+        return Status.Failure;
     }
 }
 

@@ -12,8 +12,6 @@ namespace GameObjects.FarmField
 {
     public class FarmField : FieldBase, IInteractable
     {
-        public IFarmFieldState State { get; private set; } = new UntouchedField();
-
         // Water - Data
         [Header("Water Settings")]
         [SerializeField] private float _maxWaterLevel = 2.0f;
@@ -43,6 +41,7 @@ namespace GameObjects.FarmField
         [SerializeField] private float _rootsChance = 0.333f;
         private GameObject _roots;
 
+        public IFarmFieldState State { get; private set; }
         public bool HasWater => _currentWaterLevel > 0;
         public bool IsWatering => _wateringCoroutine != null;
         public bool CanWaterField => _currentWaterLevel < _maxWaterLevel && !HaveRoots;
@@ -63,6 +62,11 @@ namespace GameObjects.FarmField
             _waterFillIndicator.fillAmount = 0.0f;
             _waterFillIndicator.gameObject.SetActive(false);
             _modelMeshFilter = GetComponentInChildren<MeshFilter>();
+        }
+
+        private void Start()
+        {
+            State = new UntouchedField(this);
         }
 
         private void Update()
@@ -96,9 +100,7 @@ namespace GameObjects.FarmField
 
             changeIsBusy(true);
 
-            StartCoroutine(State.Interact(
-                this,
-                type,
+            StartCoroutine(State.Interact(type,
                 setActionType,
                 newState =>
                 {

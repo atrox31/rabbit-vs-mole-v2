@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using System.Threading;
 using UnityEngine;
@@ -7,7 +6,7 @@ namespace GameObjects.FarmField.Systems
 {
     public class WateringSystem
     {
-        private readonly FarmField _field;
+        private readonly FarmField _farmField;
         private readonly float _wateringRate;
         private readonly float _maxWaterLevel;
 
@@ -15,21 +14,21 @@ namespace GameObjects.FarmField.Systems
         private Coroutine _coroutine;
 
         public WateringSystem(
-            FarmField field,
+            FarmField farmField,
             float wateringRate = 0.1f,
             float maxWaterLevel = 1)
         {
-            _field = field;
+            _farmField = farmField;
             _wateringRate = wateringRate;
             _maxWaterLevel = maxWaterLevel;
         }
 
         public bool IsWatering => _coroutine != null;
 
-        private float WaterLevel
+        public float WaterLevel
         {
             get => _waterLevel;
-            set
+            private set
             {
                 _waterLevel = value;
                 
@@ -37,15 +36,18 @@ namespace GameObjects.FarmField.Systems
                     _waterLevel = _maxWaterLevel;
                 
                 var fillAmount = Mathf.Clamp01(_waterLevel / _maxWaterLevel);
-                _field.WaterIndicator.fillAmount = fillAmount;
+                _farmField.WaterIndicator.fillAmount = fillAmount;
             }
         }
 
-        public void StartWatering(
-            Action<float> onWaterLevelChanged,
-            CancellationToken cancellationToken)
+        public void DrainWater(float amount)
         {
-            _coroutine = _field.StartCoroutine(WateringProcess(cancellationToken));
+            WaterLevel -= amount;
+        }
+
+        public void StartWatering(CancellationToken cancellationToken)
+        {
+            _coroutine = _farmField.StartCoroutine(WateringProcess(cancellationToken));
         }
 
         private IEnumerator WateringProcess(CancellationToken cancellationToken)

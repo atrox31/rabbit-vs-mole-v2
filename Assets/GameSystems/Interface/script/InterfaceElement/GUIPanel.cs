@@ -7,7 +7,6 @@ using UnityEngine.Localization;
 using UnityEngine.Localization.Components;
 using System.Collections;
 using System.Linq;
-using System;
 
 namespace Interface
 {

@@ -9,6 +9,7 @@
         DigMound = 4,
         CollapseMound = 5,
         RemoveRoots = 6,
-        EnterMound = 7
+        EnterMound = 7,
+        PickSeed = 8
     }
 }
