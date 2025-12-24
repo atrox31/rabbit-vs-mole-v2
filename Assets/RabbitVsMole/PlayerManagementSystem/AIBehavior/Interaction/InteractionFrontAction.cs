@@ -1,4 +1,5 @@
 using PlayerManagementSystem.AIBehaviour.Common;
+using PlayerManagementSystem.Backpack;
 using RabbitVsMole;
 using System;
 using Unity.Behavior;
@@ -33,6 +34,7 @@ public partial class InteractionFrontAction : Action
         if (GameObject.TryGetComponent<BehaviorGraphAgent>(out var agent))
         {
             var blackboard = agent.BlackboardReference;
+            blackboard.SetVariableValue("HaveCarrot", _playerAvatar.IsHaveCarrot);
             switch (_playerAvatar.PlayerType)
             {
                 case PlayerType.Rabbit:

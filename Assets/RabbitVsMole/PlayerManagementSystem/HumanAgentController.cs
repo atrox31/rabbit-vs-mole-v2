@@ -1,8 +1,13 @@
+using GameSystems;
 using PlayerManagementSystem;
+using RabbitVsMole.Events;
+using System.Collections;
 using System.Collections.Generic;
 using Unity.Cinemachine;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 using static RabbitVsMole.GameManager;
 
 namespace RabbitVsMole
@@ -11,6 +16,7 @@ namespace RabbitVsMole
     {
         private PlayerType _playerType;
         private CinemachineCamera _cinemachineCamera;
+        [SerializeField] Image _blackMask;
 
         public static void CreateInstance(PlayGameSettings playGameSettings, PlayerType playerType)
         {
@@ -130,5 +136,46 @@ namespace RabbitVsMole
             DebugHelper.Log(this, "OnAction_special");
             _playerAvatar?.TryActionSpecial();
         }
+
+        private void OnEnable()
+        {
+            EventBus.Subscribe<MoleTravelEvent>(MoleTravel);
+        }
+
+        private void OnDisable() 
+        {
+            EventBus.Unsubscribe<MoleTravelEvent>(MoleTravel);
+        }
+
+        private void MoleTravel(MoleTravelEvent moleTravelEvent) =>
+            StartCoroutine(MoleTravelInternal(moleTravelEvent));
+
+        private IEnumerator MoleTravelInternal(MoleTravelEvent moleTravelEvent)
+        {
+            float moveInElapsedTime = 0f; 
+            Color maskColor = _blackMask.color;
+
+            maskColor.a = 0f;
+            while (moveInElapsedTime < moleTravelEvent.EnterTime)
+            {
+                moveInElapsedTime += Time.deltaTime;
+                var progress = Mathf.Clamp01(moveInElapsedTime / moleTravelEvent.EnterTime);
+                maskColor.a = progress;
+                yield return null;
+            }
+            maskColor.a = 1f;
+            _playerAvatar.transform.position = moleTravelEvent.NewLocation + new Vector3(0f, .5f, 0f);
+
+            float moveOutElapsedTime = 0f;
+            while (moveOutElapsedTime < moleTravelEvent.ExitTime)
+            {
+                moveOutElapsedTime += Time.deltaTime;
+                var progress = Mathf.Clamp01(moveOutElapsedTime / moleTravelEvent.ExitTime);
+                maskColor.a = progress;
+                yield return null;
+            }
+            maskColor.a = 0f;
+        }
+
     }
 }

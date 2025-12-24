@@ -1,12 +1,16 @@
-using UnityEngine;
-using Enums;
-using GameObjects.Base;
-using GameObjects.FarmField;
-using GameObjects.FarmField.States;
-using GameObjects;
+using Extensions;
+using GameSystems;
 using PlayerManagementSystem;
-using System.Collections;
+using PlayerManagementSystem.Backpack;
+using RabbitVsMole.Events;
+using RabbitVsMole.InteractableGameObject.Base;
+using RabbitVsMole.InteractableGameObject.Enums;
+using RabbitVsMole.InteractableGameObject.Field;
+using RabbitVsMole.InteractableGameObject.Field.Base;
 using System;
+using System.Collections;
+using UnityEngine;
+using WalkingImmersionSystem;
 
 namespace RabbitVsMole
 {
@@ -31,9 +35,8 @@ namespace RabbitVsMole
         private Rigidbody _rigidbody;
         private SpeedController _speedController;
         private Animator _animator;
-        public Backpack Backpack {  get; private set; } = new Backpack();
-        private bool _haveCarrot;
-        public bool IsHaveCarrot => _haveCarrot;
+        public Backpack Backpack { get; private set; }
+        public bool IsHaveCarrot => Backpack.Carrot.Count == 1;
 
         // Movement input (set externally by controller)
         private Vector2 _moveInput;
@@ -41,18 +44,19 @@ namespace RabbitVsMole
         // Action States
         private bool _isPerformingAction;
 
-        private IInteractable _interactableOnFront;
-        private IInteractable _interactableDown;
-        private IInteractable _interactableNearby;
+        private IInteractableGameObject _interactableOnFront;
+        private IInteractableGameObject _interactableDown;
+        private IInteractableGameObject _interactableNearby;
         private PlayerAvatar _enemy;
         public PlayerAvatar EnemyInRange => _enemy;
         public bool EnemyIsInRange => _enemy != null;
+        private Action _currentCancelAction;
 
         public bool IsInteractionAvableFront => _interactableOnFront != null;
         public bool IsInteractionAvableDown => _interactableDown != null;
         public bool IsEnemyInRange => _enemy != null;
 
-        public IInteractable NearbyInteractable => _interactableNearby;
+        public IInteractableGameObject NearbyInteractable => _interactableNearby;
 
         // Animation Parameters
         private static readonly int IsWalkingHash = Animator.StringToHash("IsWalking");
@@ -75,6 +79,19 @@ namespace RabbitVsMole
             }
             avatarStats = new AvatarStats(_baseWalkSpeed);
             _speedController = new SpeedController(avatarStats);
+            Backpack = new Backpack(playerType);
+        }
+
+        public void UpdateInventory()
+        {
+            // update inventory to proper set up GameUI
+            // dirty but work :)
+            Backpack.Dirt.TryInsert(0);
+            Backpack.Seed.TryInsert(0);
+            Backpack.Water.TryInsert(0);
+            Backpack.Dirt.TryGet(0);
+            Backpack.Seed.TryGet(0);
+            Backpack.Water.TryGet(0);
         }
 
         private void Update()
@@ -93,7 +110,7 @@ namespace RabbitVsMole
             if (other.isTrigger) return;
             if (other.gameObject.TryGetComponent(out PlayerAvatar avatar))
             {
-                if(avatar.playerType != playerType)
+                if (avatar.playerType != playerType)
                 {
                     _enemy = avatar;
                 }
@@ -103,7 +120,7 @@ namespace RabbitVsMole
         private void OnTriggerExit(Collider other)
         {
             if (other.isTrigger) return;
-            if (_enemy != null 
+            if (_enemy != null
                 && other.gameObject.TryGetComponent(out PlayerAvatar avatar))
             {
                 if (avatar.playerType != playerType)
@@ -115,14 +132,22 @@ namespace RabbitVsMole
 
         private void ScanForInteractions()
         {
-            if (IsAnyInteractableNearby() == false)
+            var currentFront = FindInteractableWithRaycast(transform.forward, Color.yellow);
+            var currentDown = FindInteractableWithRaycast(Vector3.down, Color.red);
+
+            if (_interactableOnFront != currentFront)
             {
-                _interactableOnFront = null;
-                _interactableDown = null;
-                return;
+                _interactableOnFront?.LightDown();
+                _interactableOnFront = currentFront;
+                _interactableOnFront?.LightUp();
             }
-            _interactableOnFront = FindInteractableWithRaycast(transform.forward, Color.yellow);
-            _interactableDown = FindInteractableWithRaycast(Vector3.down, Color.red);
+
+            if (_interactableDown != currentDown)
+            {
+                _interactableDown?.LightDown();
+                _interactableDown = currentDown;
+                _interactableDown?.LightUp();
+            }
         }
 
         /// <summary>
@@ -170,7 +195,7 @@ namespace RabbitVsMole
             if (_isPerformingAction)
                 return false;
 
-            if(EnemyIsInRange)
+            if (EnemyIsInRange)
             {
                 StartCoroutine(AttackCoorutine());
                 return true;
@@ -181,7 +206,7 @@ namespace RabbitVsMole
         IEnumerator AttackCoorutine()
         {
             _isPerformingAction = true;
-            TriggerActionAnimation(ActionType.CollapseMound);
+            TriggerActionAnimation(ActionType.CollapseMound, 2f);
             _enemy.Hit();
             yield return new WaitForSeconds(2);
             _isPerformingAction = false;
@@ -189,7 +214,7 @@ namespace RabbitVsMole
 
         private void Hit()
         {
-            _hitParticles?.Play();
+            _hitParticles.SafePlay();
         }
 
         private void HandleMovement()
@@ -220,98 +245,53 @@ namespace RabbitVsMole
             }
         }
 
-        private bool PerformInteraction(IInteractable interactable)
+        private bool PerformInteraction(IInteractableGameObject interactable)
         {
             if (_isPerformingAction || interactable is null)
                 return false;
 
-            if (_haveCarrot && interactable is not StorageBase)
+            if (IsHaveCarrot && interactable is not StorageBase)
                 return false;
 
-            if(!CheckActionCost(interactable)) 
-                return false;
+            _isPerformingAction = interactable.Interact(
+                this,
+                OnActionRequested,
+                OnActionCompleted,
+                out _currentCancelAction);
 
-            _isPerformingAction = true;
-            interactable.Interact(playerType, OnActionRequested, OnActionCompleted);
-            return true;
+            return _isPerformingAction;
         }
 
-        private bool CheckActionCost(IInteractable interactable)
+        private float OnActionRequested(ActionType requestedAction)
         {
-            /// THIS IS TEMPOLARY
-            // cost of things myst be moved to IInteractable
-            // i wrote this to test interactions and prevent conflicts
-            switch (playerType)
+            var actionTIme = GetActionTime(requestedAction);
+            TriggerActionAnimation(requestedAction, actionTIme);
+            return actionTIme;
+        }
+
+        private float GetActionTime(ActionType actionType)
+        {
+            return actionType switch
             {
-                case PlayerType.Rabbit:
-                    {
-                        if(interactable is FarmField field)
-                        {
-                            switch (field.State)
-                            {
-                                case UntouchedField:
-                                    return Backpack.Seed.TryGet();
-
-                                case PlantedField:
-                                    return Backpack.Water.TryGet();
-                            }
-                        }
-
-                        if(interactable is FarmSeedSource)
-                            return Backpack.Seed.TryInsert(3);
-
-                        if(interactable is FarmWaterSource)
-                            return Backpack.Water.TryInsert(5);
-                    }
-                    break;
-                case PlayerType.Mole:
-
-                    break;
-            }
-
-            return true;
+                ActionType.PlantSeed => GameInspector.GameStats.TimeActionPlantSeed,
+                ActionType.WaterField => GameInspector.GameStats.TimeActionWaterField,
+                ActionType.HarvestCarrot => GameInspector.GameStats.TimeActionHarvestCarrot,
+                ActionType.RemoveRoots => GameInspector.GameStats.TimeActionRemoveRoots,
+                ActionType.StealCarrotFromUndergroundField => GameInspector.GameStats.TimeActionStealCarrotFromUndergroundField,
+                ActionType.DigUndergroundWall => GameInspector.GameStats.TimeActionDigUndergroundWall,
+                ActionType.DigMound => GameInspector.GameStats.TimeActionDigMound,
+                ActionType.CollapseMound => GameInspector.GameStats.TimeActionCollapseMound,
+                ActionType.EnterMound => GameInspector.GameStats.TimeActionEnterMound,
+                ActionType.PickSeed => GameInspector.GameStats.TimeActionPickSeed,
+                ActionType.PickWater => GameInspector.GameStats.TimeActionPickWater,
+                ActionType.PutDownCarrot => GameInspector.GameStats.TimeActionPutDownCarrot,
+                ActionType.StealCarrotFromStorage => GameInspector.GameStats.TimeActionStealCarrotFromStorage,
+                ActionType.None => 0f,
+                _ => 0f
+            };
         }
 
-        private bool OnActionRequested(ActionType requestedAction)
-        {
-            // Trigger animation for the requested action
-            TriggerActionAnimation(requestedAction);
-            return true;
-        }
-
-        private void OnActionCompleted(bool success)
-        {
-            _isPerformingAction = false;
-        }
-
-        private IInteractable FindInteractableWithRaycast(Vector3 direction, Color color)
-        {
-            Vector3 rayOrigin = transform.position;
-            Debug.DrawRay(rayOrigin, direction, color, 1.0f);
-
-            if (Physics.Raycast(rayOrigin, direction, out RaycastHit hit, _raycastDistance, interactionLayerMask,QueryTriggerInteraction.Collide))
-            {
-                return hit.collider.GetComponent<IInteractable>();
-            }
-
-            return null;
-        }
-
-        private bool IsAnyInteractableNearby()
-        {
-            Collider[] colliders = Physics.OverlapSphere(transform.position, _raycastDistance, interactionLayerMask);
-            foreach (var collider in colliders)
-            {
-                if (collider.TryGetComponent<IInteractable>(out _interactableNearby))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private void TriggerActionAnimation(ActionType actionType)
+        private void TriggerActionAnimation(ActionType actionType, float actionTime)
         {
             if (_animator == null)
                 return;
@@ -323,32 +303,44 @@ namespace RabbitVsMole
             }
         }
 
-        private string GetAnimationTriggerName(ActionType actionType)
+        private void OnActionCompleted()
         {
-            if (playerType == PlayerType.Rabbit)
-            {
-                return actionType switch
-                {
-                    ActionType.Plant => "Rabbit_Plant",
-                    ActionType.Water => "Rabbit_Water",
-                    ActionType.Harvest => "Rabbit_Harvest",
-                    ActionType.RemoveRoots => "Rabbit_RemoveRoots",
-                    ActionType.CollapseMound => "Rabbit_CollapseMound",
-                    ActionType.PickSeed => "Rabbit_PickSeed",
-                    _ => string.Empty
-                };
-            }
-            else
-            {
-                return actionType switch
-                {
-                    ActionType.DigMound => "Mole_DigMound",
-                    ActionType.CollapseMound => "Mole_CollapseMound",
-                    ActionType.RemoveRoots => "Mole_RemoveRoots",
-                    _ => string.Empty
-                };
-            }
+            _isPerformingAction = false;
         }
+
+        private IInteractableGameObject FindInteractableWithRaycast(Vector3 direction, Color color)
+        {
+            Vector3 rayOrigin = transform.position;
+            Debug.DrawRay(rayOrigin, direction * _raycastDistance, color);
+
+            if (Physics.Raycast(rayOrigin, direction, out RaycastHit hit, _raycastDistance, interactionLayerMask, QueryTriggerInteraction.Collide))
+            {
+                if (hit.collider.TryGetComponent<IInteractableGameObject>(out var interactable))
+                {
+                    return interactable;
+                }
+            }
+
+            return null;
+        }
+
+        private bool IsAnyInteractableNearby()
+        {
+            Collider[] colliders = Physics.OverlapSphere(transform.position, _raycastDistance, interactionLayerMask);
+            foreach (var collider in colliders)
+            {
+                if (collider.TryGetComponent<IInteractableGameObject>(out _interactableNearby))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+
+        private string GetAnimationTriggerName(ActionType actionType) => 
+            $"{playerType}_{actionType}";
 
         private void UpdateAnimations()
         {
@@ -379,6 +371,39 @@ namespace RabbitVsMole
 
                 _animator.SetFloat(BlendHash, speedNormalized);
             }
+        }
+
+        public void MoveToLinkedField(InteractableGameObject.Base.FieldBase linkedField) =>
+            StartCoroutine(MoveToLinkedFieldInternal(linkedField));
+
+        private IEnumerator MoveToLinkedFieldInternal(FieldBase linkedField)
+        {
+            var moveInActionTime = GetActionTime(ActionType.EnterMound);
+            var moveOutActionTime = GetActionTime(ActionType.ExitMound);
+            var newLocation = linkedField.gameObject.transform.position;
+            EventBus.Publish(new MoleTravelEvent() { EnterTime = moveInActionTime, ExitTime = moveOutActionTime, NewLocation = newLocation });
+
+            float moveInElapsedTime = 0f;
+            while (moveInElapsedTime < moveInActionTime)
+            {
+                moveInElapsedTime += Time.deltaTime;
+                yield return null;
+            }
+
+            yield return null;
+            SetupNewTerrain();
+        }
+
+        private void SetupNewTerrain()
+        {
+            var walkingImmersion = GetComponentInChildren<WalkingImmersionSystemController>();
+            if (walkingImmersion == null)
+            {
+                DebugHelper.LogError(this, "WalkingImmersionSystemController not found");
+                return;
+            }
+            if (!walkingImmersion.SetupTerrain())
+                return;
         }
     }
 }

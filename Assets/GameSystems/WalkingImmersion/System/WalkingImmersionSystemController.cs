@@ -1,5 +1,6 @@
 using Extensions;
 using System.Collections.Generic;
+using System.Linq;
 using Unity.VisualScripting;
 using UnityEngine;
 
@@ -122,9 +123,9 @@ namespace WalkingImmersionSystem
             return true;
         }
 
-        private bool SetupTerrain()
+        public bool SetupTerrain()
         {
-            var terrain = FindFirstObjectByType<Terrain>();
+            Terrain terrain = gameObject.FindNearest<Terrain>();
             if (terrain == null)
             {
                 DebugHelper.LogWarning(this, "Cannot find terrain in scene, system will not work.");
@@ -308,7 +309,7 @@ namespace WalkingImmersionSystem
             }
             
             // Play the particle system
-            particle.Play();
+            particle.SafePlay();
         }
     }
 }

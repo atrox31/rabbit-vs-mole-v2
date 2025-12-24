@@ -417,6 +417,7 @@ namespace RabbitVsMole
                 {
                     DebugHelper.Log(Instance, "Play game -> On Scene Load");
                     Instantiate(Instance.GameInspectorPrefab, scene);
+                    GameInspector.InicializeGameStats(null);
                     GameInspector.CurrentGameMode = playGameSettings.gameMode;
                     GameInspector.CurrentPlayerOnStory = playGameSettings.playerTypeForStory;
                     GameInspector.RabbitControlAgent = playGameSettings.GetPlayerControlAgent(PlayerType.Rabbit);
@@ -430,7 +431,7 @@ namespace RabbitVsMole
                 },
                 OnSceneShow: () =>
                 {
-                    GameInspector.StartGameTimer();
+                    GameInspector.StartGame();
                 });
 
             DebugHelper.Log(Instance, $"GameManager: Starting game for {playGameSettings.day}, Map: {GetSceneTypeDescription(playGameSettings.map)}[{playGameSettings.map}], Rabbit: {playGameSettings.GetPlayerControlAgent(PlayerType.Rabbit)}, Mole: {playGameSettings.GetPlayerControlAgent(PlayerType.Mole)}");

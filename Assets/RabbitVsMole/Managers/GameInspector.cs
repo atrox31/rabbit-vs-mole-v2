@@ -1,16 +1,43 @@
+using GameSystems;
+using NUnit.Framework;
 using PlayerManagementSystem;
+using RabbitVsMole.Events;
+using RabbitVsMole.GameData;
+using RabbitVsMole.GameData.Mutator;
 using System;
 using System.Collections;
+using System.Collections.Generic;
+using UnityEditor.Localization.Plugins.XLIFF.V12;
 using UnityEngine;
 
 namespace RabbitVsMole
 {
+
     public class GameInspector : MonoBehaviour
     {
+        private static float LAST_SECONDS_IN_GAME = 10f;
         private static GameInspector _instance;
         public static bool IsActive => _instance != null;
 
         GameModeData _currentGameMode;
+        GameStats _currentGameStats;
+        public static GameStats GameStats =>
+            _instance._currentGameStats;
+
+        internal static void InicializeGameStats(List<MutatorSO> mutatotList)
+        {
+            if(!IsActive) return;
+
+            _instance._currentGameStats = new GameStats();
+            if(mutatotList != null && mutatotList.Count > 0)
+            {
+                foreach (var item in mutatotList)
+                {
+                    item.Apply(_instance._currentGameStats);
+                }
+            }
+        }
+
         void Awake()
         {
             if (_instance != null && _instance != this)
@@ -21,6 +48,11 @@ namespace RabbitVsMole
             DebugHelper.Log(this, "GameInspektor is alive!");
             _instance = this;
         }
+
+        [SerializeField] GameUI gameUI;
+        private GameUI _instanceOoGameUI;
+        public static GameUI GameUI =>
+            _instance?._instanceOoGameUI;
 
         public static GameModeData CurrentGameMode
         {
@@ -93,7 +125,6 @@ namespace RabbitVsMole
 
         private void OnDestroy()
         {
-            var a = Enum.GetValues(typeof(PlayerType)).Length;
             if (_instance == this)
             {
                 _instance = null;
@@ -111,7 +142,7 @@ namespace RabbitVsMole
             }
         }
 
-        public static void StartGameTimer()
+        private void StartGameTimer()
         {
             if (_instance == null)
             {
@@ -123,8 +154,7 @@ namespace RabbitVsMole
                 _instance.StopCoroutine(_instance._gameTimerCoroutine);
             }
 
-            if (CurrentGameMode.timeLimitInMinutes > 0)
-                _instance._gameTimerCoroutine = _instance.StartCoroutine(_instance.GameTimer());
+            _instance._gameTimerCoroutine = _instance.StartCoroutine(_instance.GameTimer());
         }
 
         IEnumerator GameTimer()
@@ -141,23 +171,53 @@ namespace RabbitVsMole
                 yield break;
             }
 
-            if (_currentGameMode.timeLimitInMinutes <= 0.1f)
-                yield break;
-
+            bool haveTimeLimit = _currentGameMode.timeLimitInMinutes > 0f;
             float timeLimitInSeconds = _currentGameMode.timeLimitInMinutes * 60f;
             float elapsedTime = 0f;
+            int lastSecond = 0;
 
             DebugHelper.Log(this, $"Count down started for: {timeLimitInSeconds} secconds");
-            // Count down using Time.deltaTime, which respects Time.timeScale
-            // When Time.timeScale = 0 (paused), Time.deltaTime = 0, so timer stops
-            while (elapsedTime < timeLimitInSeconds)
+            while (true)
             {
                 elapsedTime += Time.deltaTime;
-                yield return null;
-            }
 
-            DebugHelper.Log(this, $"Time end");
-            GameManager.GamePlayTimeEnd();
+                int currentSecond = Mathf.FloorToInt(elapsedTime);
+                if (currentSecond != lastSecond)
+                {
+                    lastSecond = currentSecond;
+                    UpdateTimeDisplay(elapsedTime, haveTimeLimit, timeLimitInSeconds);
+                }
+
+                if (haveTimeLimit)
+                {
+                    if (elapsedTime > timeLimitInSeconds)
+                    {
+                        DebugHelper.Log(this, $"Time end");
+                        GameManager.GamePlayTimeEnd();
+                        yield break;
+                    }
+                }
+
+                yield return null;
+
+            }
+        }
+        private void UpdateTimeDisplay(float elapsedTime, bool haveTimeLimit, float timeLimitInSeconds)
+        {
+            float displayTime = haveTimeLimit ? (timeLimitInSeconds - elapsedTime) : elapsedTime;
+            displayTime = Mathf.Max(0, displayTime);
+
+            int minutes = Mathf.FloorToInt(displayTime / 60);
+            int seconds = Mathf.FloorToInt(displayTime % 60);
+
+            bool isEndingTime = haveTimeLimit && displayTime < LAST_SECONDS_IN_GAME;
+
+            EventBus.Publish(new TimeUpdateEvent
+            {
+                Minutes = minutes,
+                Seconds = seconds,
+                IsEndingTime = isEndingTime
+            });
         }
 
         public static void CarrotPicked(PlayerType player)
@@ -174,16 +234,54 @@ namespace RabbitVsMole
                 return;
             }
 
-            DebugHelper.Log(null, $"{player} picked the carrot!");
+            _instance.CarrotCount[(int)player]++;
+            EventBus.Publish(new CarrotPickEvent
+            {
+                PlayerType = player,
+                Count = _instance.CarrotCount[(int)player]
+            });
 
             if (CurrentGameMode.carrotGoal == 0)
                 return;
 
-            _instance.CarrotCount[(int)player]++;
             if (_instance.CarrotCount[(int)player] >= CurrentGameMode.carrotGoal)
             {
                 GameManager.GamePlayCarrotGoal();
             }
         }
+
+        public static void CarrotStealed(PlayerType player)
+        {
+            if (_instance == null)
+            {
+                DebugHelper.LogWarning(null, "GameInspector.CarrotPicked: Instance is null.");
+                return;
+            }
+
+            if (CurrentGameMode == null)
+            {
+                DebugHelper.LogWarning(null, "GameInspector.CarrotPicked: CurrentGameMode is null.");
+                return;
+            }
+
+            _instance.CarrotCount[(int)player]--;
+            EventBus.Publish(new CarrotPickEvent
+            {
+                PlayerType = player,
+                Count = _instance.CarrotCount[(int)player]
+            });
+        }
+
+        internal static void StartGame()
+        {
+            if (_instance == null)
+                return;
+
+            _instance.StartGameTimer();
+            _instance._instanceOoGameUI = Instantiate(_instance.gameUI).GetComponent<GameUI>();
+            GameUI.SetInventoryVisible(PlayerType.Rabbit, RabbitControlAgent == PlayerControlAgent.Human);
+            GameUI.SetInventoryVisible(PlayerType.Mole, MoleControlAgent == PlayerControlAgent.Human);
+        }
+
     }
 }

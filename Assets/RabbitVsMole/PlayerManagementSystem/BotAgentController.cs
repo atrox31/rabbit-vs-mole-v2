@@ -1,12 +1,14 @@
 using Extensions;
-using GameObjects;
+using GameSystems;
 using PlayerManagementSystem;
 using PlayerManagementSystem.AIBehaviour.Common;
+using RabbitVsMole.Events;
+using RabbitVsMole.InteractableGameObject.Storages;
+using System.Collections;
 using System.Linq;
 using Unity.Behavior;
-using Unity.VisualScripting;
-using UnityEditor.Localization.Plugins.XLIFF.V12;
 using UnityEngine;
+using UnityEngine.AI;
 using static RabbitVsMole.GameManager;
 
 namespace RabbitVsMole
@@ -24,6 +26,7 @@ namespace RabbitVsMole
         private bool _peace = false;
         private bool _chase = false;
         private PlayerAvatar _enemy;
+        private NavMeshAgent _navMeshAgent;
         private float GetDefaultAggroRange => _intelligence.Map(
                 AIConsts.MIN_INTELIGENCE, AIConsts.MAX_INTELIGENCE,
                 AIConsts.MIN_AGGRO_SPHERE_RADIUS, AIConsts.MAX_AGGRO_SPHERE_RADIUS);
@@ -67,6 +70,10 @@ namespace RabbitVsMole
             if (!_peace)
             {
                 SetupEnemy();
+            }
+            if(!TryGetComponent(out _navMeshAgent))
+            {
+                DebugHelper.LogError(this, "can not find NavMeshAgent");
             }
         }
 
@@ -174,9 +181,9 @@ namespace RabbitVsMole
 
             _blackboardReference = _graphAgent.BlackboardReference;
 
-            if (!SetVarible<FarmSeedSource>(_blackboardReference) 
-                || !SetVarible<FarmWaterSource>(_blackboardReference) 
-                || !SetVarible<FarmStorage>(_blackboardReference))
+            if (!SetVarible<FarmSeedStorage>(_blackboardReference) 
+                || !SetVarible<FarmWaterStorage>(_blackboardReference) 
+                || !SetVarible<FarmCarrotStorage>(_blackboardReference))
                 return false;
 
             if(!_blackboardReference.SetVariableValue("AvatarOfPlayer", _playerAvatar.gameObject))
@@ -202,7 +209,41 @@ namespace RabbitVsMole
                 DebugHelper.LogError(this, $"Can not find object on scene of type{typeof(T).Name}");
                 return false;
             }
-            return blackboard.SetVariableValue(typeof(T).Name, obj.gameObject);
+            if(!blackboard.SetVariableValue(typeof(T).Name, obj.gameObject))
+            {
+                DebugHelper.LogError(this, $"Can not set blackboard value of {typeof(T).Name}");
+                return false;
+            }
+            return true;
+        }
+
+        private void OnEnable()
+        {
+            EventBus.Subscribe<MoleTravelEvent>(MoleTravel);
+        }
+
+        private void OnDisable()
+        {
+            EventBus.Unsubscribe<MoleTravelEvent>(MoleTravel);
+        }
+
+        private void MoleTravel(MoleTravelEvent moleTravelEvent) =>
+            StartCoroutine(MoleTravelInternal(moleTravelEvent));
+
+        private IEnumerator MoleTravelInternal(MoleTravelEvent moleTravelEvent)
+        {
+            float moveInElapsedTime = 0f;
+            while (moveInElapsedTime < moleTravelEvent.EnterTime)
+            {
+                moveInElapsedTime += Time.deltaTime;
+                yield return null;
+            }
+
+            if (_navMeshAgent != null)
+            {
+                _navMeshAgent.Warp(moleTravelEvent.NewLocation);
+                _navMeshAgent.ResetPath();
+            }
         }
     }
 }

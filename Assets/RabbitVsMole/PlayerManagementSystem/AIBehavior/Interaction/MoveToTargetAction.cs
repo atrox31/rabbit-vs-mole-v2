@@ -1,6 +1,6 @@
-using GameObjects.FarmField;
 using PlayerManagementSystem.AIBehaviour.Common;
 using RabbitVsMole;
+using RabbitVsMole.InteractableGameObject.Field.Base;
 using System;
 using System.IO;
 using System.Runtime.InteropServices.WindowsRuntime;
@@ -45,7 +45,7 @@ public partial class MoveToTargetAction : Action
 
         _path = new NavMeshPath();
 
-        _isTargetFarmField = _target.TryGetComponent<FarmField>(out _);
+        _isTargetFarmField = _target.TryGetComponent<FarmFieldBase>(out _);
         _isTargetSupplyObject = _target.CompareTag(AIConsts.SUPPLY_TAG);
         
         if (_target.TryGetComponent<PlayerAvatar>(out var targetPlayerAvatar))
@@ -93,10 +93,10 @@ public partial class MoveToTargetAction : Action
         {
             AIDebugOutput.LogMessage($"MoveToTarget {Target?.Name}");
         }
-        if (_isTargetSupplyObject)
+        if (_isTargetFarmField)
         {
-            _target.TryGetComponent<FarmField>(out FarmField farmfield);
-            AIDebugOutput.LogMessage($"MoveToTarget {farmfield?.State}");
+            _target.TryGetComponent<FarmFieldBase>(out FarmFieldBase farmfield);
+            AIDebugOutput.LogMessage($"MoveToTarget {farmfield?.StateName}");
         }
 
         switch (CalculatePath(selfPosition, targetPosition))

@@ -74,5 +74,38 @@ namespace Extensions
                 DebugHelper.LogError(gameObject?.GetComponent<MonoBehaviour>(), $"Tag '{newTag}' is not defined in the Tags & Layers settings.");
             }
         }
+
+        /// <summary>
+        /// Finds the nearest component of type T relative to this GameObject.
+        /// </summary>
+        public static T FindNearest<T>(this GameObject origin) where T : Component
+        {
+            // Find all active components of type T in the scene
+            T[] allObjects = Object.FindObjectsByType<T>(FindObjectsSortMode.None);
+
+            if (allObjects.Length == 0) return null;
+
+            T nearest = null;
+            float minDistanceSqr = float.MaxValue;
+            Vector3 currentPos = origin.transform.position;
+
+            foreach (T obj in allObjects)
+            {
+                // Skip if the object found is the one we are searching from
+                if (obj.gameObject == origin) continue;
+
+                // Using sqrMagnitude to avoid expensive square root calculations
+                Vector3 directionToTarget = obj.transform.position - currentPos;
+                float dSqr = directionToTarget.sqrMagnitude;
+
+                if (dSqr < minDistanceSqr)
+                {
+                    minDistanceSqr = dSqr;
+                    nearest = obj;
+                }
+            }
+
+            return nearest;
+        }
     }
 }
