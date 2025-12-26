@@ -9,6 +9,7 @@ using RabbitVsMole.InteractableGameObject.Field;
 using RabbitVsMole.InteractableGameObject.Field.Base;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using WalkingImmersionSystem;
 
@@ -22,6 +23,9 @@ namespace RabbitVsMole
     {
         [Header("Player Type")]
         public PlayerType playerType;
+
+        [Header("Addons")]
+        [SerializeField] private List<AvatarAddon> _avatarAddonList;
 
         [Header("Movement Settings")]
         AvatarStats avatarStats;
@@ -62,7 +66,6 @@ namespace RabbitVsMole
         private static readonly int IsWalkingHash = Animator.StringToHash("IsWalking");
         private static readonly int StartWalkHash = Animator.StringToHash("StartWalk");
         private static readonly int StopWalkHash = Animator.StringToHash("StopWalk");
-        private static readonly int BlendHash = Animator.StringToHash("Blend");
 
         public PlayerType PlayerType => playerType;
         public bool IsPerformingAction => _isPerformingAction;
@@ -80,18 +83,23 @@ namespace RabbitVsMole
             avatarStats = new AvatarStats(_baseWalkSpeed);
             _speedController = new SpeedController(avatarStats);
             Backpack = new Backpack(playerType);
+
+            foreach (var item in _avatarAddonList)
+            {
+                item.Setup(this);
+            }
         }
 
-        public void UpdateInventory()
+        private void ShowAddon(ActionType actionType)
         {
-            // update inventory to proper set up GameUI
-            // dirty but work :)
-            Backpack.Dirt.TryInsert(0);
-            Backpack.Seed.TryInsert(0);
-            Backpack.Water.TryInsert(0);
-            Backpack.Dirt.TryGet(0);
-            Backpack.Seed.TryGet(0);
-            Backpack.Water.TryGet(0);
+            foreach (var item in _avatarAddonList)
+            {
+                item.Hide();
+                if (item.actionType == actionType)
+                {
+                    item.Show();
+                }
+            }
         }
 
         private void Update()
@@ -155,6 +163,9 @@ namespace RabbitVsMole
         /// </summary>
         public void SetMoveInput(Vector2 moveInput)
         {
+            if (_isPerformingAction)
+                return;
+
             _moveInput = moveInput;
         }
 
@@ -264,14 +275,19 @@ namespace RabbitVsMole
 
         private float OnActionRequested(ActionType requestedAction)
         {
+            ShowAddon(requestedAction);
             var actionTIme = GetActionTime(requestedAction);
             TriggerActionAnimation(requestedAction, actionTIme);
             return actionTIme;
         }
 
-        private float GetActionTime(ActionType actionType)
+        private void OnActionCompleted()
         {
-            return actionType switch
+            _isPerformingAction = false;
+        }
+
+        private float GetActionTime(ActionType actionType) =>
+            actionType switch
             {
                 ActionType.PlantSeed => GameInspector.GameStats.TimeActionPlantSeed,
                 ActionType.WaterField => GameInspector.GameStats.TimeActionWaterField,
@@ -289,8 +305,7 @@ namespace RabbitVsMole
                 ActionType.None => 0f,
                 _ => 0f
             };
-        }
-
+        
         private void TriggerActionAnimation(ActionType actionType, float actionTime)
         {
             if (_animator == null)
@@ -301,11 +316,6 @@ namespace RabbitVsMole
             {
                 _animator.SetTrigger(triggerName);
             }
-        }
-
-        private void OnActionCompleted()
-        {
-            _isPerformingAction = false;
         }
 
         private IInteractableGameObject FindInteractableWithRaycast(Vector3 direction, Color color)
@@ -363,14 +373,6 @@ namespace RabbitVsMole
                 }
             }
 
-            if (isMoving)
-            {
-                float speedNormalized = _speedController != null
-                    ? _speedController.Current / avatarStats.MaxWalkSpeed
-                    : 0f;
-
-                _animator.SetFloat(BlendHash, speedNormalized);
-            }
         }
 
         public void MoveToLinkedField(InteractableGameObject.Base.FieldBase linkedField) =>

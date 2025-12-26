@@ -10,11 +10,6 @@ public class BootstrapScene : MonoBehaviour
 {
     [SerializeField] List<CoreBootstrapComponent> _coreGameObjects = new List<CoreBootstrapComponent>();
 
-    void Awake()
-    {
-        // in case when game start on Bootstrap scene, desactivate proper startup mechanism
-        GameProperStartup.BootstrapSceneActivation();
-    }
 
     IEnumerator Start()
     {

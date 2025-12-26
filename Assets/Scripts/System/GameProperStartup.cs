@@ -1,19 +1,16 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public class GameProperStartup : MonoBehaviour
+public static class GameInitializer
 {
     private static bool hasStarted = false;
-    public static void BootstrapSceneActivation() { hasStarted = true; }
-    void Awake()
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    static void OnBeforeSceneLoad()
     {
-        if (hasStarted)
+        if (SceneManager.GetActiveScene().buildIndex != 0 && !hasStarted)
         {
-            DestroyImmediate(gameObject);
-            return;
+            hasStarted = true;
+            SceneManager.LoadScene(0);
         }
-        hasStarted = true;
-        Debug.ClearDeveloperConsole();
-        SceneManager.LoadScene(0, LoadSceneMode.Single);
     }
 }

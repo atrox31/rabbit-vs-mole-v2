@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using UnityEngine;
 using WalkingImmersionSystem;
+using static RabbitVsMole.GameManager;
 
 namespace RabbitVsMole
 {
@@ -417,11 +418,7 @@ namespace RabbitVsMole
                 {
                     DebugHelper.Log(Instance, "Play game -> On Scene Load");
                     Instantiate(Instance.GameInspectorPrefab, scene);
-                    GameInspector.InicializeGameStats(null);
-                    GameInspector.CurrentGameMode = playGameSettings.gameMode;
-                    GameInspector.CurrentPlayerOnStory = playGameSettings.playerTypeForStory;
-                    GameInspector.RabbitControlAgent = playGameSettings.GetPlayerControlAgent(PlayerType.Rabbit);
-                    GameInspector.MoleControlAgent = playGameSettings.GetPlayerControlAgent(PlayerType.Mole);
+                    GameInspector.Inicialize(null, playGameSettings);
                 },
                 OnSceneStart: () =>
                 {
@@ -448,7 +445,9 @@ namespace RabbitVsMole
         {
             GameSceneManager.ChangeScene(
                 scene: GameSceneManager.SceneType.MainMenu,
-                OnSceneLoad: null,
+                OnSceneLoad: (scene) =>
+                {
+                },
                 OnSceneStart: () =>
                 {
                     PlayMusic(MusicType.MainMenu);

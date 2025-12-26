@@ -39,6 +39,7 @@ namespace RabbitVsMole
                             { PlayerType.Mole, moleControlAgent }
                         };
             }
+
             public PlayerControlAgent GetPlayerControlAgent(PlayerType playerType)
             {
                 if (playerControlAgent.ContainsKey(playerType))

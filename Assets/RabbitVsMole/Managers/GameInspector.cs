@@ -283,5 +283,13 @@ namespace RabbitVsMole
             GameUI.SetInventoryVisible(PlayerType.Mole, MoleControlAgent == PlayerControlAgent.Human);
         }
 
+        internal static void Inicialize(List<MutatorSO> mutatotList, GameManager.PlayGameSettings playGameSettings)
+        {
+            InicializeGameStats(mutatotList);
+            CurrentGameMode = playGameSettings.gameMode;
+            CurrentPlayerOnStory = playGameSettings.playerTypeForStory;
+            RabbitControlAgent = playGameSettings.GetPlayerControlAgent(PlayerType.Rabbit);
+            MoleControlAgent = playGameSettings.GetPlayerControlAgent(PlayerType.Mole);
+        }
     }
 }
