@@ -32,6 +32,18 @@ namespace Extensions
             var mainModule = ps.main;
             mainModule.loop = false;
             mainModule.stopAction = ParticleSystemStopAction.Destroy;
+            
+            // Apply stopAction to all child particle systems
+            foreach (Transform child in ps.transform)
+            {
+                var childParticleSystems = child.GetComponentsInChildren<ParticleSystem>();
+                foreach (var childPs in childParticleSystems)
+                {
+                    var childMainModule = childPs.main;
+                    childMainModule.loop = false;
+                    childMainModule.stopAction = ParticleSystemStopAction.Destroy;
+                }
+            }
         }
         
         public static void SafePlay(this ParticleSystem particles)

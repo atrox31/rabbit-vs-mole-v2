@@ -9,6 +9,17 @@ namespace RabbitVsMole.GameData
     [System.Serializable]
     public class GameStats
     {
+        // Avatar stats
+        public float StatsBaseWalkingSpeedRabbit = 4.5f;
+        public float StatsBaseRotationSpeedRabbit = 4.5f;
+        public float StatsBaseAccelerationRabbit = 10f;
+        public float StatsBaseDecelerationRabbit = 20f;
+
+        public float StatsBaseWalkingSpeedMole = 5.5f;
+        public float StatsBaseRotationSpeedMole = 5.5f;
+        public float StatsBaseAccelerationMole = 10f;
+        public float StatsBaseDecelerationMole = 20f;
+
         // Backpack
         public int BackpackCapacitySeed = 3;
         public int BackpackCapacityWater = 8;
@@ -52,18 +63,18 @@ namespace RabbitVsMole.GameData
 
         // Times
         public float TimeActionPlantSeed = 1f;
-        public float TimeActionWaterField = 1f;
+        public float TimeActionWaterField = 2f;
         public float TimeActionHarvestCarrot = 1f;
-        public float TimeActionRemoveRoots = 1f;
-        public float TimeActionStealCarrotFromUndergroundField = 4f;
+        public float TimeActionRemoveRoots = 3f;
+        public float TimeActionStealCarrotFromUndergroundField = 5f;
         public float TimeActionDigUndergroundWall = 1.33f;
         public float TimeActionDigMound = 2f;
         public float TimeActionCollapseMound = 2f;
         public float TimeActionEnterMound = 1f;
-        public float TimeActionPickSeed = 1f;
-        public float TimeActionPickWater = 1f;
+        public float TimeActionPickSeed = 2f;
+        public float TimeActionPickWater = 2f;
         public float TimeActionPutDownCarrot = 1f;
-        public float TimeActionStealCarrotFromStorage = 1f;
+        public float TimeActionStealCarrotFromStorage = 3.5f;
 
 
         public AI AIStats = new AI();

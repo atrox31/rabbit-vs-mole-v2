@@ -16,6 +16,8 @@ namespace RabbitVsMole
 
     public class BotAgentController : BotAgentControllerBase<PlayerType, PlayerAvatar>
     {
+        [SerializeField] private FarmFieldTileHighlighter farmFieldTileHighlighter;
+
         private PlayerType _playerType;
         private BehaviorGraphAgent _graphAgent;
         private BlackboardReference _blackboardReference;
@@ -75,6 +77,7 @@ namespace RabbitVsMole
             {
                 DebugHelper.LogError(this, "can not find NavMeshAgent");
             }
+            Instantiate(farmFieldTileHighlighter).Setup(_playerType);
         }
 
         private void Update()

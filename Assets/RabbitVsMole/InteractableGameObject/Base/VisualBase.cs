@@ -1,7 +1,8 @@
+using Extensions;
+using NaughtyAttributes;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Extensions;
 using UnityEngine;
 using UnityEngine.Rendering.PostProcessing;
 using static UnityEngine.ParticleSystem;
@@ -25,28 +26,82 @@ namespace RabbitVsMole.InteractableGameObject.Base
             EaseOutCubic
         }
 
+        [Flags]
+        public enum AxisFlags
+        {
+            None = 0,
+            X = 1 << 0, // 1
+            Y = 1 << 1, // 2
+            Z = 1 << 2  // 4
+        }
+
         [Header("Animation Settings")]
         [SerializeField] protected AnimationType _animationType;
 
-        [Header("Scale Animation Settings")]
+        // --- Scale Group ---
+        [ShowIf("IsScaleOrBoth")]
+        [BoxGroup("Scale Animation Settings")]
         [SerializeField] protected float _scaleUpDuration = 1.0f;
+
+        [ShowIf("IsScaleOrBoth")]
+        [BoxGroup("Scale Animation Settings")]
         [SerializeField] protected float _timeRandomness = 0.2f;
+
+        [ShowIf("IsScaleOrBoth")]
+        [BoxGroup("Scale Animation Settings")]
         [SerializeField] protected EaseType _easeType = EaseType.SmoothStep;
-        
-        [Header("Position Animation Settings")]
+
+        // --- Position Group ---
+        [ShowIf("IsPositionOrBoth")]
+        [BoxGroup("Position Animation Settings")]
         [SerializeField] protected Transform _position0;
+
+        [ShowIf("IsPositionOrBoth")]
+        [BoxGroup("Position Animation Settings")]
         [SerializeField] protected Transform _position1;
+
+        [ShowIf("IsPositionOrBoth")]
+        [BoxGroup("Position Animation Settings")]
         [SerializeField] protected float _morphingTime = 1.0f;
+
+        // Nested conditions inside a group:
+        [ShowIf("ShouldShowRotation")]
+        [BoxGroup("Position Animation Settings")]
         [SerializeField] protected bool _randomRotation = false;
+
+        [ShowIf("ShouldShowAxisFlags")]
+        [BoxGroup("Position Animation Settings")]
+        [SerializeField] private AxisFlags _affectedAxes;
+
+        [ShowIf("IsPositionOrBoth")]
+        [BoxGroup("Position Animation Settings")]
         [SerializeField] protected bool _shake = false;
+
+        [ShowIf("IsPositionOrBoth")]
+        [BoxGroup("Position Animation Settings")]
         [SerializeField] protected float _shakeIntensity = 0.1f;
+
+        [ShowIf("IsPositionOrBoth")]
+        [BoxGroup("Position Animation Settings")]
         [SerializeField] protected bool _applyRandomPosition = true;
+
+        [ShowIf("IsPositionOrBoth")]
+        [BoxGroup("Position Animation Settings")]
         [SerializeField] protected float _randomPositionRange = 0.5f;
-        
-        [Header("Visual References")]
+
+        // --- Visuals ---
+        [BoxGroup("Visual References")]
         [SerializeField] protected Transform _model;
+        [BoxGroup("Visual References")]
         [SerializeField] protected ParticleSystem _particleSystemOnShow;
+        [BoxGroup("Visual References")]
         [SerializeField] protected ParticleSystem _particleSystemOnHide;
+
+        // --- Helper Methods ---
+        private bool IsScaleOrBoth() => _animationType == AnimationType.Scale || _animationType == AnimationType.Both;
+        private bool IsPositionOrBoth() => _animationType == AnimationType.Position || _animationType == AnimationType.Both;
+        private bool ShouldShowRotation() => IsPositionOrBoth();
+        private bool ShouldShowAxisFlags() => IsPositionOrBoth() && _randomRotation;
 
         protected Coroutine _activeAnimation;
         protected List<ScaleElement> _scaleElements = new List<ScaleElement>();
@@ -186,6 +241,13 @@ namespace RabbitVsMole.InteractableGameObject.Base
             _activeAnimation = null;
             _isPaused = false;
         }
+        private Quaternion GetRandomRotation(AxisFlags flags, Vector3 baseRotation = default)
+        {
+            if (flags.HasFlag(AxisFlags.X)) baseRotation.x = Random.value * 360f;
+            if (flags.HasFlag(AxisFlags.Y)) baseRotation.y = Random.value * 360f;
+            if (flags.HasFlag(AxisFlags.Z)) baseRotation.z = Random.value * 360f;
+            return Quaternion.Euler(baseRotation);
+        }
 
         protected virtual IEnumerator AnimatePosition(bool show)
         {
@@ -212,8 +274,8 @@ namespace RabbitVsMole.InteractableGameObject.Base
             _isPaused = false;
 
             Quaternion startRotation = startTransform != null ? startTransform.localRotation : _model.localRotation;
-            Quaternion endRotation = _randomRotation && endTransform != null
-                ? Quaternion.Euler(0f, Random.Range(0.0f, 359.0f), 0f)
+            Quaternion endRotation = _randomRotation
+                ? GetRandomRotation(_affectedAxes, _model.transform.rotation.eulerAngles)
                 : (endTransform != null ? endTransform.localRotation : _model.localRotation);
 
             Vector3 startPosition = startTransform != null ? startTransform.localPosition : _model.localPosition;

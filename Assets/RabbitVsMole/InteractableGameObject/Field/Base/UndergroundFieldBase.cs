@@ -96,5 +96,15 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
         internal FieldState CreateUndergroundMoundedState() => new UndergroundFieldMounded(this);
         internal FieldState CreateUndergroundCarrotState() => new UndergroundFieldCarrot(this);
         internal FieldState CreateUndergroundCleanState() => new UndergroundFieldClean(this);
+
+        public override void LightUp(PlayerType playerType)
+        {
+
+        }
+
+        public override void LightDown(PlayerType playerType)
+        {
+
+        }
     }
 }

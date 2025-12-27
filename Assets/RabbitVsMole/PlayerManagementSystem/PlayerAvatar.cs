@@ -10,6 +10,7 @@ using RabbitVsMole.InteractableGameObject.Field.Base;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using WalkingImmersionSystem;
 
@@ -25,11 +26,8 @@ namespace RabbitVsMole
         public PlayerType playerType;
 
         [Header("Addons")]
-        [SerializeField] private List<AvatarAddon> _avatarAddonList;
-
-        [Header("Movement Settings")]
-        AvatarStats avatarStats;
-        [SerializeField] private float _baseWalkSpeed = 5f;
+        [SerializeField] private List<AvatarAddon> _avatarAddonListPrefab;
+        private List<AvatarAddon> _activeAvatarAddon = new();
 
         [Header("Interaction Settings")]
         [SerializeField] private float _raycastDistance = 3f;
@@ -41,6 +39,7 @@ namespace RabbitVsMole
         private Animator _animator;
         public Backpack Backpack { get; private set; }
         public bool IsHaveCarrot => Backpack.Carrot.Count == 1;
+        [SerializeField] private GameObject _haveCarrotIndicator;
 
         // Movement input (set externally by controller)
         private Vector2 _moveInput;
@@ -80,19 +79,22 @@ namespace RabbitVsMole
                 enabled = false;
                 return;
             }
-            avatarStats = new AvatarStats(_baseWalkSpeed);
-            _speedController = new SpeedController(avatarStats);
+            _speedController = new SpeedController(playerType);
             Backpack = new Backpack(playerType);
 
-            foreach (var item in _avatarAddonList)
+            _haveCarrotIndicator.SetActive(false);
+
+            foreach (var item in _avatarAddonListPrefab)
             {
-                item.Setup(this);
+                var activeAddon = Instantiate(item);
+                activeAddon.Setup(this);
+                _activeAvatarAddon.Add(activeAddon);
             }
         }
 
         private void ShowAddon(ActionType actionType)
         {
-            foreach (var item in _avatarAddonList)
+            foreach (var item in _activeAvatarAddon)
             {
                 item.Hide();
                 if (item.actionType == actionType)
@@ -145,16 +147,16 @@ namespace RabbitVsMole
 
             if (_interactableOnFront != currentFront)
             {
-                _interactableOnFront?.LightDown();
+                _interactableOnFront?.LightDown(playerType);
                 _interactableOnFront = currentFront;
-                _interactableOnFront?.LightUp();
+                _interactableOnFront?.LightUp(playerType);
             }
 
             if (_interactableDown != currentDown)
             {
-                _interactableDown?.LightDown();
+                _interactableDown?.LightDown(playerType);
                 _interactableDown = currentDown;
-                _interactableDown?.LightUp();
+                _interactableDown?.LightUp(playerType);
             }
         }
 
@@ -246,7 +248,7 @@ namespace RabbitVsMole
                 if (moveDirection != Vector3.zero)
                 {
                     Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
-                    transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, avatarStats.RotationSpeed * Time.fixedDeltaTime);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, _speedController.RotationSpeed * Time.fixedDeltaTime);
                 }
             }
             else
@@ -283,7 +285,9 @@ namespace RabbitVsMole
 
         private void OnActionCompleted()
         {
+            ShowAddon(ActionType.None);
             _isPerformingAction = false;
+            _haveCarrotIndicator.SetActive(IsHaveCarrot);
         }
 
         private float GetActionTime(ActionType actionType) =>

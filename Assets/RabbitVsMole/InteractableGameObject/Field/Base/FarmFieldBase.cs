@@ -209,5 +209,15 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
         internal FieldState CreateRootedState() => new FarmFieldRooted(this);
         internal FieldState CreateWithCarrotState() => new FarmFieldWithCarrot(this);
 
+        public override void LightUp(PlayerType playerType)
+        {
+            FarmFieldTileHighlighter.Instance(playerType)?.SetTarget(transform.position);
+        }
+
+        public override void LightDown(PlayerType playerType)
+        {
+            FarmFieldTileHighlighter.Instance(playerType)?.Hide();
+        }
+
     }
 }

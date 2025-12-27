@@ -9,7 +9,7 @@ namespace RabbitVsMole.InteractableGameObject.Base {
     {
         public bool CanInteract(Backpack backpack);
         public bool Interact(PlayerAvatar playerAvatar, Func<ActionType, float> OnActionRequested, Action OnActionCompleted, out Action CancelAction);
-        public void LightUp();
-        public void LightDown();
+        public void LightUp(PlayerType playerType);
+        public void LightDown(PlayerType playerType);
     }
 }

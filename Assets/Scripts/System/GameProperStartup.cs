@@ -10,6 +10,7 @@ public static class GameInitializer
         if (SceneManager.GetActiveScene().buildIndex != 0 && !hasStarted)
         {
             hasStarted = true;
+            Debug.ClearDeveloperConsole();
             SceneManager.LoadScene(0);
         }
     }

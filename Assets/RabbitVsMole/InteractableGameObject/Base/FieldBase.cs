@@ -15,6 +15,9 @@ namespace RabbitVsMole.InteractableGameObject.Base
         public FieldBase LinkedField { get; set; }
         public AIPriority AIPriority => _fieldState?.AIPriority;
 
+        [SerializeField] private Outline _outline;
+        private Coroutine _outlineCoroutine;
+
         public FieldState State =>
             _fieldState;
 
@@ -55,8 +58,8 @@ namespace RabbitVsMole.InteractableGameObject.Base
 
         }
 
-        public void LightUp() { }
-        public void LightDown() { }
+        public abstract void LightUp(PlayerType playerType);
+        public abstract void LightDown(PlayerType playerType);
 
 
     }

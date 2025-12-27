@@ -14,6 +14,7 @@ namespace RabbitVsMole
 {
     public class HumanAgentController : HumanAgentControllerBase<PlayerType, PlayerAvatar>
     {
+        [SerializeField] private FarmFieldTileHighlighter farmFieldTileHighlighter;
         private PlayerType _playerType;
         private CinemachineCamera _cinemachineCamera;
         [SerializeField] Image _blackMask;
@@ -45,6 +46,11 @@ namespace RabbitVsMole
                 DebugHelper.LogError(instance, "Failed to initialize camera");
                 return;
             }
+        }
+
+        private void Start()
+        {
+            Instantiate(farmFieldTileHighlighter).Setup(_playerType);
         }
 
         private void SetupInputContol()

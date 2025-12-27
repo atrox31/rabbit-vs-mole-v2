@@ -24,6 +24,7 @@ namespace RabbitVsMole
         public static GameStats GameStats =>
             _instance._currentGameStats;
 
+
         internal static void InicializeGameStats(List<MutatorSO> mutatotList)
         {
             if(!IsActive) return;

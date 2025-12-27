@@ -68,8 +68,8 @@ namespace RabbitVsMole.InteractableGameObject.Base
         private const float MAX_WIDTH = 10f;
         private const float DURATION = 0.5f;
 
-        public void LightUp() => StartEffect(true);
-        public void LightDown() => StartEffect(false);
+        public void LightUp(PlayerType playerType) => StartEffect(true);
+        public void LightDown(PlayerType playerType) => StartEffect(false);
 
         private void StartEffect(bool increase)
         {
