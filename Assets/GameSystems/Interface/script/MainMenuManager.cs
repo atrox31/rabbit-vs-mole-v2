@@ -306,17 +306,17 @@ namespace Interface
             return button;
         }
 
-        internal InterfaceElement CreateSlider(string label, Action<float> onValueChanged, Func<float> getCurrentValue = null)
+        internal InterfaceElement CreateSlider(string label, Action<float> onValueChanged, Func<float> getCurrentValue = null, Func<float, string> valueFormatter = null)
         {
-            return CreateSliderInternal(label, onValueChanged, getCurrentValue);
+            return CreateSliderInternal(label, onValueChanged, getCurrentValue, valueFormatter);
         }
 
-        internal InterfaceElement CreateSlider(LocalizedString localizedLabel, Action<float> onValueChanged, Func<float> getCurrentValue = null)
+        internal InterfaceElement CreateSlider(LocalizedString localizedLabel, Action<float> onValueChanged, Func<float> getCurrentValue = null, Func<float, string> valueFormatter = null)
         {
-            return CreateSliderInternal(localizedLabel, onValueChanged, getCurrentValue);
+            return CreateSliderInternal(localizedLabel, onValueChanged, getCurrentValue, valueFormatter);
         }
 
-        private InterfaceElement CreateSliderInternal(object labelOrLocalized, Action<float> onValueChanged, Func<float> getCurrentValue)
+        private InterfaceElement CreateSliderInternal(object labelOrLocalized, Action<float> onValueChanged, Func<float> getCurrentValue, Func<float, string> valueFormatter)
         {
             if (_sliderPrefab == null)
             {
@@ -329,11 +329,11 @@ namespace Interface
 
             if (labelOrLocalized is LocalizedString localized)
             {
-                slider.Initialize(localized, onValueChanged, getCurrentValue);
+                slider.Initialize(localized, onValueChanged, getCurrentValue, valueFormatter);
             }
             else
             {
-                slider.Initialize(labelOrLocalized as string, onValueChanged, getCurrentValue);
+                slider.Initialize(labelOrLocalized as string, onValueChanged, getCurrentValue, valueFormatter);
             }
             
             return slider;

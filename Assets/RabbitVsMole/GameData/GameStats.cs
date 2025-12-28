@@ -50,11 +50,30 @@ namespace RabbitVsMole.GameData
         public float FarmFieldMaxWaterLevel = 4f;
         public float FarmFieldWaterDrainPerSec = 0f;
         public float FarmFieldWaterDrainByCarrotPerSec = 1f;
-        public float FarmFieldWaterInsertPerAction = 2f;
+        public float FarmFieldWaterInsertPerAction = 3f;
 
         // Mound
         public float MoundCreateTime = 4f;
         public float MoundCreateTimePernalityForNotCleanUnderground = 3f;
+        public int MoundHealthPoint = 2;
+        public int MoundDamageByRabbit = 1;
+
+        // Roots
+        public int RootsHealthPoint = 10;
+        public int RootsDamageByRabbit = 3;
+        public int RootsDamageByMole = 5;
+        public float RootsBirthChance = 0.33f;
+        public float RootsTickRate = 0.1f;
+        public float RootsSpreadChance = 0.05f;
+        public float RootsSpreadIncreaseByNeibour = 0.10f;
+        public int RootsSpreadRadius = 1;
+
+        public bool RootsCanSpawnOnCleanField = true;
+        public bool RootsCanSpawnOnPlantedField = true;
+        public bool RootsCanSpawnOnWithCarrotField = true;
+
+        public bool RootsCanSpawnOnWithCarrotFullGrowField = false;
+        public bool RootsCanSpawnOnMoundedField = false;
 
         // Wall
         public int WallDirtCollectPerAction = 1;
@@ -62,17 +81,17 @@ namespace RabbitVsMole.GameData
         public float WallBuildTime = 2f;
 
         // Times
-        public float TimeActionPlantSeed = 1f;
-        public float TimeActionWaterField = 2f;
-        public float TimeActionHarvestCarrot = 1f;
-        public float TimeActionRemoveRoots = 3f;
+        public float TimeActionPlantSeed = 2f;
+        public float TimeActionWaterField = 3f;
+        public float TimeActionHarvestCarrot = 2.5f;
+        public float TimeActionRemoveRoots = 2.5f;
         public float TimeActionStealCarrotFromUndergroundField = 5f;
         public float TimeActionDigUndergroundWall = 1.33f;
         public float TimeActionDigMound = 2f;
         public float TimeActionCollapseMound = 2f;
-        public float TimeActionEnterMound = 1f;
-        public float TimeActionPickSeed = 2f;
-        public float TimeActionPickWater = 2f;
+        public float TimeActionEnterMound = 3f;
+        public float TimeActionPickSeed = 3f;
+        public float TimeActionPickWater = 3.5f;
         public float TimeActionPutDownCarrot = 1f;
         public float TimeActionStealCarrotFromStorage = 3.5f;
 

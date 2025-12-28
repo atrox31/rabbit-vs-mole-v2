@@ -46,6 +46,8 @@ namespace RabbitVsMole
 
         // Action States
         private bool _isPerformingAction;
+        private float _defaultAnimatorSpeed = 1f;
+        private Coroutine _animationSpeedCoroutine;
 
         private IInteractableGameObject _interactableOnFront;
         private IInteractableGameObject _interactableDown;
@@ -81,6 +83,11 @@ namespace RabbitVsMole
             }
             _speedController = new SpeedController(playerType);
             Backpack = new Backpack(playerType);
+
+            if (_animator != null)
+            {
+                _defaultAnimatorSpeed = _animator.speed;
+            }
 
             _haveCarrotIndicator.SetActive(false);
 
@@ -235,6 +242,9 @@ namespace RabbitVsMole
             if (_rigidbody == null || _speedController == null)
                 return;
 
+            if(_isPerformingAction)
+                _moveInput = Vector2.zero;
+
             bool isMoving = _moveInput.sqrMagnitude > 0.01f;
             _speedController.HandleAcceleration(isMoving);
 
@@ -285,6 +295,17 @@ namespace RabbitVsMole
 
         private void OnActionCompleted()
         {
+            // Ensure animator speed is reset in case coroutine was interrupted
+            if (_animator != null)
+            {
+                _animator.speed = _defaultAnimatorSpeed;
+            }
+            if (_animationSpeedCoroutine != null)
+            {
+                StopCoroutine(_animationSpeedCoroutine);
+                _animationSpeedCoroutine = null;
+            }
+            
             ShowAddon(ActionType.None);
             _isPerformingAction = false;
             _haveCarrotIndicator.SetActive(IsHaveCarrot);
@@ -315,11 +336,73 @@ namespace RabbitVsMole
             if (_animator == null)
                 return;
 
+            // Stop any existing animation speed coroutine
+            if (_animationSpeedCoroutine != null)
+            {
+                StopCoroutine(_animationSpeedCoroutine);
+                _animator.speed = _defaultAnimatorSpeed;
+            }
+
             string triggerName = GetAnimationTriggerName(actionType);
             if (!string.IsNullOrEmpty(triggerName))
             {
+                // Get the current state hash before triggering the animation
+                int previousStateHash = _animator.GetCurrentAnimatorStateInfo(0).fullPathHash;
+                
                 _animator.SetTrigger(triggerName);
+                
+                // Start coroutine to synchronize animation speed with action time
+                if (actionTime > 0f)
+                {
+                    _animationSpeedCoroutine = StartCoroutine(SynchronizeAnimationSpeed(previousStateHash, actionTime));
+                }
             }
+        }
+
+        private IEnumerator SynchronizeAnimationSpeed(int previousStateHash, float actionTime)
+        {
+            // Wait until the animator transitions to a new state
+            AnimatorStateInfo currentStateInfo;
+            int maxWaitFrames = 30; // Safety limit - max 0.5 seconds at 60fps
+            int framesWaited = 0;
+            
+            do
+            {
+                yield return null;
+                currentStateInfo = _animator.GetCurrentAnimatorStateInfo(0);
+                framesWaited++;
+            } while (currentStateInfo.fullPathHash == previousStateHash && framesWaited < maxWaitFrames);
+            
+            // Check if we successfully transitioned to a new state
+            if (currentStateInfo.fullPathHash == previousStateHash)
+            {
+                // Transition didn't happen, abort
+                _animationSpeedCoroutine = null;
+                yield break;
+            }
+            
+            // Wait one more frame to ensure we're fully in the new state (not in transition)
+            yield return null;
+            currentStateInfo = _animator.GetCurrentAnimatorStateInfo(0);
+            
+            // Check if we're in a valid state with a valid length
+            if (currentStateInfo.length > 0f && actionTime > 0f)
+            {
+                float clipLength = currentStateInfo.length;
+                
+                // Calculate speed multiplier: if clip is 2s and action is 1s, speed should be 2x
+                // This makes the animation complete in exactly actionTime seconds
+                float speedMultiplier = clipLength / actionTime;
+                _animator.speed = _defaultAnimatorSpeed * speedMultiplier;
+                
+                // Wait for the action to complete
+                yield return new WaitForSeconds(actionTime);
+                
+                // Reset animator speed to default
+                _animator.speed = _defaultAnimatorSpeed;
+            }
+            
+            _animationSpeedCoroutine = null;
         }
 
         private IInteractableGameObject FindInteractableWithRaycast(Vector3 direction, Color color)

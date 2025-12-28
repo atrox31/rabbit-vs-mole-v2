@@ -90,6 +90,9 @@ namespace RabbitVsMole
                 _versionLabel.text = "V " + Application.version;
             }
 
+            // Initialize graphics settings (FPS, etc.)
+            MainMenuDefaultLogic.InitializeTargetFPS();
+
             SetupMenus();
             LocalizationSettings.SelectedLocaleChanged += OnLanguageChanged;
         }
@@ -284,6 +287,7 @@ namespace RabbitVsMole
                 .AddDropDown(GetLocalizedString("option_resolution"), MainMenuDefaultLogic.HandleResolutionChange, MainMenuDefaultLogic.GetAvailableResolutions(), MainMenuDefaultLogic.GetCurrentResolutionIndex)
                 .AddToggle(GetLocalizedString("option_fullscreen"), MainMenuDefaultLogic.HandleFullScreen, MainMenuDefaultLogic.GetFullScreenCurrentMode)
                 .AddToggle(GetLocalizedString("option_vsync"), MainMenuDefaultLogic.HandleVSync, MainMenuDefaultLogic.GetVSync)
+                .AddSlider(GetLocalizedString("option_target_fps"), MainMenuDefaultLogic.HandleTargetFPSChange, MainMenuDefaultLogic.GetTargetFPS, MainMenuDefaultLogic.FormatTargetFPS)
                 .AddDropDown(GetLocalizedString("option_quality"), MainMenuDefaultLogic.HandleQualityChange, MainMenuDefaultLogic.GetAvailableQualitySettings(), MainMenuDefaultLogic.GetCurrentQualityIndex)
                 .AddBackButton()
                 .Build();

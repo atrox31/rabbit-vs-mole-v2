@@ -15,6 +15,7 @@ namespace RabbitVsMole
         public const string VSYNC = "VSYNC";
         public const string GRAPHICS_QUALITY = "GRAPHICS_QUALITY";
         public const string REFRESH_RATE = "REFRESH_RATE";
+        public const string TARGET_FPS = "TARGET_FPS";
 
         public const string RABBIT_GOLDEN_CARROT_DATA = "RABBIT_GOLDEN_CARROT_DATA";
         public const string MOLE_GOLDEN_CARROT_DATA = "MOLE_GOLDEN_CARROT_DATA";

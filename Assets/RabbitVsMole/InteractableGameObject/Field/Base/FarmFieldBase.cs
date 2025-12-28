@@ -6,7 +6,9 @@ using RabbitVsMole.InteractableGameObject.Field;
 using RabbitVsMole.InteractableGameObject.Visuals;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 namespace RabbitVsMole.InteractableGameObject.Field.Base
 {
@@ -125,9 +127,83 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
             _farmCarrotVisual.StartGlow();
         }
 
+       
         private void Update()
         {
             WaterLevel -= GameInspector.GameStats.FarmFieldWaterDrainPerSec;
+
+            if(State is FarmFieldRooted) 
+                HandleRoots();
+        }
+
+        float rootSpreadCounter = 0f;
+        private void HandleRoots()
+        {
+            if(RandomUtils.Chance(.95f)) // little bit of randomness
+                rootSpreadCounter += Time.deltaTime * GameInspector.GameStats.RootsTickRate;
+
+            if (rootSpreadCounter < 1f)
+                return;
+
+            rootSpreadCounter = 0f; //reset counter
+
+            var neighborsFieldList = GetNeighborsFields();
+            if (neighborsFieldList.Count == 0)
+                return;
+
+            var neighborsRootChance = GameInspector.GameStats.RootsBirthChance + GameInspector.GameStats.RootsSpreadIncreaseByNeibour * neighborsFieldList.Count;
+            if (!RandomUtils.Chance(neighborsRootChance))
+                return;
+
+            foreach(var neighbor in neighborsFieldList)
+            {
+                if (RandomUtils.Chance(GameInspector.GameStats.RootsBirthChance)
+                && CanGrowRoots(neighbor))
+                    neighbor.SetNewState(new FarmFieldRooted(neighbor));
+            }
+        }
+
+        private bool CanGrowRoots(FarmFieldBase farmFieldBase)
+        {
+            var stats = GameInspector.GameStats;
+
+            return farmFieldBase.State switch
+            {
+                FarmFieldClean => stats.RootsCanSpawnOnCleanField,
+                FarmFieldPlanted => stats.RootsCanSpawnOnPlantedField,
+                FarmFieldWithCarrot => farmFieldBase.IsCarrotReady
+                    ? stats.RootsCanSpawnOnWithCarrotFullGrowField
+                    : stats.RootsCanSpawnOnWithCarrotField,
+                FarmFieldMounded => stats.RootsCanSpawnOnMoundedField,
+                _ => false 
+            };
+        }
+
+        private List<FarmFieldBase> GetNeighborsFields()
+        {
+            var neighborsList = new List<FarmFieldBase>();
+            Vector2Int? myXy = FarmManager.GetFieldXY(this);
+
+            int currentX = myXy.Value.x;
+            int currentY = myXy.Value.y;
+            int offset = GameInspector.GameStats.RootsSpreadRadius;
+
+            for (int xOffset = -offset; xOffset <= offset; xOffset++)
+            {
+                for (int yOffset = -offset; yOffset <= offset; yOffset++)
+                {
+                    if (xOffset == 0 && yOffset == 0) continue;
+
+                    int targetX = currentX + xOffset;
+                    int targetY = currentY + yOffset;
+
+                    var field = FarmManager.GetFarmField(targetX, targetY);
+
+                    if (field != null)
+                        neighborsList.Add(field);
+                }
+            }
+            return neighborsList;
         }
 
         internal void AddWater(float value) =>

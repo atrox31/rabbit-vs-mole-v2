@@ -4,8 +4,10 @@ using RabbitVsMole.InteractableGameObject.Field.Base;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using Universal;
 
 namespace RabbitVsMole.InteractableGameObject.Field
 {
@@ -34,8 +36,12 @@ namespace RabbitVsMole.InteractableGameObject.Field
 
         private void Awake()
         {
-            GenerateFields();
-            GetComponent<MeshRenderer>().enabled = false;
+            GetComponent<MeshRenderer>().enabled = false; 
+        }
+
+        private void OnDestroy()
+        {
+            FarmManager.ClearCache();
         }
 
         private void GenerateFields()
@@ -108,17 +114,21 @@ namespace RabbitVsMole.InteractableGameObject.Field
 
                     field.transform.localPosition = new Vector3(posX, posY, posZ);
                     _fieldList.Add(field);
+
+                    if(fieldType == FieldType.Farm)
+                        FarmManager.AddField(field.GetComponent<FarmFieldBase>());
                 }
             }
         }
         
         IEnumerator Start()
         {
+            GenerateFields();
             LinkFields();
             yield return null;
         }
 
-        public FieldBase GetField(int index)
+        private FieldBase GetField(int index)
         {
             if(index < 0 || index >= _fieldList.Count)
             {

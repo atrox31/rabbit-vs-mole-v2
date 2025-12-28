@@ -1,5 +1,6 @@
 using RabbitVsMole;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Localization.Settings;
 
@@ -7,16 +8,107 @@ namespace Interface
 {
     public static class MainMenuDefaultLogic
     {
+        // Helper class to store resolution with available refresh rates
+        private class ResolutionData
+        {
+            public int width;
+            public int height;
+            public List<int> refreshRates = new List<int>();
+            public Resolution representativeResolution; // One of the resolutions with this width/height
+            
+            public ResolutionData(Resolution res)
+            {
+                width = res.width;
+                height = res.height;
+                representativeResolution = res;
+                refreshRates.Add(res.refreshRate);
+            }
+        }
+        
+        // Static list to store filtered resolutions
+        private static List<ResolutionData> _filteredResolutions = null;
+        private static int _maxRefreshRate = 60; // Default fallback
+        
+        // Initialize filtered resolutions list
+        private static void InitializeFilteredResolutions()
+        {
+            if (_filteredResolutions != null) return;
+            
+            _filteredResolutions = new List<ResolutionData>();
+            Resolution[] allResolutions = Screen.resolutions;
+            
+            foreach (var res in allResolutions)
+            {
+                // Find existing resolution with same width and height
+                var existing = _filteredResolutions.FirstOrDefault(r => r.width == res.width && r.height == res.height);
+                
+                if (existing != null)
+                {
+                    // Add refresh rate if not already present
+                    if (!existing.refreshRates.Contains(res.refreshRate))
+                    {
+                        existing.refreshRates.Add(res.refreshRate);
+                    }
+                }
+                else
+                {
+                    // Create new resolution entry
+                    _filteredResolutions.Add(new ResolutionData(res));
+                }
+            }
+            
+            // Sort refresh rates for each resolution and find max refresh rate
+            _maxRefreshRate = 60;
+            foreach (var resData in _filteredResolutions)
+            {
+                resData.refreshRates.Sort();
+                if (resData.refreshRates.Count > 0)
+                {
+                    int maxRate = resData.refreshRates[resData.refreshRates.Count - 1];
+                    if (maxRate > _maxRefreshRate)
+                    {
+                        _maxRefreshRate = maxRate;
+                    }
+                }
+            }
+        }
+        
+        public static int GetMaxRefreshRate()
+        {
+            InitializeFilteredResolutions();
+            return _maxRefreshRate;
+        }
 
         public static void HandleResolutionChange(int index)
         {
-            Resolution[] resolutions = Screen.resolutions;
-            if (index >= 0 && index < resolutions.Length)
+            InitializeFilteredResolutions();
+            
+            if (index >= 0 && index < _filteredResolutions.Count)
             {
-                Resolution res = resolutions[index];
-                Screen.SetResolution(res.width, res.height, Screen.fullScreen);
-                DebugHelper.Log(null, $"Resolution changed to: {res.width}x{res.height}");
+                ResolutionData resData = _filteredResolutions[index];
+                
+                // Get the refresh rate from PlayerPrefs or use the highest available
+                int refreshRate = resData.representativeResolution.refreshRate;
+                if (PlayerPrefs.HasKey(PlayerPrefsConst.REFRESH_RATE))
+                {
+                    int savedRefreshRate = PlayerPrefs.GetInt(PlayerPrefsConst.REFRESH_RATE);
+                    // Use saved refresh rate if it's available for this resolution
+                    if (resData.refreshRates.Contains(savedRefreshRate))
+                    {
+                        refreshRate = savedRefreshRate;
+                    }
+                    else
+                    {
+                        // Use the highest available refresh rate
+                        refreshRate = resData.refreshRates[resData.refreshRates.Count - 1];
+                    }
+                }
+                
+                Screen.SetResolution(resData.width, resData.height, Screen.fullScreen, refreshRate);
+                PlayerPrefs.SetInt(PlayerPrefsConst.REFRESH_RATE, refreshRate);
+                DebugHelper.Log(null, $"Resolution changed to: {resData.width}x{resData.height} @ {refreshRate}Hz");
             }
+            
             PlayerPrefs.SetInt(PlayerPrefsConst.RESOLUTION_WIDTH, Screen.width);
             PlayerPrefs.SetInt(PlayerPrefsConst.RESOLUTION_HEIGHT, Screen.height);
             PlayerPrefs.SetInt(PlayerPrefsConst.RESOLUTION_INDEX, index);
@@ -25,23 +117,27 @@ namespace Interface
 
         public static List<string> GetAvailableResolutions()
         {
+            InitializeFilteredResolutions();
+            
             List<string> resolutions = new List<string>();
-            foreach (var res in Screen.resolutions)
+            foreach (var resData in _filteredResolutions)
             {
-                resolutions.Add($"{res.width}x{res.height}");
+                resolutions.Add($"{resData.width}x{resData.height}");
             }
             return resolutions;
         }
 
         public static int GetCurrentResolutionIndex()
         {
+            InitializeFilteredResolutions();
+            
             if (PlayerPrefs.HasKey(PlayerPrefsConst.RESOLUTION_INDEX))
             {
                 int savedIndex = PlayerPrefs.GetInt(PlayerPrefsConst.RESOLUTION_INDEX);
-                if (savedIndex >= 0 && savedIndex < Screen.resolutions.Length)
+                if (savedIndex >= 0 && savedIndex < _filteredResolutions.Count)
                 {
-                    Resolution savedRes = Screen.resolutions[savedIndex];
-                    if (savedRes.width == Screen.width && savedRes.height == Screen.height)
+                    ResolutionData savedResData = _filteredResolutions[savedIndex];
+                    if (savedResData.width == Screen.width && savedResData.height == Screen.height)
                     {
                         return savedIndex;
                     }
@@ -49,10 +145,9 @@ namespace Interface
             }
 
             Resolution current = Screen.currentResolution;
-            Resolution[] resolutions = Screen.resolutions;
-            for (int i = 0; i < resolutions.Length; i++)
+            for (int i = 0; i < _filteredResolutions.Count; i++)
             {
-                if (resolutions[i].width == current.width && resolutions[i].height == current.height)
+                if (_filteredResolutions[i].width == current.width && _filteredResolutions[i].height == current.height)
                 {
                     return i;
                 }
@@ -207,6 +302,95 @@ namespace Interface
                 return PlayerPrefs.GetInt(PlayerPrefsConst.VSYNC) == 1;
             }
             return QualitySettings.vSyncCount > 0;
+        }
+
+        public static void HandleTargetFPSChange(float normalizedValue)
+        {
+            // normalizedValue is 0.0 to 1.0
+            // Map: 0.0 = unlimited (0), 0.01-1.0 = 10 to maxRefreshRate
+            InitializeFilteredResolutions();
+            
+            int targetFPS;
+            if (normalizedValue <= 0.01f)
+            {
+                // Unlimited (at the start of slider)
+                targetFPS = 0; // 0 means unlimited in Unity
+            }
+            else
+            {
+                // Map from 10 to maxRefreshRate
+                const int minFPS = 10;
+                float range = _maxRefreshRate - minFPS;
+                // Map 0.01-1.0 to 10-maxRefreshRate
+                float mappedValue = (normalizedValue - 0.01f) / 0.99f; // Scale to 0.0-1.0
+                targetFPS = Mathf.RoundToInt(minFPS + mappedValue * range);
+                targetFPS = Mathf.Clamp(targetFPS, minFPS, _maxRefreshRate);
+            }
+            
+            Application.targetFrameRate = targetFPS;
+            PlayerPrefs.SetInt(PlayerPrefsConst.TARGET_FPS, targetFPS);
+            PlayerPrefs.Save();
+            
+            string fpsDisplay = targetFPS == 0 ? "Unlimited" : targetFPS.ToString();
+            DebugHelper.Log(null, $"Target FPS changed to: {fpsDisplay}");
+        }
+
+        public static float GetTargetFPS()
+        {
+            InitializeFilteredResolutions();
+            
+            int targetFPS = 0; // Default to unlimited
+            if (PlayerPrefs.HasKey(PlayerPrefsConst.TARGET_FPS))
+            {
+                targetFPS = PlayerPrefs.GetInt(PlayerPrefsConst.TARGET_FPS);
+            }
+            else
+            {
+                // If not set, default to unlimited (0)
+                targetFPS = 0;
+            }
+            
+            // Map back to normalized value (0.0 to 1.0)
+            if (targetFPS == 0)
+            {
+                return 0.0f; // Unlimited = 0.0 (at the start of slider)
+            }
+            
+            const int minFPS = 10;
+            float range = _maxRefreshRate - minFPS;
+            // Map from 10-maxRefreshRate to 0.01-1.0
+            float mappedValue = ((float)(targetFPS - minFPS) / range) * 0.99f; // Scale to 0.0-0.99
+            float normalized = 0.01f + mappedValue; // Shift to 0.01-1.0
+            return Mathf.Clamp01(normalized);
+        }
+
+        public static string FormatTargetFPS(float normalizedValue)
+        {
+            InitializeFilteredResolutions();
+            
+            if (normalizedValue <= 0.01f)
+            {
+                return "Unlimited";
+            }
+            
+            const int minFPS = 10;
+            float range = _maxRefreshRate - minFPS;
+            // Map 0.01-1.0 to 10-maxRefreshRate
+            float mappedValue = (normalizedValue - 0.01f) / 0.99f; // Scale to 0.0-1.0
+            int targetFPS = Mathf.RoundToInt(minFPS + mappedValue * range);
+            targetFPS = Mathf.Clamp(targetFPS, minFPS, _maxRefreshRate);
+            return targetFPS.ToString() + " FPS";
+        }
+
+        public static void InitializeTargetFPS()
+        {
+            // Apply saved FPS setting at game start, default to 0 (unlimited)
+            int targetFPS = 0; // Default to unlimited
+            if (PlayerPrefs.HasKey(PlayerPrefsConst.TARGET_FPS))
+            {
+                targetFPS = PlayerPrefs.GetInt(PlayerPrefsConst.TARGET_FPS);
+            }
+            Application.targetFrameRate = targetFPS;
         }
 
         public static void HandleLanguageChange(int index)

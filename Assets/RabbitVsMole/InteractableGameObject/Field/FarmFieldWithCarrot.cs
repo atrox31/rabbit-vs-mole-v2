@@ -41,6 +41,8 @@ namespace RabbitVsMole.InteractableGameObject.Field
 
         protected override bool ActionForRabbit(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
+            var spawnRoots = GameInspector.GameStats.RootsBirthChance > UnityEngine.Random.value;
+
             return FieldParent.IsCarrotReady switch
             {
                 true => StandardAction(
@@ -48,7 +50,10 @@ namespace RabbitVsMole.InteractableGameObject.Field
                     onActionRequested,
                     onActionCompleted,
                     ActionType.HarvestCarrot,
-                    FieldParent.CreateCleanState()),
+                    spawnRoots 
+                        ? FieldParent.CreateRootedState()
+                        : FieldParent.CreateCleanState()
+                    ),
 
                 false => StandardAction(
                     playerAvatar.Backpack.Water.TryGet(GameInspector.GameStats.CostRabbitForWaterAction),

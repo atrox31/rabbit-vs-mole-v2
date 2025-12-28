@@ -44,6 +44,11 @@ namespace RabbitVsMole.InteractableGameObject.Base
             }
         }
 
+        public void SetNewState(FieldState newState)
+        {
+            _fieldState = _fieldState.ChangeState(newState);
+        }
+
         public bool StandardAction(bool backpackAction, Func<ActionType, float> OnActionRequested, Action OnActionCompleted, ActionType actionType, FieldState newFieldState)
         {
             if (!backpackAction)

@@ -18,6 +18,7 @@ namespace Interface.Element
 
         private Action<float> _onValueChanged;
         private Func<float> _getCurrentValue;
+        private Func<float, string> _valueFormatter; // Optional custom formatter for value text
 
         protected override void Setup()
         {
@@ -40,19 +41,21 @@ namespace Interface.Element
             AudioManager.PreloadClips(_onClickSound, _onSlideSound);
         }
 
-        public void Initialize(string label, Action<float> onValueChanged, Func<float> getCurrentValue = null)
+        public void Initialize(string label, Action<float> onValueChanged, Func<float> getCurrentValue = null, Func<float, string> valueFormatter = null)
         {
             _onValueChanged = onValueChanged;
             _getCurrentValue = getCurrentValue;
+            _valueFormatter = valueFormatter;
             ApplyText(label);
             SetupSlider();
             Setup();
         }
 
-        public void Initialize(LocalizedString localizedLabel, Action<float> onValueChanged, Func<float> getCurrentValue = null)
+        public void Initialize(LocalizedString localizedLabel, Action<float> onValueChanged, Func<float> getCurrentValue = null, Func<float, string> valueFormatter = null)
         {
             _onValueChanged = onValueChanged;
             _getCurrentValue = getCurrentValue;
+            _valueFormatter = valueFormatter;
             ApplyLocalizedText(localizedLabel);
             SetupSlider();
             Setup();
@@ -114,7 +117,15 @@ namespace Interface.Element
         {
             if (_valueText != null && _slider != null)
             {
-                _valueText.text = Mathf.RoundToInt(_slider.value * 100f).ToString() + "%";
+                if (_valueFormatter != null)
+                {
+                    _valueText.text = _valueFormatter(_slider.value);
+                }
+                else
+                {
+                    // Default: percentage display
+                    _valueText.text = Mathf.RoundToInt(_slider.value * 100f).ToString() + "%";
+                }
             }
         }
 

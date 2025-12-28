@@ -55,16 +55,16 @@ namespace Interface
         }
 
 
-        public PanelBuilder AddSlider(string label, Action<float> onValueChanged, Func<float> getCurrentValue = null)
+        public PanelBuilder AddSlider(string label, Action<float> onValueChanged, Func<float> getCurrentValue = null, Func<float, string> valueFormatter = null)
         {
-            var slider = _manager.CreateSlider(label, onValueChanged, getCurrentValue);
+            var slider = _manager.CreateSlider(label, onValueChanged, getCurrentValue, valueFormatter);
             _lastAddedInterfaceElement = _panel.AddElement(slider);
             return this;
         }
 
-        public PanelBuilder AddSlider(LocalizedString localizedLabel, Action<float> onValueChanged, Func<float> getCurrentValue = null)
+        public PanelBuilder AddSlider(LocalizedString localizedLabel, Action<float> onValueChanged, Func<float> getCurrentValue = null, Func<float, string> valueFormatter = null)
         {
-            var slider = _manager.CreateSlider(localizedLabel, onValueChanged, getCurrentValue);
+            var slider = _manager.CreateSlider(localizedLabel, onValueChanged, getCurrentValue, valueFormatter);
             _lastAddedInterfaceElement = _panel.AddElement(slider);
             return this;
         }

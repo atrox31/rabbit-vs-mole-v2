@@ -10,6 +10,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
     public class FarmFieldMounded : FarmFieldStateBase
     {
         public FarmFieldMounded(FarmFieldBase parent) : base(parent) { }
+        private int _hitCount = 0;
 
         protected override void OnStart()
         {
@@ -17,6 +18,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
             FieldParent.DestroyCarrot();
             FieldParent.DestroyRoots();
             FieldParent.CreateMound();
+            _hitCount = 0;
         }
 
         protected override void OnDestroy()
@@ -36,12 +38,18 @@ namespace RabbitVsMole.InteractableGameObject.Field
 
         protected override bool ActionForRabbit(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
+            _hitCount += GameInspector.GameStats.MoundDamageByRabbit;
+            var moundIsDestroyed = _hitCount >= GameInspector.GameStats.MoundHealthPoint;
+
             return StandardAction(
-                true,
-                onActionRequested,
-                onActionCompleted,
-                ActionType.CollapseMound,
-                FieldParent.CreatePlantedState());
+                backpackAction: true,
+                onActionRequested: onActionRequested,
+                onActionCompleted: onActionCompleted,
+                actionType: ActionType.CollapseMound,
+                newFieldState: moundIsDestroyed 
+                    ? FieldParent.CreateCleanState()
+                    : null,
+                nonStandardAction: null );
         }
 
         protected override bool ActionForMole(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
