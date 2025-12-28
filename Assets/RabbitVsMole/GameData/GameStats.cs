@@ -76,6 +76,8 @@ namespace RabbitVsMole.GameData
         public bool RootsCanSpawnOnMoundedField = false;
 
         // Wall
+        public int WallDirtHealthPoint = 1;
+        public int WallDirtDamageByMole = 1;
         public int WallDirtCollectPerAction = 1;
         public float WallDestroyTime = 1.33f;
         public float WallBuildTime = 2f;

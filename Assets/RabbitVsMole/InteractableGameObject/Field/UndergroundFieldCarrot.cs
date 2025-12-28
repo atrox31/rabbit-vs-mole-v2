@@ -24,10 +24,6 @@ namespace RabbitVsMole.InteractableGameObject.Field
             FieldParent.DestroyCarrot();
         }
 
-        protected override bool CanInteractForRabbit(Backpack backpack)
-        {
-            return false;
-        }
 
         protected override bool CanInteractForMole(Backpack backpack)
         {
@@ -36,12 +32,26 @@ namespace RabbitVsMole.InteractableGameObject.Field
 
         protected override bool ActionForMole(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
-            return StandardAction(
-                true,
-                onActionRequested,
-                onActionCompleted,
-                ActionType.HarvestCarrot,
-                FieldParent.CreateUndergroundCleanState());
+            return FieldParent.IsCarrotReady switch
+            {
+                true => StandardAction(
+                        true,
+                        onActionRequested,
+                        onActionCompleted,
+                        ActionType.HarvestCarrot,
+                        FieldParent.CreateUndergroundCleanState(),
+                        FieldParent.LinkedField.CreateFarmCleanState()
+                        ),
+
+                false => StandardAction(
+                        playerAvatar.Backpack.Seed.TryGet(GameInspector.GameStats.CostRabbitForSeedAction),
+                        onActionRequested,
+                        onActionCompleted,
+                        ActionType.DigMound,
+                        FieldParent.CreateUndergroundMoundedState(),
+                        FieldParent.LinkedField.CreateFarmMoundedState()
+                        )
+            };
         }
     }
 }

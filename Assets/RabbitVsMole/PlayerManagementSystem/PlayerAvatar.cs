@@ -192,7 +192,7 @@ namespace RabbitVsMole
         /// </summary>
         public bool TryActionFront()
         {
-            if (_isPerformingAction)
+             if (_isPerformingAction)
                 return false;
             return PerformInteraction(_interactableOnFront);
         }

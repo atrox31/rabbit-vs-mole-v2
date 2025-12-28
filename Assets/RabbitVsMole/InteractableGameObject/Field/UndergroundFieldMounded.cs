@@ -18,6 +18,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
             AIPriority = GameInspector.GameStats.AIStats.UndergroundFieldMounded;
             FieldParent.DestroyCarrot();
             FieldParent.DestroyWall();
+
             FieldParent.CreateMound();
         }
 
@@ -26,14 +27,9 @@ namespace RabbitVsMole.InteractableGameObject.Field
             FieldParent.DestroyMound();
         }
 
-        protected override bool CanInteractForRabbit(Backpack backpack)
-        {
-            return false;
-        }
-
         protected override bool CanInteractForMole(Backpack backpack)
         {
-            return true;
+            return backpack.Carrot.Count == 0;
         }
 
         protected override bool ActionForMole(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
@@ -43,6 +39,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
                 onActionRequested,
                 onActionCompleted,
                 ActionType.EnterMound,
+                null,
                 null,
                 () => { playerAvatar.MoveToLinkedField(Parent.LinkedField); });
         }

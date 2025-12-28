@@ -67,7 +67,7 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
 
         void Awake()
         {
-            _fieldState = CreateCleanState();
+            _fieldState = CreateFarmCleanState();
             if(_meshWaterLevel0 == null) { DebugHelper.LogError(this, "Property '_meshWaterLevel0' not set in inspector!"); return; }
             if(_meshWaterLevel1 == null){DebugHelper.LogError(this, "Property '_meshWaterLevel1' not set in inspector!");return;}
             if(_modelMeshFilter == null){DebugHelper.LogError(this, "Property '_modelMeshFilter' not set in inspector!");return;}
@@ -125,6 +125,7 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
             _growCarrotCoroutine = null;
             _fieldState.SetAIPriority(GameInspector.GameStats.AIStats.FieldWithCarrotReady);
             _farmCarrotVisual.StartGlow();
+            OnCarrotReady();
         }
 
        
@@ -159,7 +160,7 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
             {
                 if (RandomUtils.Chance(GameInspector.GameStats.RootsBirthChance)
                 && CanGrowRoots(neighbor))
-                    neighbor.SetNewState(new FarmFieldRooted(neighbor));
+                    neighbor.SetNewState(CreateFarmRootedState());
             }
         }
 
@@ -219,6 +220,19 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
 
             _farmCarrotVisual.Hide();
             _farmCarrotVisual = null;
+            OnCarrotDestroy();
+        }
+
+        void OnCarrotReady()
+        {
+            if(LinkedField.State is UndergroundFieldClean)
+                LinkedField.SetNewState(CreateUndergroundCarrotState());
+        }
+
+        void OnCarrotDestroy()
+        {
+            if (LinkedField.State is UndergroundFieldCarrot)
+                LinkedField.SetNewState(CreateUndergroundCleanState());
         }
 
         private void DestroyVisual<T>(ref T visual) where T : VisualBase
@@ -278,12 +292,6 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
         {
             _fieldState?.SetAIPriority(priority);
         }
-
-        internal FieldState CreateCleanState() => new FarmFieldClean(this);
-        internal FieldState CreatePlantedState() => new FarmFieldPlanted(this);
-        internal FieldState CreateFarmMoundedState() => new FarmFieldMounded(this);
-        internal FieldState CreateRootedState() => new FarmFieldRooted(this);
-        internal FieldState CreateWithCarrotState() => new FarmFieldWithCarrot(this);
 
         public override void LightUp(PlayerType playerType)
         {

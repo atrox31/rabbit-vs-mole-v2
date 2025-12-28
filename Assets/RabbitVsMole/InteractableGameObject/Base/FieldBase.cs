@@ -2,10 +2,13 @@ using PlayerManagementSystem;
 using PlayerManagementSystem.Backpack;
 using RabbitVsMole.InteractableGameObject.AI;
 using RabbitVsMole.InteractableGameObject.Enums;
+using RabbitVsMole.InteractableGameObject.Field;
+using RabbitVsMole.InteractableGameObject.Field.Base;
 using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.XR;
 
 namespace RabbitVsMole.InteractableGameObject.Base
 {
@@ -27,7 +30,7 @@ namespace RabbitVsMole.InteractableGameObject.Base
         public bool CanInteract(Backpack backpack) =>
             _fieldState.CanInteract(backpack);
 
-        public IEnumerator CompliteAction(Action action, float time, FieldState newFieldState)
+        public IEnumerator CompliteAction(Action action, float time, FieldState newFieldState, FieldState newLinkedFieldState)
         {
             var currentTime = 0.0f;
             while (true)
@@ -35,7 +38,8 @@ namespace RabbitVsMole.InteractableGameObject.Base
                 currentTime += Time.deltaTime;
                 if (currentTime >= time)
                 {
-                    _fieldState = _fieldState.ChangeState(newFieldState);
+                    SetNewState(newFieldState);
+                    LinkedField.SetNewState(newLinkedFieldState);
 
                     action?.Invoke();
                     yield break;
@@ -44,28 +48,29 @@ namespace RabbitVsMole.InteractableGameObject.Base
             }
         }
 
-        public void SetNewState(FieldState newState)
-        {
-            _fieldState = _fieldState.ChangeState(newState);
-        }
-
-        public bool StandardAction(bool backpackAction, Func<ActionType, float> OnActionRequested, Action OnActionCompleted, ActionType actionType, FieldState newFieldState)
-        {
-            if (!backpackAction)
-                return false;
-            var actionTime = OnActionRequested.Invoke(actionType);
-            StartCoroutine(CompliteAction(OnActionCompleted, actionTime, newFieldState));
-            return true;
-        }
-
         void Awake()
         {
 
         }
 
+        public void SetNewState(FieldState fieldState) =>
+            _fieldState = _fieldState.ChangeState(_fieldState);
+        
+
         public abstract void LightUp(PlayerType playerType);
         public abstract void LightDown(PlayerType playerType);
 
+        internal FieldState CreateFarmCleanState() => new FarmFieldClean(this as FarmFieldBase);
+        internal FieldState CreateFarmPlantedState() => new FarmFieldPlanted(this as FarmFieldBase);
+        internal FieldState CreateFarmMoundedState() => new FarmFieldMounded(this as FarmFieldBase);
+        internal FieldState CreateFarmRootedState() => new FarmFieldRooted(this as FarmFieldBase);
+        internal FieldState CreateFarmWithCarrotState() => new FarmFieldWithCarrot(this as FarmFieldBase);
+
+
+        internal FieldState CreateUndergroundWallState() => new UndergroundFieldWall(this as UndergroundFieldBase);
+        internal FieldState CreateUndergroundMoundedState() => new UndergroundFieldMounded(this as UndergroundFieldBase);
+        internal FieldState CreateUndergroundCarrotState() => new UndergroundFieldCarrot(this as UndergroundFieldBase);
+        internal FieldState CreateUndergroundCleanState() => new UndergroundFieldClean(this as UndergroundFieldBase);
 
     }
 }

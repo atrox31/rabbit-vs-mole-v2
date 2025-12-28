@@ -13,27 +13,28 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
     public class UndergroundFieldBase : FieldBase
     {
         protected override FieldState _fieldState { get; set; }
-        [Header("Stats")]
 
 
         [Header("Visuals")]
         [SerializeField] UndergroundCarrotVisual undergroundCarrotVisualPrefab;
         UndergroundCarrotVisual _undergroundCarrotVisual;
-
-        [SerializeField] WallVisual wallVisualPrefab;
-        WallVisual _wallsVisual;
-
-        [SerializeField] MoundVisual moundVisualPrefab;
-        MoundVisual _moundVisual;
-
         public bool IsCarrotReady =>
             _undergroundCarrotVisual != null
             && _undergroundCarrotVisual.IsReady;
 
+        [SerializeField] WallVisual wallVisualPrefab;
+        WallVisual _wallsVisual;
+        public bool HaveWall =>
+            _wallsVisual != null;
+
+        [SerializeField] MoundVisual moundVisualPrefab;
+        MoundVisual _moundVisual;
+
+
 
         void Awake()
         {
-            _fieldState = CreateWallState();
+            _fieldState = CreateUndergroundWallState();
         }
 
 
@@ -64,16 +65,11 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
 
         internal void DestroyCarrot()
         {
-            if (_undergroundCarrotVisual == null)
-                return;
-            _undergroundCarrotVisual.Hide();
-            _undergroundCarrotVisual = null;
+            DestroyVisual(ref _undergroundCarrotVisual);
         }
 
         internal void CreateCarrot()
         {
-            if (_undergroundCarrotVisual != null)
-                return;
             CreateVisual(ref _undergroundCarrotVisual, undergroundCarrotVisualPrefab);
         }
 
@@ -91,11 +87,6 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
         {
             _fieldState?.SetAIPriority(priority);
         }
-
-        internal FieldState CreateWallState() => new UndergroundFieldWall(this);
-        internal FieldState CreateUndergroundMoundedState() => new UndergroundFieldMounded(this);
-        internal FieldState CreateUndergroundCarrotState() => new UndergroundFieldCarrot(this);
-        internal FieldState CreateUndergroundCleanState() => new UndergroundFieldClean(this);
 
         public override void LightUp(PlayerType playerType)
         {

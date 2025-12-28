@@ -64,13 +64,20 @@ namespace RabbitVsMole.InteractableGameObject.Base
             return newFieldState;
         }
 
-        protected bool StandardAction(bool backpackAction, Func<ActionType, float> onActionRequested, Action onActionCompleted, ActionType actionType, FieldState newFieldState, Action nonStandardAction = null)
+        protected bool StandardAction(
+            bool backpackAction,
+            Func<ActionType, float> onActionRequested,
+            Action onActionCompleted,
+            ActionType actionType,
+            FieldState newFieldState,
+            FieldState newLinkedFieldState,
+            Action nonStandardAction = null)
         {
             if (!backpackAction)
                 return false;
             var actionTime = onActionRequested.Invoke(actionType);
             nonStandardAction?.Invoke();
-            Parent.StartCoroutine(Parent.CompliteAction(onActionCompleted, actionTime, newFieldState));
+            Parent.StartCoroutine(Parent.CompliteAction(onActionCompleted, actionTime, newFieldState, newLinkedFieldState));
             return true;
         }
     }

@@ -16,6 +16,10 @@ namespace RabbitVsMole.InteractableGameObject.Field
         protected override void OnStart()
         {
             AIPriority = GameInspector.GameStats.AIStats.CleanField;
+            FieldParent.DestroyCarrot();
+            FieldParent.DestroyMound();
+            FieldParent.DestroyRoots();
+            FieldParent.DestroySeed();
         }
 
         protected override void OnDestroy()
@@ -39,7 +43,8 @@ namespace RabbitVsMole.InteractableGameObject.Field
                 onActionRequested,
                 onActionCompleted,
                 ActionType.PlantSeed,
-                FieldParent.CreatePlantedState());
+                FieldParent.CreateFarmPlantedState(),
+                null);
         }
 
         protected override bool ActionForMole(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
@@ -49,7 +54,9 @@ namespace RabbitVsMole.InteractableGameObject.Field
                 onActionRequested,
                 onActionCompleted,
                 ActionType.DigMound,
-                FieldParent.CreateFarmMoundedState());
+                FieldParent.CreateFarmMoundedState(),
+                FieldParent.LinkedField.CreateUndergroundMoundedState()
+                );
         }
     }
 }

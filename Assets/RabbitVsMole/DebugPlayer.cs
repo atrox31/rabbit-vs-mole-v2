@@ -24,7 +24,7 @@ public class DebugPlayer : MonoBehaviour
             moleControlAgent: PlayerControlAgent.Human);
     }
 
-    public static void DebugPlayDuelVsAi()
+    public static void DebugPlayDuelVsAiAsRabbit()
     {
         GameManager.PlayGame(
             gameMode: ScriptableObject.CreateInstance<GameModeData>(),
@@ -33,6 +33,17 @@ public class DebugPlayer : MonoBehaviour
             playerTypeForStory: PlayerType.Rabbit,
             rabbitControlAgent: PlayerControlAgent.Human,
             moleControlAgent: PlayerControlAgent.Bot);
+    }
+
+    public static void DebugPlayDuelVsAiAsMole()
+    {
+        GameManager.PlayGame(
+            gameMode: ScriptableObject.CreateInstance<GameModeData>(),
+            map: GameSceneManager.SceneType.GamePlay_Duel,
+            day: DayOfWeek.Monday,
+            playerTypeForStory: PlayerType.Rabbit,
+            rabbitControlAgent: PlayerControlAgent.Bot,
+            moleControlAgent: PlayerControlAgent.Human);
     }
 
     public static void DebugPlaySoloRabbit(int dayOfWeek)

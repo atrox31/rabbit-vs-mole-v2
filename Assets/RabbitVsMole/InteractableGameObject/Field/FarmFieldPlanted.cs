@@ -41,7 +41,8 @@ namespace RabbitVsMole.InteractableGameObject.Field
                 onActionRequested,
                 onActionCompleted,
                 ActionType.WaterField,
-                FieldParent.CreateWithCarrotState(),
+                FieldParent.CreateFarmWithCarrotState(),
+                null,
                 () => { FieldParent.AddWater(GameInspector.GameStats.FarmFieldWaterInsertPerAction); });
         }
 
@@ -52,7 +53,9 @@ namespace RabbitVsMole.InteractableGameObject.Field
                 onActionRequested,
                 onActionCompleted,
                 ActionType.DigMound,
-                FieldParent.CreateFarmMoundedState());
+                FieldParent.CreateFarmMoundedState(),
+                FieldParent.LinkedField.CreateUndergroundMoundedState()
+            );
         }
 
     }

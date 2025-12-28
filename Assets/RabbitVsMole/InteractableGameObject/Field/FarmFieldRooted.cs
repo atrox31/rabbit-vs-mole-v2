@@ -19,6 +19,8 @@ namespace RabbitVsMole.InteractableGameObject.Field
         {
             AIPriority = GameInspector.GameStats.AIStats.FarmFieldRooted;
             FieldParent.DestroyCarrot();
+            FieldParent.DestroySeed();
+
             FieldParent.CreateRoots();
             _hitCount = 0;
         }
@@ -60,8 +62,9 @@ namespace RabbitVsMole.InteractableGameObject.Field
                 onActionCompleted,
                 ActionType.RemoveRoots,
                 rootsIsDestroyed
-                ? FieldParent.CreateCleanState()
-                : null );
+                    ? FieldParent.CreateFarmCleanState()
+                    : null,
+                null);
         }
 
     }

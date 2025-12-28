@@ -17,6 +17,8 @@ namespace RabbitVsMole.InteractableGameObject.Field
             AIPriority = GameInspector.GameStats.AIStats.FarmFieldMounded;
             FieldParent.DestroyCarrot();
             FieldParent.DestroyRoots();
+            FieldParent.DestroySeed();
+
             FieldParent.CreateMound();
             _hitCount = 0;
         }
@@ -47,7 +49,10 @@ namespace RabbitVsMole.InteractableGameObject.Field
                 onActionCompleted: onActionCompleted,
                 actionType: ActionType.CollapseMound,
                 newFieldState: moundIsDestroyed 
-                    ? FieldParent.CreateCleanState()
+                    ? FieldParent.CreateFarmCleanState()
+                    : null,
+                newLinkedFieldState: moundIsDestroyed
+                    ? FieldParent.LinkedField.CreateUndergroundWallState()
                     : null,
                 nonStandardAction: null );
         }
@@ -59,6 +64,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
                 onActionRequested,
                 onActionCompleted,
                 ActionType.EnterMound,
+                null,
                 null,
                 () => { playerAvatar.MoveToLinkedField(Parent.LinkedField); });
         }

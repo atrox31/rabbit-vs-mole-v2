@@ -17,6 +17,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
         protected override void OnStart()
         {
             AIPriority = GameInspector.GameStats.AIStats.FarmFieldWithCarrot;
+            FieldParent.DestroySeed();
             FieldParent.CreateCarrot();
         }
 
@@ -51,8 +52,9 @@ namespace RabbitVsMole.InteractableGameObject.Field
                     onActionCompleted,
                     ActionType.HarvestCarrot,
                     spawnRoots 
-                        ? FieldParent.CreateRootedState()
-                        : FieldParent.CreateCleanState()
+                        ? FieldParent.CreateFarmRootedState()
+                        : FieldParent.CreateFarmCleanState(),
+                    null
                     ),
 
                 false => StandardAction(
@@ -61,13 +63,26 @@ namespace RabbitVsMole.InteractableGameObject.Field
                     onActionCompleted,
                     ActionType.WaterField,
                     null,
+                    null,
                     () => { FieldParent.AddWater(GameInspector.GameStats.FarmFieldWaterInsertPerAction); })
             };
         }
 
         protected override bool ActionForMole(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
-            return false;
+            return FieldParent.IsCarrotReady switch
+            {
+                true => false,
+
+                false => StandardAction(
+                playerAvatar.Backpack.Seed.TryGet(GameInspector.GameStats.CostRabbitForSeedAction),
+                onActionRequested,
+                onActionCompleted,
+                ActionType.DigMound,
+                FieldParent.CreateFarmMoundedState(),
+                FieldParent.LinkedField.CreateUndergroundMoundedState())
+            };
+            
         }
     }
 }

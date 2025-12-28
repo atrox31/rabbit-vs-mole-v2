@@ -21,7 +21,7 @@ namespace Interface
                 width = res.width;
                 height = res.height;
                 representativeResolution = res;
-                refreshRates.Add(res.refreshRate);
+                refreshRates.Add((int)res.refreshRateRatio.value);
             }
         }
         
@@ -45,9 +45,10 @@ namespace Interface
                 if (existing != null)
                 {
                     // Add refresh rate if not already present
-                    if (!existing.refreshRates.Contains(res.refreshRate))
+                    int refreshRate = (int)res.refreshRateRatio.value;
+                    if (!existing.refreshRates.Contains(refreshRate))
                     {
-                        existing.refreshRates.Add(res.refreshRate);
+                        existing.refreshRates.Add(refreshRate);
                     }
                 }
                 else
@@ -88,7 +89,7 @@ namespace Interface
                 ResolutionData resData = _filteredResolutions[index];
                 
                 // Get the refresh rate from PlayerPrefs or use the highest available
-                int refreshRate = resData.representativeResolution.refreshRate;
+                int refreshRate = (int)resData.representativeResolution.refreshRateRatio.value;
                 if (PlayerPrefs.HasKey(PlayerPrefsConst.REFRESH_RATE))
                 {
                     int savedRefreshRate = PlayerPrefs.GetInt(PlayerPrefsConst.REFRESH_RATE);
@@ -104,7 +105,9 @@ namespace Interface
                     }
                 }
                 
-                Screen.SetResolution(resData.width, resData.height, Screen.fullScreen, refreshRate);
+                FullScreenMode fullScreenMode = Screen.fullScreen ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed;
+                RefreshRate refreshRateObj = new RefreshRate { numerator = (uint)refreshRate, denominator = 1 };
+                Screen.SetResolution(resData.width, resData.height, fullScreenMode, refreshRateObj);
                 PlayerPrefs.SetInt(PlayerPrefsConst.REFRESH_RATE, refreshRate);
                 DebugHelper.Log(null, $"Resolution changed to: {resData.width}x{resData.height} @ {refreshRate}Hz");
             }

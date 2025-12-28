@@ -36,6 +36,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
 
         private void Awake()
         {
+            GenerateFields();
             GetComponent<MeshRenderer>().enabled = false; 
         }
 
@@ -120,12 +121,10 @@ namespace RabbitVsMole.InteractableGameObject.Field
                 }
             }
         }
-        
-        IEnumerator Start()
+
+        private void Start()
         {
-            GenerateFields();
             LinkFields();
-            yield return null;
         }
 
         private FieldBase GetField(int index)
