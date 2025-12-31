@@ -44,7 +44,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
                 OnActionCompleted = onActionCompleted,
                 //FinalValidation = null,
                 //OnPreStateChange = null,
-                //OnPostStateChange = null,
+                OnPostStateChange = () => FieldParent.AddWater(GameInspector.GameStats.FarmFieldWaterInsertPerAction),
             });
         }
 

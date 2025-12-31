@@ -7,10 +7,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
-using Unity.AppUI.UI;
 using UnityEngine;
-using UnityEngine.UIElements;
-using static UnityEditor.Experimental.GraphView.Port;
 
 public class GameUI : MonoBehaviour
 {
@@ -38,6 +35,10 @@ public class GameUI : MonoBehaviour
     [SerializeField] TextMeshProUGUI _inwentoryMoleHealthCounter;
     [SerializeField] UnityEngine.UI.Image _inwentoryMoleHealthImage;
 
+    [Header("Game over")]
+    [SerializeField] GameObject _gameOverPanel;
+    [SerializeField] TextMeshProUGUI _gameOverText;
+
     [Header("Audio")]
     [SerializeField] AudioClip _LastSecondsSound;
 
@@ -55,6 +56,43 @@ public class GameUI : MonoBehaviour
         EventBus.Unsubscribe<InventoryErrorEvent>(ErrorItem);
         EventBus.Unsubscribe<TimeUpdateEvent>(UpdateTimer);
         EventBus.Unsubscribe<CarrotPickEvent>(UpdateCarrots);
+    }
+
+    public void ButtonRestartGame() =>
+        GameManager.RestartGame();
+
+    public void ButtonReturnToMenu() =>
+        GameManager.GoToMainMenu();
+
+    public void ShowGameOverScreen(string text)
+    {
+        if (_gameOverPanel.activeSelf)
+            return;
+
+        _gameOverText.text = text;
+        OnDisable();
+        StopAllCoroutines();
+        StartCoroutine(AnimateGameOverScreen());
+    }
+
+    IEnumerator AnimateGameOverScreen()
+    {
+        float elapsedTime = 0f;
+        const float duration = .13f;
+        _gameOverPanel.SetActive(true);
+
+        var panels = new List<GameObject>()
+        { _gameOverPanel };
+
+        SetPanelsScale(0f, panels);
+        while (elapsedTime < duration)
+        {
+            elapsedTime += Time.deltaTime;
+            float progress = Mathf.Clamp01(elapsedTime / duration);
+            SetPanelsScale(progress, panels);
+            yield return null;
+        }
+        SetPanelsScale(1f, panels);
     }
 
     void UpdateItem(InventoryChangedEvent inventoryChangedEvent)
@@ -296,6 +334,8 @@ public class GameUI : MonoBehaviour
             _inwentoryRabbitPanel,
             _inwentoryMolePanel
         };
+
+        _gameOverPanel.SetActive(false);
 
         _gameTimerTMP.text = "00:00"; 
         _rabbitCarrotCounterTMP.text = "0";

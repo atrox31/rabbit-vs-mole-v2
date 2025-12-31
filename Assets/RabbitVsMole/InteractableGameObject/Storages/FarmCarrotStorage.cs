@@ -19,6 +19,7 @@ namespace RabbitVsMole.InteractableGameObject.Storages
         [SerializeField] ParticleSystem _particleForCarrotStealProgress;
 
         Coroutine _breakActionCorutine;
+        Coroutine _rabbitActionCorutine;
         protected List<CarrotModelInStorage> _carrotList = new ();
         public int CarrotCount =>
             _carrotList.Count;
@@ -69,7 +70,7 @@ namespace RabbitVsMole.InteractableGameObject.Storages
             GameInspector.CarrotPicked(PlayerType.Rabbit);
 
             var actionTime = OnActionRequested.Invoke(ActionType.PutDownCarrot);
-            StartCoroutine(CompliteAction(OnActionCompleted, actionTime));
+            _rabbitActionCorutine = StartCoroutine(CompliteAction(OnActionCompleted, actionTime));
             return true;
         }
 
@@ -83,7 +84,16 @@ namespace RabbitVsMole.InteractableGameObject.Storages
         }
 
         protected override void OnCancelAction(Action OnActionCompleted) {
-            StopCoroutine(_breakActionCorutine);
+            if (_breakActionCorutine != null)
+            {
+                StopCoroutine(_breakActionCorutine);
+                _breakActionCorutine = null;
+            }
+            if (_rabbitActionCorutine != null)
+            {
+                StopCoroutine(_rabbitActionCorutine);
+                _rabbitActionCorutine = null;
+            }
             OnActionCompleted?.Invoke();
             _particleForCarrotStealProgress.SafeStop();
         }

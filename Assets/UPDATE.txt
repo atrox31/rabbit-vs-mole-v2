@@ -1,0 +1,61 @@
+FIXED:
+[X] Kret ma wskakiwać do podziemi od razu jak zrobi kretowisko na powierzchni
+[X] Królik teleportuje się z kretem pod ziemię w trybie splitscreen
+[X] wprowadzić mechanikę bicia kreta przez królika (stun + tp na spawn)
+[?] jak królik stał na kretowisku to kreta wywaliło w kosmos
+[X] przechodzenie przez kretowisko, ma w połowie przeskakiwać oraz ten blackmask nieszczęsny
+[X] królik oraz kret nie wezmą marchewki z tego samego pola
+[X] zaimplementować przerwanie steal carrot
+[X] po steal carrot storage nie działa
+[X] zbyt wolno pokazuje się interface
+[X] królik podlewa łopatą
+[X] królik raz walnie i kret pada
+[X] podnoszona marchewka znika
+[X] nie da się podnieść marcjhwki
+[X] zastąpić placeholdery GAMEUI
+[X] brak addonu łopaty przy komaniu kopca (kret)
+[X] korzenie, robią się z dupy i nie dai się ich zniszczyć
+dodatkowo nie synchronizują się statusy (po zniszczeniu blokują pole)
+[X] problemy z czasem animacji
+[X] problemy z synchronizacja pól (carrot i mound)
+[X] czasem kopce znikają tylko z jednej strony
+[X] czasem kopce są nie widoczne
+[X] jak kret weźmie marchewke to pojawia się u którlika
+[X] naprawić podświetlenie i zmienić dla storage, same błędy
+[X] kret startuje z kosmosu i tam trafia po walnięciu (tylko raz)
+[X] zmiana statusu pola następuje za późno
+[X] problem z prędkością animacji
+[X] zmniejszyć albo usunąć shake z animacji
+[X] podczas przerwania steal from underground nadal można 2 jednocześnie marchewki podnieść
+[X] aktualizacja HP u kreta nie działa
+[X] animacja ataku królika
+[X] gameUI: naprawiono niepoprawne skalowanie, dodano corutine guard
+[X] backpackitem: healts, poprawa type na health z carrot żeby działało
+[X] dodano animacje stealcarrot
+[X] podwyższyć kamerę dla kreta
+[X] zawalenie tunelu nie stunuje kreata (albo nic z nim nie robi albo stun nie działa)
+[X] ramki są widoczne dla obydwu graczy
+[X] zmiana nazw animacji klipów
+[X] animacja stun + blokada poruszania (akcja stun)
+[X] pokazanie błędów na gameUI (get i put)
+[X] usuwanie outline podczas steal
+[X] stun ma przerywać akcje (akcja steal carrot from storage)
+[X] stun ma usuwać marchewkę z ręki
+[X] ściana ma się usuwać przez czas akcji usuwania ściany
+[X] mole - animacja steal from carrot storage
+[X] poprawiono spawnpoint undergroundwall i mound
+[X] dodano brakujące teksty
+[X] dodać ekran zakończenia
+[X] naprawić zatrzymanie akcji po wygranej, może dodac dialogue system?
+[X] brak dźwięku przy udezeniu kreta
+[X] GameUI nasiona i ziemia
+[X] addons - 2 na raz
+[X] walking symulator nie aktualizuje terenu
+
+BUG:
+[ ] animacje victory/defeat coś jest nie tak
+[ ] naprawić game input w menu, obrazki się nie wyświetlają gamepad
+
+FEATURE:
+[ ] indykator marchewki na GAMEIU
+[ ] dodać grafikę guzików akcji

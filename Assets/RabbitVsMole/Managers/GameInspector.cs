@@ -51,9 +51,9 @@ namespace RabbitVsMole
         }
 
         [SerializeField] GameUI gameUI;
-        private GameUI _instanceOoGameUI;
+        private GameUI _instanceOnGameUI;
         public static GameUI GameUI =>
-            _instance?._instanceOoGameUI;
+            _instance?._instanceOnGameUI;
 
         public static GameModeData CurrentGameMode
         {
@@ -298,7 +298,7 @@ namespace RabbitVsMole
                 return;
 
             _instance.StartGameTimer();
-            _instance._instanceOoGameUI = Instantiate(_instance.gameUI).GetComponent<GameUI>();
+            _instance._instanceOnGameUI = Instantiate(_instance.gameUI).GetComponent<GameUI>();
             GameUI.SetInventoryVisible(PlayerType.Rabbit, RabbitControlAgent == PlayerControlAgent.Human);
             GameUI.SetInventoryVisible(PlayerType.Mole, MoleControlAgent == PlayerControlAgent.Human);
         }

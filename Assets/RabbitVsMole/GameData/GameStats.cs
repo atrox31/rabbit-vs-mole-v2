@@ -44,7 +44,7 @@ namespace RabbitVsMole.GameData
 
         // WaterSource
         public float WaterSourceMaxWaterLevel = 10f;
-        public float WaterSourceWaterPerSec = 0.5f;
+        public float WaterSourceWaterPerSec = 0.2f;
         public float WaterSourceWaterDrainPerAction = 4f;
         public int WaterSourceWaterToInventoryPerDrain = 4;
 
@@ -53,10 +53,10 @@ namespace RabbitVsMole.GameData
         public float CarrotSpoilTimeInSec = 120f;
 
         // FarmField
-        public float FarmFieldMaxWaterLevel = 4f;
+        public float FarmFieldMaxWaterLevel = 6f;
         public float FarmFieldWaterDrainPerSec = 0f;
-        public float FarmFieldWaterDrainByCarrotPerSec = 1f;
-        public float FarmFieldWaterInsertPerAction = 3.5f;
+        public float FarmFieldWaterDrainByCarrotPerSec = .33f;
+        public float FarmFieldWaterInsertPerAction = 4f;
 
         // Mound
         public float MoundCreateTime = 4f;

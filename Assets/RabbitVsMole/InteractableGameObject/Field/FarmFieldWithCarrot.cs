@@ -69,7 +69,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
                     //NewFieldStateProvider = null,
                     //NewLinkedFieldStateProvider = null,
                     OnActionRequested = onActionRequested,
-                    //OnActionStart = null,
+                    OnActionStart = () => FieldParent.AddWater(GameInspector.GameStats.FarmFieldWaterInsertPerAction),
                     OnActionCompleted = onActionCompleted,
                     //FinalValidation = null,
                     //OnPreStateChange = null,

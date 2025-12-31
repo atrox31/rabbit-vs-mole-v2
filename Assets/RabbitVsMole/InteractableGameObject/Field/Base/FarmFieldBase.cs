@@ -7,7 +7,11 @@ using RabbitVsMole.InteractableGameObject.Visuals;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Unity.Mathematics.Geometry;
 using Unity.VisualScripting;
+using UnityEditor;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -201,8 +205,54 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
         {
             WaterLevel -= GameInspector.GameStats.FarmFieldWaterDrainPerSec;
 
-            if(State is FarmFieldRooted) 
+            if (State is FarmFieldRooted)
                 HandleRoots();
+        }
+
+        StringBuilder sb = new StringBuilder();
+        private void OnDrawGizmos()
+        {
+            sb.Clear(); 
+            sb.Append("Field State: ").AppendLine(State.GetType().Name);
+            sb.AppendFormat("Water level: {0:0.00}/{1}\n", WaterLevel, GameInspector.GameStats.FarmFieldMaxWaterLevel);
+            if (_farmCarrotVisual != null)
+            {
+                sb.Append("Carrot progress: ")
+                  .Append(Mathf.RoundToInt(_farmCarrotVisual.Progress * 100f))
+                  .AppendLine("%");
+            }
+
+            if (State is FarmFieldRooted roots)
+            {
+                sb.Append("Roots hp: ").Append(roots.GetHP).AppendLine("%");
+            }
+
+
+            GUIStyle style = new GUIStyle();
+            style.fontSize = 15;
+            style.fontStyle = FontStyle.Bold;
+            style.normal.textColor = Color.white;
+            style.alignment = TextAnchor.MiddleCenter;
+
+            style.normal.background = Texture2D.whiteTexture;
+            GUIContent content = new GUIContent(sb.ToString());
+
+            Vector2 size = style.CalcSize(content);
+
+            float padding = 10f;
+            float width = size.x + padding;
+            float height = size.y + padding;
+
+            Vector3 worldPos = transform.position + Vector3.up * 2.0f;
+            Vector2 guiPos = HandleUtility.WorldToGUIPoint(worldPos);
+
+            Handles.BeginGUI();
+            GUI.backgroundColor = new Color(0, 0, 0, 1f);
+
+            Rect rect = new Rect(guiPos.x - width / 2, guiPos.y - height / 2, width, height);
+            GUI.Box(rect, content, style);
+
+            Handles.EndGUI();
         }
 
         float rootSpreadCounter = 0f;

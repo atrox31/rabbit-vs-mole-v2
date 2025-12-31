@@ -19,6 +19,7 @@ public class AvatarAddon : MonoBehaviour
 
     private Vector3 originalScale;
     private Coroutine _scaleCorutine;
+    private bool IsVisible { get; set; }
 
     public void Setup(PlayerAvatar playerAvatar)
     {
@@ -73,6 +74,8 @@ public class AvatarAddon : MonoBehaviour
         if (IsVisible)
             return;
 
+        IsVisible = true;
+
         if (_scaleCorutine != null)
             StopCoroutine( _scaleCorutine );
 
@@ -84,12 +87,12 @@ public class AvatarAddon : MonoBehaviour
         if(!IsVisible) 
             return;
 
+        IsVisible = false;
+
         if (_scaleCorutine != null)
             StopCoroutine(_scaleCorutine);
 
         _scaleCorutine = StartCoroutine(ScaleOverTime(false));
     }
 
-    public bool IsVisible =>
-        addonObject.activeSelf;
 }

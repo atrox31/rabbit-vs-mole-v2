@@ -75,9 +75,21 @@ namespace RabbitVsMole
         #endregion
 
         #region Input Handling
-
+        public void BlockMenu()
+        {
+            _blockMenu = true;
+            if (_isMenuVisible)
+            {
+                HideMenu(_mainMenu);
+            }
+            GameManager.Unpause();
+        }
+        private bool _blockMenu = false;
         private void HandleInput()
         {
+            if (_blockMenu)
+                return;
+
             if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
             {
                 ToggleMenu();

@@ -214,6 +214,7 @@ namespace RabbitVsMole
             yield return StartCoroutine(FadeMask(new Color(0f, 0f, 0f, 1f), new Color(0f, 0f, 0f, 0f), GameInspector.GameStats.TimeActionExitMound));
 
             _blackMask.gameObject.SetActive(false);
+            _playerAvatar.SetupNewTerrain();
         }
 
         private IEnumerator FadeMask(Color fromColor, Color toColor, float duration)

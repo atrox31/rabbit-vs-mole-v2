@@ -15,7 +15,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
         {
         }
         private int _hitCount;
-
+        public int GetHP => GameInspector.GameStats.RootsHealthPoint - _hitCount;
         protected override void OnStart()
         {
             AIPriority = GameInspector.GameStats.AIStats.FarmFieldRooted;

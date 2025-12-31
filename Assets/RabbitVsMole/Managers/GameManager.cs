@@ -6,6 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using UnityEngine;
+using UnityEngine.Localization;
 using WalkingImmersionSystem;
 using static RabbitVsMole.GameManager;
 
@@ -42,6 +43,9 @@ namespace RabbitVsMole
         [Header("Debug")]
         [SerializeField] bool _debugResetGoldenCarrotState = false;
 
+        private bool _endGame = false;
+        [SerializeField] private string _localizationTableName = "Interface";
+        string GetLocalizedString(string key) => new LocalizedString(_localizationTableName, key).GetLocalizedString();
         protected override void Ready()
         {
             DebugHelper.Log(this, "GameManager: Awake started.");
@@ -410,6 +414,7 @@ namespace RabbitVsMole
         {
             // Remember settings used to start this gameplay session (for RestartGame)
             Instance._lastPlayGameSettings = playGameSettings;
+            Instance._endGame = false;
 
             Instance._currentDayOfWeek = playGameSettings.day;
             Instance._currentPlayerForStory = playGameSettings.playerTypeForStory;
@@ -548,12 +553,29 @@ namespace RabbitVsMole
 
         void OnGameEnd(WinPlayer winningPlayer)
         {
+            if (_endGame)
+                return; 
+
+            var InGameMenu = FindAnyObjectByType<InGameMenu>();
+            if(InGameMenu != null)
+                InGameMenu.BlockMenu();
+
             GameInspector.StopTimer();
 
             bool DidPlayerWin(WinPlayer player) => winningPlayer == player || winningPlayer == WinPlayer.Both;
 
             TriggerEndGameAnimation(PlayerAvatar.RabbitStaticInstance, DidPlayerWin(WinPlayer.Rabbit));
             TriggerEndGameAnimation(PlayerAvatar.MoleStaticInstance, DidPlayerWin(WinPlayer.Mole));
+            //GetLocalizedString
+            GameInspector.GameUI.ShowGameOverScreen(
+                winningPlayer switch
+                {
+                    WinPlayer.None => GetLocalizedString("WinPlayer_None"),
+                    WinPlayer.Rabbit => GetLocalizedString("WinPlayer_Rabbit"),
+                    WinPlayer.Mole => GetLocalizedString("WinPlayer_Mole"),
+                    WinPlayer.Both => GetLocalizedString("WinPlayer_Both"),
+                    _ => "error. -.-",
+                });
         }
 
         private void TriggerEndGameAnimation(PlayerAvatar player, bool isWinner)

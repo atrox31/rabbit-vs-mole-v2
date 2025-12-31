@@ -5,6 +5,7 @@ using RabbitVsMole.Events;
 using RabbitVsMole.InteractableGameObject.Base;
 using RabbitVsMole.InteractableGameObject.Enums;
 using RabbitVsMole.InteractableGameObject.Field.Base;
+using RabbitVsMole.InteractableGameObject.SoundDB;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -26,6 +27,12 @@ namespace RabbitVsMole
         [SerializeField] private List<AvatarAddon> _avatarAddonListPrefab;
         private List<AvatarAddon> _activeAvatarAddon = new();
 
+        [Header("Sounds")]
+        [SerializeField] private AudioClip _audioHit;
+        [SerializeField] private AudioClip _audioReciveDamage;
+        [SerializeField] private AudioClip _audioStunDamage;
+        [SerializeField] private AudioClip _audioDeathDamage;
+
         [Header("Interaction Settings")]
         [SerializeField] private float _raycastDistance = 1f;
         [SerializeField] private LayerMask interactionLayerMask = -1;
@@ -46,8 +53,8 @@ namespace RabbitVsMole
 
         // Action States
         private bool _isPerformingAction;
+        private ActionType _currentActionType = ActionType.None;
         private float _defaultAnimatorSpeed = 1f;
-        private Coroutine _animationSpeedCoroutine;
 
         private IInteractableGameObject _interactableOnFront;
         private IInteractableGameObject _interactableDown;
@@ -151,11 +158,10 @@ namespace RabbitVsMole
         {
             foreach (var item in _activeAvatarAddon)
             {
-                item.Hide();
                 if (item.actionType == actionType)
-                {
                     item.Show();
-                }
+                else
+                    item.Hide();
             }
         }
 
@@ -267,7 +273,10 @@ namespace RabbitVsMole
             {
                 return PerformAction(
                         actionType: ActionType.Attack,
-                        onBegin: () => _enemy.Hit(GameInspector.GameStats.FightRabbitDamageDeal),
+                        onBegin: () => {
+                            _enemy.Hit(GameInspector.GameStats.FightRabbitDamageDeal, true);
+                            AudioManager.PlaySound3D(_audioHit, transform.position);
+                            },
                         onEnd: null,
                         blockAfterAction: false
                     );
@@ -285,7 +294,13 @@ namespace RabbitVsMole
             if(_actionCorutine != null)
             {
                 StopCoroutine(_actionCorutine);
+                // Set action type before cancelling, so OnActionCompleted knows we're transitioning to a new action
+                _currentActionType = actionType;
                 _currentCancelAction?.Invoke(OnActionCompleted);
+            }
+            else
+            {
+                _currentActionType = actionType;
             }
             _actionCorutine = StartCoroutine(ActionCoroutine(actionType, onBegin, onEnd, blockAfterAction));
             return true;
@@ -308,11 +323,19 @@ namespace RabbitVsMole
 
             if(!blockAfterAction)
                 OnActionCompleted();
+            else
+            {
+                // For blocking actions (like Victory/Defeat), keep _isPerformingAction true
+                // but reset other state
+                _currentAnimationState = AnimationState.None;
+                ShowAddon(ActionType.None);
+                _haveCarrotIndicator.SetActive(IsHaveCarrot);
+            }
 
             _actionCorutine = null;
         }
 
-        private bool Hit(int damage)
+        private bool Hit(int damage, bool stun)
         {
             // cancel current action
             _currentCancelAction?.Invoke(null);
@@ -322,17 +345,27 @@ namespace RabbitVsMole
             if (Backpack.Health.TryGet(damage))
             {
                 // hit but have some health
-                return PerformAction(
-                        actionType: ActionType.Stun,
-                        onBegin: () => _hitParticles.SafePlay(),
-                        onEnd: () => _hitParticles.SafeStop(),
-                        blockAfterAction: false
-                    );
+                if (stun)
+                {
+                    AudioManager.PlaySound3D(_audioStunDamage, transform.position);
+                    return PerformAction(
+                            actionType: ActionType.Stun,
+                            onBegin: () => _hitParticles.SafePlay(),
+                            onEnd: () => _hitParticles.SafeStop(),
+                            blockAfterAction: false
+                        );
+                }
+                else
+                {
+                    AudioManager.PlaySound3D(_audioReciveDamage, transform.position);
+                }
+                return true;
             }
             else
             {
                 // healts is too low
                 Backpack.Health.GetAll();
+                AudioManager.PlaySound3D(_audioDeathDamage, transform.position);
                 return PerformAction(
                         actionType: ActionType.Death,
                         onBegin: () => _hitParticles.SafePlay(),
@@ -358,7 +391,7 @@ namespace RabbitVsMole
                 return;
 
             if(collapsedUndergroundField == fieldThatPlayerIsStandingOn)
-                Hit(GameInspector.GameStats.FightMoleHealthPoints + 1);
+                Hit(GameInspector.GameStats.FightMoleHealthPoints + 1, true);
         }
 
         IEnumerator HealthRegenerationCoroutine()
@@ -410,7 +443,7 @@ namespace RabbitVsMole
         {
             if (_isPerformingAction || interactable is null)
                 return false;
-
+            
             _isPerformingAction = interactable.Interact(
                 this,
                 OnActionRequested,
@@ -430,7 +463,17 @@ namespace RabbitVsMole
 
         private void OnActionCompleted()
         {
-            _isPerformingAction = false;
+            // Don't reset _isPerformingAction if we're currently performing a Victory/Defeat action
+            // This prevents movement from being enabled when a previous action's callback completes
+            // after the game has ended
+            if (_currentActionType != ActionType.Victory && _currentActionType != ActionType.Defeat)
+            {
+                _isPerformingAction = false;
+                _currentActionType = ActionType.None;
+            }
+            // If we're in Victory/Defeat, keep _isPerformingAction true and _currentActionType set
+            // so movement remains blocked
+            
             _currentAnimationState = AnimationState.None; // Reset state to allow UpdateAnimations to take over
             ShowAddon(ActionType.None);
             _haveCarrotIndicator.SetActive(IsHaveCarrot);
