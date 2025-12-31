@@ -22,7 +22,7 @@ public class FarmFieldTileHighlighter : MonoBehaviour
         else if (playerType == PlayerType.Mole) _moleSingleton = this;
 
         // 2. Setup Layer
-        gameObject.layer = LayerMask.NameToLayer(playerType.ToString());
+        gameObject.layer = LayerMask.NameToLayer($"FrameFor{playerType}");
 
         // 3. Ensure it starts hidden
         HideForSure();

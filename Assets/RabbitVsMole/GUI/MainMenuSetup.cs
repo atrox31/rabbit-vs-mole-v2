@@ -202,8 +202,8 @@ namespace RabbitVsMole
 
         private void SetupMenus()
         {
-            _mainInputPrompt = _menuManager.CreatePanel(GetLocalizedString("menu_input_selector"))    //cursor: fill serialization table. eng: Select Player to use Gamepad
-              .AddLabel(GetLocalizedString("text_input_selector_header")) //cursor: fill serialization table.eng: Gamepad detected,setelct player to use gamepad
+            _mainInputPrompt = _menuManager.CreatePanel(GetLocalizedString("menu_input_selector"))    
+              .AddLabel(GetLocalizedString("text_input_selector_header")) 
               .AddSpacer()
               .AddButton(GetLocalizedString("button_play_duel_as_rabbit"), () =>
               {

@@ -7,6 +7,7 @@ using RabbitVsMole.InteractableGameObject.Visuals;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -128,7 +129,74 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
             OnCarrotReady();
         }
 
-       
+        public void StartStealCarrot() {
+            if (!IsCarrotReady)
+                return;
+
+            if(_stealCarrotCorutine != null)
+            {
+                StopCoroutine(_stealCarrotCorutine);
+            }
+            _stealCarrotCorutine = StartCoroutine(AnimateCarrotPull(_farmCarrotVisual.transform, GameInspector.GameStats.TimeActionStealCarrotFromUndergroundField, 1f));
+        }
+        public void StopStealCarrot()
+        {
+            if (_stealCarrotCorutine != null)
+            {
+                StopCoroutine(_stealCarrotCorutine);
+                _stealCarrotCorutine = null;
+            }
+        }
+        private Coroutine _stealCarrotCorutine;
+        public IEnumerator AnimateCarrotPull(Transform carrotTransform, float duration, float pullDepth)
+        {
+            Vector3 startPos = carrotTransform.position;
+            Quaternion startRot = carrotTransform.rotation;
+
+            float elapsed = 0f;
+
+            // Configuration for "chaotic but smooth" feel
+            float shakeSpeed = 15f;    // How fast the chaotic vibration is
+            float shakeAmount = 0.05f; // How strong the chaotic vibration is
+            float wobbleSpeed = 4f;    // How fast the side-to-side tilt is
+            float wobbleAngle = 8f;    // Max tilt angle in degrees
+
+            while (elapsed < duration)
+            {
+                if (carrotTransform == null)
+                {
+                    StopStealCarrot();
+                    yield break;
+                }
+
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+
+                // 1. Smoothly move downwards (Ease In/Out)
+                float smoothStep = Mathf.SmoothStep(0, 1, t);
+                Vector3 currentDepth = Vector3.down * (smoothStep * pullDepth);
+
+                // 2. Add chaotic jitter using Perlin Noise
+                // Perlin Noise gives smoother, "organic" randomness than Random.InsideUnitSphere
+                float noiseX = Mathf.PerlinNoise(Time.time * shakeSpeed, 0) - 0.5f;
+                float noiseZ = Mathf.PerlinNoise(0, Time.time * shakeSpeed) - 0.5f;
+                Vector3 jitter = new Vector3(noiseX, 0, noiseZ) * shakeAmount;
+
+                // 3. Add rhythmic wobble (side-to-side) using Sinus
+                float wobble = Mathf.Sin(Time.time * wobbleSpeed) * wobbleAngle;
+                Quaternion tilt = Quaternion.Euler(wobble, 0, wobble * 0.5f);
+
+                // Apply all transformations
+                carrotTransform.position = startPos + currentDepth + jitter;
+                carrotTransform.rotation = startRot * tilt;
+
+                yield return null;
+            }
+
+            // Finalize: snap to target to avoid floating point errors
+            carrotTransform.position = startPos + (Vector3.down * pullDepth);
+        }
+
         private void Update()
         {
             WaterLevel -= GameInspector.GameStats.FarmFieldWaterDrainPerSec;
@@ -160,7 +228,7 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
             {
                 if (RandomUtils.Chance(GameInspector.GameStats.RootsBirthChance)
                 && CanGrowRoots(neighbor))
-                    neighbor.SetNewState(CreateFarmRootedState());
+                    neighbor.SetNewState(neighbor.CreateFarmRootedState());
             }
         }
 
@@ -176,6 +244,7 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
                     ? stats.RootsCanSpawnOnWithCarrotFullGrowField
                     : stats.RootsCanSpawnOnWithCarrotField,
                 FarmFieldMounded => stats.RootsCanSpawnOnMoundedField,
+                FarmFieldRooted => false,
                 _ => false 
             };
         }
@@ -226,13 +295,13 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
         void OnCarrotReady()
         {
             if(LinkedField.State is UndergroundFieldClean)
-                LinkedField.SetNewState(CreateUndergroundCarrotState());
+                LinkedField.SetNewState(LinkedField.CreateUndergroundCarrotState());
         }
 
         void OnCarrotDestroy()
         {
             if (LinkedField.State is UndergroundFieldCarrot)
-                LinkedField.SetNewState(CreateUndergroundCleanState());
+                LinkedField.SetNewState(LinkedField.CreateUndergroundCleanState());
         }
 
         private void DestroyVisual<T>(ref T visual) where T : VisualBase

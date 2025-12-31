@@ -14,7 +14,6 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
     {
         protected override FieldState _fieldState { get; set; }
 
-
         [Header("Visuals")]
         [SerializeField] UndergroundCarrotVisual undergroundCarrotVisualPrefab;
         UndergroundCarrotVisual _undergroundCarrotVisual;
@@ -35,8 +34,10 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
         void Awake()
         {
             _fieldState = CreateUndergroundWallState();
-        }
+            _wallsVisual?.SetDuration(0.01f);
 
+        }
+        VisualBase _currentVisual;
 
         private void DestroyVisual<T>(ref T visual) where T : VisualBase
         {
@@ -44,6 +45,7 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
                 return;
             visual.Hide();
             visual = null;
+            _currentVisual = null;
         }
 
         private void CreateVisual<T>(ref T visual, T prefab) where T : VisualBase
@@ -51,10 +53,12 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
             if (visual != null)
                 return;
             visual = Instantiate(prefab, transform);
+            _currentVisual = visual;
         }
 
         internal void DestroyMound()
         {
+            _moundVisual?.SetDuration(GameInspector.GameStats.TimeActionCollapseMound);
             DestroyVisual(ref _moundVisual);
         }
 
@@ -75,6 +79,7 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
 
         internal void DestroyWall()
         {
+            _wallsVisual?.SetDuration(GameInspector.GameStats.TimeActionDigUndergroundWall);
             DestroyVisual(ref _wallsVisual);
         }
 
@@ -90,12 +95,16 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
 
         public override void LightUp(PlayerType playerType)
         {
-
+            //FarmFieldTileHighlighter.Instance(playerType)?.SetTarget(transform.position);
+            _currentVisual?.LightUp(playerType);
         }
 
         public override void LightDown(PlayerType playerType)
         {
-
+            //FarmFieldTileHighlighter.Instance(playerType)?.Hide();
+            _currentVisual?.LightDown(playerType);
         }
+
+
     }
 }

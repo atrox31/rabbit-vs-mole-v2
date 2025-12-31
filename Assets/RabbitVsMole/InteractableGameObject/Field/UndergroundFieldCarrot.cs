@@ -4,6 +4,7 @@ using System;
 using PlayerManagementSystem;
 using PlayerManagementSystem.Backpack;
 using RabbitVsMole.InteractableGameObject.Enums;
+using RabbitVsMole.InteractableGameObject.Base;
 
 namespace RabbitVsMole.InteractableGameObject.Field
 {
@@ -24,33 +25,47 @@ namespace RabbitVsMole.InteractableGameObject.Field
             FieldParent.DestroyCarrot();
         }
 
-
-        protected override bool CanInteractForMole(Backpack backpack)
+        protected override void OnCancelAction(Action OnActionCompleted)
         {
-            return backpack.Carrot.Count == 0;
+            (FieldParent.LinkedField as FarmFieldBase).StopStealCarrot();
+            OnActionCompleted?.Invoke();
         }
+
+        protected override bool CanInteractForMole(Backpack backpack) =>
+            backpack.Carrot.IsEmpty;
 
         protected override bool ActionForMole(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
             return FieldParent.IsCarrotReady switch
             {
-                true => StandardAction(
-                        true,
-                        onActionRequested,
-                        onActionCompleted,
-                        ActionType.HarvestCarrot,
-                        FieldParent.CreateUndergroundCleanState(),
-                        FieldParent.LinkedField.CreateFarmCleanState()
-                        ),
+                true => StandardAction(new InteractionConfig
+                {
+                    ActionType = ActionType.DigMound,
+                    BackpackAction = true,
+                    NewFieldStateProvider = () => FieldParent.CreateUndergroundCleanState(),
+                    NewLinkedFieldStateProvider = () => FieldParent.LinkedField.CreateFarmCleanState(),
+                    OnActionRequested = onActionRequested,
+                    OnActionStart = () => (FieldParent.LinkedField as FarmFieldBase).StartStealCarrot(),
+                    OnActionCompleted = onActionCompleted,
+                    FinalValidation = () => (FieldParent.LinkedField as FarmFieldBase).IsCarrotReady,
+                    OnPreStateChange = () => playerAvatar.Backpack.Carrot.TryInsert(),
+                    OnPostStateChange = () => (FieldParent.LinkedField as FarmFieldBase).StopStealCarrot(),
+                    DelayedStatusChange = true
+                }),
 
-                false => StandardAction(
-                        playerAvatar.Backpack.Seed.TryGet(GameInspector.GameStats.CostRabbitForSeedAction),
-                        onActionRequested,
-                        onActionCompleted,
-                        ActionType.DigMound,
-                        FieldParent.CreateUndergroundMoundedState(),
-                        FieldParent.LinkedField.CreateFarmMoundedState()
-                        )
+                false => StandardAction(new InteractionConfig
+                {
+                    ActionType = ActionType.DigMound,
+                    BackpackAction = playerAvatar.Backpack.Dirt.TryGet(GameInspector.GameStats.CostDirtForMoleMound),
+                    NewFieldStateProvider = () => FieldParent.CreateUndergroundMoundedState(),
+                    NewLinkedFieldStateProvider = () => FieldParent.LinkedField.CreateFarmMoundedState(),
+                    OnActionRequested = onActionRequested,
+                    //OnActionStart = null,
+                    OnActionCompleted = onActionCompleted,
+                    //FinalValidation = null,
+                    //OnPreStateChange = null,
+                    //OnPostStateChange = null,
+                })
             };
         }
     }

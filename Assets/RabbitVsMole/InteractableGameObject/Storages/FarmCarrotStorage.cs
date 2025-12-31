@@ -18,9 +18,7 @@ namespace RabbitVsMole.InteractableGameObject.Storages
         [SerializeField] protected Transform _carrotSpawnPoint;
         [SerializeField] ParticleSystem _particleForCarrotStealProgress;
 
-        private bool _carrotStealProgress = false;
-        private Coroutine _carrotStealCoroutine;
-
+        Coroutine _breakActionCorutine;
         protected List<CarrotModelInStorage> _carrotList = new ();
         public int CarrotCount =>
             _carrotList.Count;
@@ -29,80 +27,46 @@ namespace RabbitVsMole.InteractableGameObject.Storages
             CarrotCount > 0
             && !_carrotStealProgress;
 
-        private void AddCarrot()
-        {
-            GameInspector.CarrotPicked(PlayerType.Rabbit);
+        private bool _carrotStealProgress = false;
+
+        private void SpawnCarrotVisual() =>
             _carrotList.Add(Instantiate(_carrotModelInStorage, _carrotSpawnPoint.position, Quaternion.identity, transform));
-        }
 
-
-        private bool DeleteCarrot()
+        private void DeleteCarrotVisual()
         {
-            if (!CanStealCarrot) return false;
-
             var random_carrot = _carrotList.GetRandomElement();
-            if(random_carrot.Delete())
-                _carrotList.Remove(random_carrot);
-
-            return true;
-        }
-        public bool StartStealCarrot()
-        {
-            if (!CanStealCarrot) return false;
-
-            _carrotStealProgress = true;
-            _particleForCarrotStealProgress.SafePlay();
-
-            return true;
+            if (random_carrot == null)
+                return;
+            
+            _carrotList.Remove(random_carrot);
+            random_carrot.Delete();
         }
 
-        public bool EndStealCarrot()
-        {
-            if(!_carrotStealProgress) 
-                return false;
-
-            DeleteCarrot();
-            _particleForCarrotStealProgress.SafeStop();
-            GameInspector.CarrotStealed(PlayerType.Rabbit);
-
-            return true;
-        }
-        public override bool CanInteract(Backpack backpack)
-        {
-            if(_carrotStealProgress)
-                return false;
-
-            return backpack.PlayerType switch
+        public override bool CanInteract(Backpack backpack) =>
+            backpack.PlayerType switch
             {
                 // put carrot
-                PlayerType.Rabbit => backpack.Carrot.Count == 1,
+                PlayerType.Rabbit => !_carrotStealProgress && backpack.Carrot.Count == 1,
                 // steal carrot
-                PlayerType.Mole => (backpack.Carrot.Count == 0 && CarrotCount > 0),
+                PlayerType.Mole => (CanStealCarrot && backpack.Carrot.Count == 0),
                 _ => false,
             };
-        }
 
-        protected override bool Action(Backpack backpack, Func<ActionType, float> OnActionRequested, Action OnActionCompleted)
-        {
-            /// we are sure that
-            /// 1. Rabbit can put carrou becouse have in inventory
-            /// 2. Mole can steal becouse not hav in inventory and can steal something
-            /// 2. Carrot Steal Progress is false
-            return backpack.PlayerType switch
+        protected override bool Action(Backpack backpack, Func<ActionType, float> OnActionRequested, Action OnActionCompleted) =>
+            backpack.PlayerType switch
             {
                 PlayerType.Rabbit => ActionForRabbit(backpack, OnActionRequested, OnActionCompleted),
                 PlayerType.Mole => ActionForMole(backpack, OnActionRequested, OnActionCompleted),
                 _ => false,
             };
 
-        }
-
         private bool ActionForRabbit(Backpack backpack, Func<ActionType, float> OnActionRequested, Action OnActionCompleted)
         {
             if (!backpack.Carrot.TryGet())
                 return false;
 
-            AddCarrot();
+            SpawnCarrotVisual();
+            GameInspector.CarrotPicked(PlayerType.Rabbit);
 
             var actionTime = OnActionRequested.Invoke(ActionType.PutDownCarrot);
             StartCoroutine(CompliteAction(OnActionCompleted, actionTime));
@@ -112,16 +76,16 @@ namespace RabbitVsMole.InteractableGameObject.Storages
         private bool ActionForMole(Backpack backpack, Func<ActionType, float> OnActionRequested, Action OnActionCompleted)
         {
             var actionTime = OnActionRequested.Invoke(ActionType.StealCarrotFromStorage);
-            _carrotStealCoroutine =  StartCoroutine(CompliteActionForMole(backpack, OnActionCompleted, actionTime));
+            _breakActionCorutine = StartCoroutine(CompliteActionForMole(backpack, OnActionCompleted, actionTime));
+
+            _particleForCarrotStealProgress.SafePlay();
             return true;
         }
 
-        protected override void OnCancelAction() {
-            if (_carrotStealCoroutine == null)
-                return;
-            EndStealCarrot();
-            StopCoroutine(_carrotStealCoroutine);
-            _carrotStealCoroutine = null;
+        protected override void OnCancelAction(Action OnActionCompleted) {
+            StopCoroutine(_breakActionCorutine);
+            OnActionCompleted?.Invoke();
+            _particleForCarrotStealProgress.SafeStop();
         }
        
 
@@ -130,15 +94,16 @@ namespace RabbitVsMole.InteractableGameObject.Storages
             var currentTime = 0.0f;
             while (true)
             {
-                
                 currentTime += Time.deltaTime;
                 if (currentTime >= time)
                 {
-                    _carrotStealCoroutine = null;
-                    EndStealCarrot();
-
-                    if(backpack.Carrot.TryInsert())
+                    if (backpack.Carrot.TryInsert())
+                    {
+                        GameInspector.CarrotStealed(PlayerType.Rabbit);
+                        _particleForCarrotStealProgress.SafeStop();
+                        DeleteCarrotVisual();
                         action?.Invoke();
+                    }
 
                     yield break;
                 }

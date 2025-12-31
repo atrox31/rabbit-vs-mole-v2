@@ -1,14 +1,20 @@
-using PlayerManagementSystem.Backpack;
 using RabbitVsMole.InteractableGameObject.AI;
-using System.Diagnostics.Contracts;
-using Unity.Behavior;
-using UnityEditor.ShaderGraph.Internal;
 
 namespace RabbitVsMole.GameData
 {
     [System.Serializable]
     public class GameStats
     {
+        // Fight
+        public float FightRabbitAttackActionTime = 2.25f;
+        public float FightMoleDeath = 2f;
+        public float FightMoleStunTime = 2f;
+        public float FightMoleRespawnTime = 2f;
+        public int FightRabbitDamageDeal = 42;
+        public int FightMoleHealthPoints = 100;
+        public int FightMoleHealthRegenerationPerSec = 12;
+        public bool FightMoleAllowRegenerationOnSurface = false;
+
         // Avatar stats
         public float StatsBaseWalkingSpeedRabbit = 4.5f;
         public float StatsBaseRotationSpeedRabbit = 4.5f;
@@ -43,14 +49,14 @@ namespace RabbitVsMole.GameData
         public int WaterSourceWaterToInventoryPerDrain = 4;
 
         // Carrot
-        public float CarrotGrowingTimeInSec = 6f;
-        public float CarrotSpoilTimeInSec = 60f;
+        public float CarrotGrowingTimeInSec = 10f;
+        public float CarrotSpoilTimeInSec = 120f;
 
         // FarmField
         public float FarmFieldMaxWaterLevel = 4f;
         public float FarmFieldWaterDrainPerSec = 0f;
         public float FarmFieldWaterDrainByCarrotPerSec = 1f;
-        public float FarmFieldWaterInsertPerAction = 3f;
+        public float FarmFieldWaterInsertPerAction = 3.5f;
 
         // Mound
         public float MoundCreateTime = 4f;
@@ -87,16 +93,21 @@ namespace RabbitVsMole.GameData
         public float TimeActionWaterField = 3f;
         public float TimeActionHarvestCarrot = 2.5f;
         public float TimeActionRemoveRoots = 2.5f;
-        public float TimeActionStealCarrotFromUndergroundField = 5f;
-        public float TimeActionDigUndergroundWall = 1.33f;
-        public float TimeActionDigMound = 2f;
+        public float TimeActionStealCarrotFromUndergroundField = 6f;
+        public float TimeActionDigUndergroundWall = 2.85f;
+        public float TimeActionDigMoundUnderground = 3f;
+        public float TimeActionDigMoundOnSurface = 4f;
         public float TimeActionCollapseMound = 2f;
-        public float TimeActionEnterMound = 3f;
+        public float TimeActionEnterMound = 2f;
+        public float TimeActionExitMound = 2f;
         public float TimeActionPickSeed = 3f;
         public float TimeActionPickWater = 3.5f;
-        public float TimeActionPutDownCarrot = 1f;
-        public float TimeActionStealCarrotFromStorage = 3.5f;
+        public float TimeActionPutDownCarrot = 1.2f;
+        public float TimeActionStealCarrotFromStorage = 3.8f;
 
+        //Game rules
+        public bool GameRulesRootsAllowDamageRootsWithCarrotInHand = true;
+        public bool GameRulesMoleCanEnterUndergroundMoundWithCarrotInHand = false;
 
         public AI AIStats = new AI();
         public class AI

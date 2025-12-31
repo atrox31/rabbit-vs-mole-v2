@@ -103,14 +103,29 @@ The game includes a complete farming cycle, dynamic day-of-week progression, gol
 - **Pre-calculated Path System**: Pre-computed 3D path points for performance
 - **Terrain-Conforming Paths**: Raycast-based height adjustment along paths
 
+**Bot AI System:**
+- **Action-Based AI**: Modular action system for bot behavior
+- **Blackboard System**: Shared data structure for AI decision making
+- **Navigation Actions**: FindBestFieldForMound, FindFieldForRabbit, FindNearestMound
+- **Interaction Actions**: AttackEnemy, InteractFront, InteractDown, MoveToTarget
+- **Behavior Sequences**: Complex behavior sequences for advanced AI
+- **Priority System**: AI priority management for target selection
+- **Thinking System**: Deliberation time for more natural AI behavior
+
 ### 🎮 Advanced Player Controller
 - **Physics-Based Movement**: Rigidbody movement with proper collision handling
 - **Collision Sliding**: X/Z axis sliding when hitting obstacles
 - **Acceleration/Deceleration System**: Custom `SpeedController` class for smooth speed transitions
 - **Animation Hash Caching**: Pre-computed animation hashes for performance
+- **Dynamic Animation Speed**: Animation speed adjustment based on action duration
+- **Animation State Management**: State-based animation system (Idle, Walk, Action)
 - **Input System Integration**: Unity's new Input System with action maps
-- **Interaction System**: Raycast-based interaction with `IInteractable` interface
-- **Avatar Stats System**: Configurable player statistics
+- **Multi-Directional Interaction**: Front and down raycast-based interaction detection
+- **Interaction Highlighting**: Visual feedback for interactable objects
+- **Avatar Addons System**: Modular addon system for visual action indicators
+- **Action System**: Coroutine-based action system with cancellation support
+- **Enemy Detection**: Trigger-based enemy proximity detection
+- **Travel System**: Teleportation between linked fields with terrain setup
 
 ### 🌾 Farming System
 - **State Pattern Implementation**: Farm field state machine
@@ -145,6 +160,57 @@ The game includes a complete farming cycle, dynamic day-of-week progression, gol
 - **Game Progress Manager**: Status tracking for golden carrots and story progress
 - **Data Persistence**: Dictionary-based status saving/loading
 
+### 🎒 Backpack System
+- **Item Management**: Type-safe item storage system with capacity limits
+- **Player-Specific Items**: 
+  - Rabbit: Seed, Water, Carrot
+  - Mole: Dirt, Carrot, Health
+- **BackpackItem Class**: Generic item container with TryGet/TryInsert methods
+- **Health System**: Integrated health management for Mole character
+- **Capacity Management**: Configurable capacity limits per item type
+
+### ⚔️ Combat System
+- **Hit System**: Damage dealing with health reduction
+- **Stun System**: Temporary action blocking on hit
+- **Death System**: Death animation and respawn mechanics
+- **Health Regeneration**: Coroutine-based health regeneration system
+- **Surface-Based Regeneration**: Conditional regeneration based on player location
+- **Respawn System**: Position-based respawn with travel events
+- **Mound Collapse Damage**: Environmental damage from collapsing mounds
+- **Attack Actions**: Player-to-player combat with action timing
+
+### 📡 Event Bus System
+- **Type-Safe Event System**: Generic event bus with type-based subscriptions
+- **Publish-Subscribe Pattern**: Decoupled event communication
+- **Event Types**: CarrotPickEvent, TimeUpdateEvent, TravelEvent
+- **Memory Efficient**: Dictionary-based event storage
+- **Thread-Safe Design**: Safe for use across different systems
+
+### 🎯 Interactable Game Object System
+- **Interface-Based Design**: `IInteractableGameObject` interface
+- **Multi-Directional Interaction**: Support for front and down interactions
+- **Visual Feedback**: LightUp/LightDown methods for interaction highlighting
+- **Backpack Integration**: Interaction validation based on backpack contents
+- **Action Callbacks**: OnActionRequested and OnActionCompleted callbacks
+- **Cancellation Support**: Action cancellation system
+
+### 🧬 Mutator System
+- **ScriptableObject-Based**: MutatorSO for game stat modifications
+- **Effect System**: Interface-based mutator effects (`IMutatorEffect`)
+- **Conflict Detection**: Automatic detection of incompatible mutators
+- **Category System**: Mutator categorization for organization
+- **Dynamic Stat Modification**: Runtime stat changes through mutators
+- **Custom Property Drawer**: Editor support for mutator configuration
+
+### 📊 Game Stats System
+- **Centralized Configuration**: Single source of truth for game statistics
+- **Combat Stats**: Attack times, damage values, health points, regeneration rates
+- **Avatar Stats**: Walking speed, rotation speed, acceleration/deceleration
+- **Backpack Capacities**: Configurable item capacity limits
+- **Action Costs**: Resource costs for various actions
+- **Time Settings**: Action duration configuration
+- **Mutator Integration**: Stats modifiable through mutator system
+
 ### 🛠️ Utility Systems
 - **Extension Methods Library**: Comprehensive extension methods for:
   - Transform, GameObject, String, List, Enum, Dictionary, Int, Float
@@ -178,13 +244,16 @@ The game includes a complete farming cycle, dynamic day-of-week progression, gol
 
 ### ✅ Interface-Based Design
 - **IInteractable**: Interaction system interface
+- **IInteractableGameObject**: Enhanced interaction system interface
 - **IFarmFieldState**: State pattern interface
+- **IMutatorEffect**: Mutator effect interface
 - **Separation of Concerns**: Clear contract definitions
 
 ### ✅ Observer Pattern
 - **Event-Driven Systems**: Callback-based communication
 - **Unity Events**: Integration with Unity's event system
 - **Action Delegates**: C# delegate-based notifications
+- **Event Bus**: Type-safe publish-subscribe event system
 
 ### ✅ Factory Pattern
 - **Agent Controller Factory**: `CreateAgentController()` method
@@ -203,8 +272,9 @@ The game includes a complete farming cycle, dynamic day-of-week progression, gol
 - **State Base Class**: `FarmFieldStateBase` with template methods
 
 ### ✅ ScriptableObject Pattern
-- **Data Configuration**: GameModeData, TerrainLayerData, MusicPlaylistSO
+- **Data Configuration**: GameModeData, TerrainLayerData, MusicPlaylistSO, MutatorSO
 - **Asset-Based Design**: Designer-friendly configuration system
+- **GameStats**: Centralized game statistics configuration
 
 ---
 
@@ -337,33 +407,45 @@ The game includes a complete farming cycle, dynamic day-of-week progression, gol
 
 ```
 Assets/
-├── Game Systems/                    # Modular, reusable game systems
-│   ├── AudioManager/                # Professional audio system with pooling
-│   ├── DialogueSystem/              # Custom dialogue graph editor
-│   ├── WalkingImmersion/            # Terrain-aware footstep system
-│   ├── LoadScene/                   # Scene loading with Addressables
-│   ├── Player Management System/    # Input device and player management
+├── GameSystems/                    # Modular, reusable game systems
+│   ├── AudioManager/               # Professional audio system with pooling
+│   ├── DialogueSystem/             # Custom dialogue graph editor
+│   ├── WalkingImmersion/           # Terrain-aware footstep system
+│   ├── LoadScene/                 # Scene loading with Addressables
+│   ├── PlayerManagementSystem/    # Input device and player management
+│   │   └── Backpack/              # Backpack system
+│   ├── EventBus/                  # Event bus system
 │   ├── CoreMonoBehaviourSingleton/ # Bootstrap and singleton base
-│   ├── Universal/                  # Extension methods and utilities
-│   ├── GarbageScanner/             # Debug and profiling tools
+│   ├── Universal/                 # Extension methods and utilities
+│   ├── GarbageScanner/            # Debug and profiling tools
 │   └── AddressablesStaticDictionary/ # Addressables management
-├── Game/                            # Game-specific implementations
-│   ├── Managers/                   # GameManager, GameInspector
-│   ├── MainMenu/                   # Menu systems and game modes
-│   └── RvM Player Management System/ # Game-specific player controllers
-├── Scripts/                        # Core game scripts
-│   ├── GameObjects/                # Game object implementations
-│   │   ├── FarmField/             # State pattern implementation
-│   │   ├── Base/                  # Base classes
+├── RabbitVsMole/                  # Game-specific implementations
+│   ├── Managers/                  # GameManager, GameInspector
+│   ├── PlayerManagementSystem/   # Game-specific player controllers
+│   │   ├── AIBehavior/           # Bot AI behavior system
+│   │   └── AvatarAddon/         # Avatar addons
+│   ├── InteractableGameObject/   # Interaction system
+│   │   ├── Base/                 # Base interfaces and classes
+│   │   ├── Field/               # Field interactions
+│   │   ├── Storages/            # Storage interactions
+│   │   └── Visuals/             # Visual feedback
+│   ├── GameData/                 # Game configuration
+│   │   ├── GameStats.cs          # Centralized game statistics
+│   │   └── MutatorEffect/        # Mutator system
+│   ├── Events/                   # Game events
+│   └── GUI/                      # UI systems
+├── Scripts/                       # Legacy/core game scripts
+│   ├── GameObjects/               # Game object implementations
+│   │   ├── FarmField/            # State pattern implementation
+│   │   ├── Base/                 # Base classes
 │   │   └── Misc/                 # Miscellaneous game objects
-│   ├── Wasp/                      # Wasp AI system
-│   ├── Ants/                      # Ant path following
-│   ├── System/                    # Save system, progress management
-│   └── Enums/                     # Type definitions
-├── Interface/                      # UI systems
-├── Graphics/                       # Visual assets
-├── Audio/                         # Sound assets
-└── Settings/                      # Project configuration
+│   ├── Wasp/                     # Wasp AI system
+│   ├── Ants/                     # Ant path following
+│   ├── System/                   # Save system, progress management
+│   └── Enums/                    # Type definitions
+├── Graphics/                      # Visual assets
+├── Audio/                        # Sound assets
+└── Settings/                     # Project configuration
 ```
 
 ---

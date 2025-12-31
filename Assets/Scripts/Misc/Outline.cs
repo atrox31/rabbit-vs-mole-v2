@@ -93,7 +93,10 @@ public class Outline : MonoBehaviour
     {
 
         // Cache renderers
-        renderers = GetComponentsInChildren<Renderer>();
+        // Cache renderers and filter out particle systems, trails, etc.
+        renderers = GetComponentsInChildren<Renderer>()
+            .Where(r => r is MeshRenderer || r is SkinnedMeshRenderer)
+            .ToArray();
 
         // Instantiate outline materials
         outlineMaskMaterial = Instantiate(Resources.Load<Material>(@"Materials/OutlineMask"));

@@ -68,8 +68,10 @@ namespace RabbitVsMole
                 _instance._currentGameMode = value;
             }
         }
+        public static int RabbitCarrotCount => _instance?.CarrotCount[(int)PlayerType.Rabbit] ?? 0;
+        public static int MoleCarrotCount => _instance?.CarrotCount[(int)PlayerType.Mole] ?? 0;
 
-        private int[] CarrotCount = new int[Enum.GetValues(typeof(PlayerType)).Length];
+        private readonly int[] CarrotCount = new int[Enum.GetValues(typeof(PlayerType)).Length];
         private PlayerType _currentPlayerOnStory;
         public static PlayerType CurrentPlayerOnStory
         {
@@ -143,6 +145,16 @@ namespace RabbitVsMole
             }
         }
 
+        public static void StopTimer()
+        {
+            if (_instance == null)
+            {
+                DebugHelper.LogWarning(null, "GameInspector.StartGameTimer: Instance is null.");
+                return;
+            }
+            _instance.StopCoroutine(_instance._gameTimerCoroutine);
+        }
+
         private void StartGameTimer()
         {
             if (_instance == null)
@@ -203,6 +215,8 @@ namespace RabbitVsMole
 
             }
         }
+
+
         private void UpdateTimeDisplay(float elapsedTime, bool haveTimeLimit, float timeLimitInSeconds)
         {
             float displayTime = haveTimeLimit ? (timeLimitInSeconds - elapsedTime) : elapsedTime;
@@ -245,10 +259,15 @@ namespace RabbitVsMole
             if (CurrentGameMode.carrotGoal == 0)
                 return;
 
-            if (_instance.CarrotCount[(int)player] >= CurrentGameMode.carrotGoal)
+            if (_instance.CarrotCount[(int)PlayerType.Rabbit] + _instance.CarrotCount[(int)PlayerType.Mole] >= CurrentGameMode.carrotGoal && CurrentGameMode.winCondition == GameModeWinCondition.Cooperation)
             {
                 GameManager.GamePlayCarrotGoal();
+                return;
             }
+
+            if (_instance.CarrotCount[(int)player] >= CurrentGameMode.carrotGoal)
+                GameManager.GamePlayCarrotGoal();
+
         }
 
         public static void CarrotStealed(PlayerType player)

@@ -1,9 +1,8 @@
-using RabbitVsMole.InteractableGameObject.AI;
 using RabbitVsMole.InteractableGameObject.Field.Base;
 using System;
-using PlayerManagementSystem;
 using PlayerManagementSystem.Backpack;
 using RabbitVsMole.InteractableGameObject.Enums;
+using RabbitVsMole.InteractableGameObject.Base;
 
 namespace RabbitVsMole.InteractableGameObject.Field
 {
@@ -27,21 +26,28 @@ namespace RabbitVsMole.InteractableGameObject.Field
             FieldParent.DestroyMound();
         }
 
-        protected override bool CanInteractForMole(Backpack backpack)
-        {
-            return backpack.Carrot.Count == 0;
-        }
+        protected override bool CanInteractForMole(Backpack backpack) =>
+            GameInspector.GameStats.GameRulesMoleCanEnterUndergroundMoundWithCarrotInHand switch
+            {
+                true => true,
+                false => backpack.Carrot.IsEmpty
+            };
 
         protected override bool ActionForMole(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
-            return StandardAction(
-                true,
-                onActionRequested,
-                onActionCompleted,
-                ActionType.EnterMound,
-                null,
-                null,
-                () => { playerAvatar.MoveToLinkedField(Parent.LinkedField); });
+            return StandardAction(new InteractionConfig
+            {
+                ActionType = ActionType.EnterMound,
+                //BackpackAction = true,
+                //NewFieldStateProvider = null,
+                //NewLinkedFieldStateProvider = null,
+                OnActionRequested = onActionRequested,
+                OnActionStart = () => playerAvatar.MoveToLinkedField(Parent.LinkedField),
+                OnActionCompleted = onActionCompleted,
+                //FinalValidation = null,
+                //OnPreStateChange = null,
+                //OnPostStateChange = null
+            });
         }
     }
 }

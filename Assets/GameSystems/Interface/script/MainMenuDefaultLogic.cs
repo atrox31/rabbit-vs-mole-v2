@@ -188,7 +188,8 @@ namespace Interface
             List<string> qualities = new List<string>();
             foreach (var name in QualitySettings.names)
             {
-                qualities.Add(name);
+                var localizedString = LocalizationSettings.StringDatabase.GetLocalizedString("Interface", $"qualities_{name}");
+                qualities.Add(localizedString);
             }
             return qualities;
         }
@@ -333,8 +334,9 @@ namespace Interface
             Application.targetFrameRate = targetFPS;
             PlayerPrefs.SetInt(PlayerPrefsConst.TARGET_FPS, targetFPS);
             PlayerPrefs.Save();
-            
-            string fpsDisplay = targetFPS == 0 ? "Unlimited" : targetFPS.ToString();
+
+            var localizedString = LocalizationSettings.StringDatabase.GetLocalizedString("Interface", "fps_unlimited");
+            string fpsDisplay = targetFPS == 0 ? localizedString : targetFPS.ToString();
             DebugHelper.Log(null, $"Target FPS changed to: {fpsDisplay}");
         }
 
@@ -373,7 +375,9 @@ namespace Interface
             
             if (normalizedValue <= 0.01f)
             {
-                return "Unlimited";
+                // Get localized "Unlimited" string from the serialization table
+                var localizedString = LocalizationSettings.StringDatabase.GetLocalizedString("Interface", "fps_unlimited");
+                return localizedString ?? "Unlimited"; // Fallback if localization fails
             }
             
             const int minFPS = 10;

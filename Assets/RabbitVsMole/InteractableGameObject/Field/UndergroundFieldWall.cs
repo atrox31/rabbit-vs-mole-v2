@@ -1,7 +1,5 @@
-using RabbitVsMole.InteractableGameObject.AI;
 using RabbitVsMole.InteractableGameObject.Field.Base;
 using System;
-using PlayerManagementSystem;
 using PlayerManagementSystem.Backpack;
 using RabbitVsMole.InteractableGameObject.Enums;
 using RabbitVsMole.InteractableGameObject.Base;
@@ -31,10 +29,13 @@ namespace RabbitVsMole.InteractableGameObject.Field
                 boxSize.y = 5f;
                 boxCollider.size = boxSize;
             }
+            PlayerAvatar.MoleStaticInstance?.MoundCollapse(FieldParent);
         }
 
         protected override void OnDestroy()
         {
+            FieldParent.DestroyWall();
+
             if (FieldParent.TryGetComponent<BoxCollider>(out var boxCollider))
             {
                 var boxSize = boxCollider.size;
@@ -44,23 +45,26 @@ namespace RabbitVsMole.InteractableGameObject.Field
         }
 
 
-        protected override bool CanInteractForMole(Backpack backpack)
-        {
-            return backpack.Dirt.CanInsert(GameInspector.GameStats.WallDirtCollectPerAction);
-        }
+        protected override bool CanInteractForMole(Backpack backpack) => 
+            backpack.Dirt.CanInsert(GameInspector.GameStats.WallDirtCollectPerAction);
 
         protected override bool ActionForMole(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
             _hitCount += GameInspector.GameStats.WallDirtDamageByMole;
             var wallIsDestroyed = _hitCount >= GameInspector.GameStats.WallDirtHealthPoint;
-
-            return StandardAction(
-                playerAvatar.Backpack.Dirt.TryInsert(GameInspector.GameStats.WallDirtCollectPerAction),
-                onActionRequested,
-                onActionCompleted,
-                ActionType.DigUndergroundWall,
-                DetermineNewFieldState(wallIsDestroyed),
-                null);
+            return StandardAction(new InteractionConfig
+            {
+                ActionType = ActionType.DigUndergroundWall,
+                BackpackAction = playerAvatar.Backpack.Dirt.TryInsert(GameInspector.GameStats.WallDirtCollectPerAction),
+                NewFieldStateProvider = () => DetermineNewFieldState(wallIsDestroyed),
+                //NewLinkedFieldStateProvider = null,
+                OnActionRequested = onActionRequested,
+                //OnActionStart = null,
+                OnActionCompleted = onActionCompleted,
+                //FinalValidation = null,
+                //OnPreStateChange = null,
+                //OnPostStateChange = null,
+            });
         }
 
         FieldState DetermineNewFieldState(bool wallIsDestroyed)
@@ -75,7 +79,10 @@ namespace RabbitVsMole.InteractableGameObject.Field
                 else 
                     return FieldParent.CreateUndergroundCleanState();
             }
-            
+            else
+            {
+                DebugHelper.LogError(FieldParent, "Cannot find farm field linked field");
+            }
             return null;    
         }
 

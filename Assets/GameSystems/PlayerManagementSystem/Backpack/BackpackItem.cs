@@ -1,4 +1,5 @@
 using GameSystems;
+using PlayerManagementSystem.Backpack.Events;
 using RabbitVsMole;
 using RabbitVsMole.GameData;
 using System;
@@ -12,16 +13,31 @@ namespace PlayerManagementSystem.Backpack
         public PlayerType PlayerType { get; private set; }
         public int Count { get; protected set; }
         public int Capacity { get; protected set; }
+
+        public bool IsEmpty => Count == 0;
+        public bool IsFull => Count == Capacity;
         private void SendChangeEvent() =>
             EventBus.Publish(new InventoryChangedEvent(ItemType, Count, Capacity));
+        private void SendErrorEvent() =>
+            EventBus.Publish(new InventoryErrorEvent(ItemType));
 
-        public bool CanInsert(int value = 1, bool rejectTheSuperstate = true) =>
-            rejectTheSuperstate
-            ? Count < Capacity
-            : Count + value <= Capacity;
+        public bool CanInsert(int value = 1, bool rejectTheSuperstate = true) {
+            var answer = rejectTheSuperstate
+                ? Count<Capacity
+                : Count + value <= Capacity;
 
-        public bool CanGet(int value = 1) => 
-            Count >= value;
+            if (!answer)
+                SendErrorEvent();
+            return answer;
+        }
+
+        public bool CanGet(int value = 1)
+        {
+            var answer = Count >= value;
+            if(!answer)
+                SendErrorEvent();
+            return answer;
+        }
 
         public bool TryGet(int value = 1)
         {
@@ -31,6 +47,13 @@ namespace PlayerManagementSystem.Backpack
             Count = newCount;
             SendChangeEvent();
             return true;
+        }
+
+        public int GetAll()
+        {
+            var count = Count;
+            Count = 0;
+            return count;
         }
         
         public bool TryInsert(int value = 1, bool rejectTheSuperstate = true)
@@ -55,11 +78,11 @@ namespace PlayerManagementSystem.Backpack
             return true;
         }
         
-        public BackpackItem(PlayerType playerType, BackpackItemType itemType, int capacity)
+        public BackpackItem(PlayerType playerType, BackpackItemType itemType, int capacity, bool startsFull = false)
         {
             PlayerType = playerType;
             ItemType = itemType;
-            Count = 0;
+            Count = startsFull ? capacity : 0;
             Capacity = capacity;
         }
     }

@@ -8,7 +8,7 @@ namespace RabbitVsMole
         Sandbox,            // no win condition
         CarrotCollection,   // who collect target carrot number first
         TimeLimit,          // who has the most carrots when time runs out
-        Rivaliry,           // rabbit when collects carrots or mole when time runs out
+        Rivalry,           // rabbit when collects carrots or mole when time runs out
         Cooperation         // players work together to achieve a common goal and win or lose together
     }
 
@@ -27,5 +27,7 @@ namespace RabbitVsMole
         public int carrotGoal = 0;
         public float timeLimitInMinutes = 0;
         public GameModeWinCondition winCondition = GameModeWinCondition.Sandbox;
+        public bool AllowFight =>
+            winCondition != GameModeWinCondition.Cooperation;
     }
 }

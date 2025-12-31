@@ -5,6 +5,7 @@ using PlayerManagementSystem;
 using PlayerManagementSystem.Backpack;
 using RabbitVsMole.InteractableGameObject.Enums;
 using RabbitVsMole;
+using RabbitVsMole.InteractableGameObject.Base;
 
 namespace RabbitVsMole.InteractableGameObject.Field
 {
@@ -19,27 +20,29 @@ namespace RabbitVsMole.InteractableGameObject.Field
             AIPriority = GameInspector.GameStats.AIStats.UndergroundFieldClean;
             FieldParent.DestroyWall();
             FieldParent.DestroyCarrot();
+            FieldParent.DestroyMound();
         }
 
-        protected override void OnDestroy()
-        {
-        }
+        protected override void OnDestroy() {}
 
-        protected override bool CanInteractForMole(Backpack backpack)
-        {
-            return backpack.Dirt.CanGet(GameInspector.GameStats.CostDirtForMoleMound);
-        }
+        protected override bool CanInteractForMole(Backpack backpack) =>
+            backpack.Dirt.CanGet(GameInspector.GameStats.CostDirtForMoleMound);
 
         protected override bool ActionForMole(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
-            return StandardAction(
-                playerAvatar.Backpack.Dirt.TryGet(GameInspector.GameStats.CostDirtForMoleMound),
-                onActionRequested,
-                onActionCompleted,
-                ActionType.DigMound,
-                FieldParent.CreateUndergroundMoundedState(),
-                FieldParent.LinkedField.CreateFarmMoundedState()
-                );
+            return StandardAction(new InteractionConfig
+            {
+                ActionType = ActionType.DigMound,
+                BackpackAction = playerAvatar.Backpack.Dirt.TryGet(GameInspector.GameStats.CostDirtForMoleMound),
+                NewFieldStateProvider = () => FieldParent.CreateUndergroundMoundedState(),
+                NewLinkedFieldStateProvider = () => FieldParent.LinkedField.CreateFarmMoundedState(),
+                OnActionRequested = onActionRequested,
+                //OnActionStart = null,
+                OnActionCompleted = onActionCompleted,
+                //FinalValidation = null,
+                //OnPreStateChange = null,
+                //OnPostStateChange = null,
+            });
         }
     }
 }

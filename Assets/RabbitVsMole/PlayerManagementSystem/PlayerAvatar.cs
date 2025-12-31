@@ -1,16 +1,13 @@
 using Extensions;
 using GameSystems;
-using PlayerManagementSystem;
 using PlayerManagementSystem.Backpack;
 using RabbitVsMole.Events;
 using RabbitVsMole.InteractableGameObject.Base;
 using RabbitVsMole.InteractableGameObject.Enums;
-using RabbitVsMole.InteractableGameObject.Field;
 using RabbitVsMole.InteractableGameObject.Field.Base;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using WalkingImmersionSystem;
 
@@ -30,13 +27,16 @@ namespace RabbitVsMole
         private List<AvatarAddon> _activeAvatarAddon = new();
 
         [Header("Interaction Settings")]
-        [SerializeField] private float _raycastDistance = 3f;
+        [SerializeField] private float _raycastDistance = 1f;
         [SerializeField] private LayerMask interactionLayerMask = -1;
         [SerializeField] private ParticleSystem _hitParticles;
 
         private Rigidbody _rigidbody;
         private SpeedController _speedController;
         private Animator _animator;
+        public bool IsOnSurface =>
+            transform.position.y > 0;
+
         public Backpack Backpack { get; private set; }
         public bool IsHaveCarrot => Backpack.Carrot.Count == 1;
         [SerializeField] private GameObject _haveCarrotIndicator;
@@ -55,24 +55,47 @@ namespace RabbitVsMole
         private PlayerAvatar _enemy;
         public PlayerAvatar EnemyInRange => _enemy;
         public bool EnemyIsInRange => _enemy != null;
-        private Action _currentCancelAction;
+        private Action<Action> _currentCancelAction;
 
         public bool IsInteractionAvableFront => _interactableOnFront != null;
         public bool IsInteractionAvableDown => _interactableDown != null;
         public bool IsEnemyInRange => _enemy != null;
+        private Vector3 _respawnPosition;
+        private Coroutine _healthRegeneration;
 
         public IInteractableGameObject NearbyInteractable => _interactableNearby;
 
         // Animation Parameters
         private static readonly int IsWalkingHash = Animator.StringToHash("IsWalking");
-        private static readonly int StartWalkHash = Animator.StringToHash("StartWalk");
-        private static readonly int StopWalkHash = Animator.StringToHash("StopWalk");
+        private Dictionary<string, float> _animationClipLengths = new Dictionary<string, float>();
+        private AnimationState _currentAnimationState = AnimationState.None;
+
+        private enum AnimationState
+        {
+            None,
+            Idle,
+            Walk,
+            Action
+        }
 
         public PlayerType PlayerType => playerType;
         public bool IsPerformingAction => _isPerformingAction;
 
+        public static PlayerAvatar MoleStaticInstance { get; private set; }
+        public static PlayerAvatar RabbitStaticInstance { get; private set; }
+      
         private void Awake()
         {
+            switch (playerType)
+            {
+                case PlayerType.Rabbit:
+                    RabbitStaticInstance = this;
+                    break;
+                case PlayerType.Mole:
+                    MoleStaticInstance = this;
+                    break;
+            }
+
             _rigidbody = GetComponent<Rigidbody>();
             _animator = GetComponentInChildren<Animator>();
 
@@ -87,6 +110,13 @@ namespace RabbitVsMole
             if (_animator != null)
             {
                 _defaultAnimatorSpeed = _animator.speed;
+                foreach (var clip in _animator.runtimeAnimatorController.animationClips)
+                {
+                    if (!_animationClipLengths.ContainsKey(clip.name))
+                    {
+                        _animationClipLengths.Add(clip.name, clip.length);
+                    }
+                }
             }
 
             _haveCarrotIndicator.SetActive(false);
@@ -97,6 +127,24 @@ namespace RabbitVsMole
                 activeAddon.Setup(this);
                 _activeAvatarAddon.Add(activeAddon);
             }
+        }
+
+        private void OnDestroy()
+        {
+            switch (playerType)
+            {
+                case PlayerType.Rabbit:
+                    RabbitStaticInstance = null;
+                    break;
+                case PlayerType.Mole:
+                    MoleStaticInstance = null;
+                    break;
+            }
+        }
+
+        private void Start()
+        {
+            _respawnPosition = transform.position;
         }
 
         private void ShowAddon(ActionType actionType)
@@ -215,26 +263,116 @@ namespace RabbitVsMole
             if (_isPerformingAction)
                 return false;
 
-            if (EnemyIsInRange)
+            if (EnemyIsInRange && GameInspector.CurrentGameMode.AllowFight)
             {
-                StartCoroutine(AttackCoorutine());
-                return true;
+                return PerformAction(
+                        actionType: ActionType.Attack,
+                        onBegin: () => _enemy.Hit(GameInspector.GameStats.FightRabbitDamageDeal),
+                        onEnd: null,
+                        blockAfterAction: false
+                    );
             }
             return false;
         }
 
-        IEnumerator AttackCoorutine()
+        public bool PerformAction(
+            ActionType actionType,
+            Action onBegin = null,
+            Action onEnd = null,
+            bool blockAfterAction = false
+            )
+        {
+            if(_actionCorutine != null)
+            {
+                StopCoroutine(_actionCorutine);
+                _currentCancelAction?.Invoke(OnActionCompleted);
+            }
+            _actionCorutine = StartCoroutine(ActionCoroutine(actionType, onBegin, onEnd, blockAfterAction));
+            return true;
+        }
+        Coroutine _actionCorutine;
+
+        IEnumerator ActionCoroutine(
+            ActionType actionType,
+            Action onBegin,
+            Action onEnd,
+            bool blockAfterAction)
         {
             _isPerformingAction = true;
-            TriggerActionAnimation(ActionType.CollapseMound, 2f);
-            _enemy.Hit();
-            yield return new WaitForSeconds(2);
-            _isPerformingAction = false;
+            _moveInput = Vector3.zero;
+            onBegin?.Invoke();
+
+            yield return new WaitForSeconds(OnActionRequested(actionType));
+
+            onEnd?.Invoke();
+
+            if(!blockAfterAction)
+                OnActionCompleted();
+
+            _actionCorutine = null;
         }
 
-        private void Hit()
+        private bool Hit(int damage)
         {
-            _hitParticles.SafePlay();
+            // cancel current action
+            _currentCancelAction?.Invoke(null);
+            // drop carrot
+            Backpack.Carrot.TryGet();
+
+            if (Backpack.Health.TryGet(damage))
+            {
+                // hit but have some health
+                return PerformAction(
+                        actionType: ActionType.Stun,
+                        onBegin: () => _hitParticles.SafePlay(),
+                        onEnd: () => _hitParticles.SafeStop(),
+                        blockAfterAction: false
+                    );
+            }
+            else
+            {
+                // healts is too low
+                Backpack.Health.GetAll();
+                return PerformAction(
+                        actionType: ActionType.Death,
+                        onBegin: () => _hitParticles.SafePlay(),
+                        onEnd: () =>
+                        {
+                            EventBus.Publish(new TravelEvent() { NewLocation = _respawnPosition, actionTypeAfterTravel = ActionType.Respawn });
+                            _healthRegeneration ??= StartCoroutine(HealthRegenerationCoroutine());
+                        },
+                        blockAfterAction: true
+                    ); 
+            }
+        }
+
+        public void MoundCollapse(FieldBase field)
+        {
+            if (_interactableDown == null)
+                return;
+
+            if(field is not UndergroundFieldBase collapsedUndergroundField)
+                return;
+
+            if(_interactableDown is not UndergroundFieldBase fieldThatPlayerIsStandingOn)
+                return;
+
+            if(collapsedUndergroundField == fieldThatPlayerIsStandingOn)
+                Hit(GameInspector.GameStats.FightMoleHealthPoints + 1);
+        }
+
+        IEnumerator HealthRegenerationCoroutine()
+        {
+            while (!Backpack.Health.IsFull)
+            {
+                bool canRegenerate = !IsOnSurface || GameInspector.GameStats.FightMoleAllowRegenerationOnSurface;
+
+                if (canRegenerate)
+                    Backpack.Health.TryInsert(GameInspector.GameStats.FightMoleHealthRegenerationPerSec, true);
+
+                yield return new WaitForSeconds(1f);
+            }
+            _healthRegeneration = null;
         }
 
         private void HandleMovement()
@@ -273,9 +411,6 @@ namespace RabbitVsMole
             if (_isPerformingAction || interactable is null)
                 return false;
 
-            if (IsHaveCarrot && interactable is not StorageBase)
-                return false;
-
             _isPerformingAction = interactable.Interact(
                 this,
                 OnActionRequested,
@@ -295,20 +430,11 @@ namespace RabbitVsMole
 
         private void OnActionCompleted()
         {
-            // Ensure animator speed is reset in case coroutine was interrupted
-            if (_animator != null)
-            {
-                _animator.speed = _defaultAnimatorSpeed;
-            }
-            if (_animationSpeedCoroutine != null)
-            {
-                StopCoroutine(_animationSpeedCoroutine);
-                _animationSpeedCoroutine = null;
-            }
-            
-            ShowAddon(ActionType.None);
             _isPerformingAction = false;
+            _currentAnimationState = AnimationState.None; // Reset state to allow UpdateAnimations to take over
+            ShowAddon(ActionType.None);
             _haveCarrotIndicator.SetActive(IsHaveCarrot);
+            _currentCancelAction = null;
         }
 
         private float GetActionTime(ActionType actionType) =>
@@ -320,14 +446,23 @@ namespace RabbitVsMole
                 ActionType.RemoveRoots => GameInspector.GameStats.TimeActionRemoveRoots,
                 ActionType.StealCarrotFromUndergroundField => GameInspector.GameStats.TimeActionStealCarrotFromUndergroundField,
                 ActionType.DigUndergroundWall => GameInspector.GameStats.TimeActionDigUndergroundWall,
-                ActionType.DigMound => GameInspector.GameStats.TimeActionDigMound,
+                ActionType.DigMound => IsOnSurface
+                    ? GameInspector.GameStats.TimeActionDigMoundOnSurface
+                    : GameInspector.GameStats.TimeActionDigMoundUnderground,
                 ActionType.CollapseMound => GameInspector.GameStats.TimeActionCollapseMound,
                 ActionType.EnterMound => GameInspector.GameStats.TimeActionEnterMound,
+                ActionType.ExitMound => GameInspector.GameStats.TimeActionExitMound,
                 ActionType.PickSeed => GameInspector.GameStats.TimeActionPickSeed,
                 ActionType.PickWater => GameInspector.GameStats.TimeActionPickWater,
                 ActionType.PutDownCarrot => GameInspector.GameStats.TimeActionPutDownCarrot,
                 ActionType.StealCarrotFromStorage => GameInspector.GameStats.TimeActionStealCarrotFromStorage,
+                ActionType.Attack => GameInspector.GameStats.FightRabbitAttackActionTime,
+                ActionType.Stun => GameInspector.GameStats.FightMoleStunTime,
+                ActionType.Respawn => GameInspector.GameStats.FightMoleRespawnTime,
+                ActionType.Death => GameInspector.GameStats.FightMoleDeath,
                 ActionType.None => 0f,
+                ActionType.Victory => float.MaxValue,
+                ActionType.Defeat => float.MaxValue,
                 _ => 0f
             };
         
@@ -336,73 +471,29 @@ namespace RabbitVsMole
             if (_animator == null)
                 return;
 
-            // Stop any existing animation speed coroutine
-            if (_animationSpeedCoroutine != null)
-            {
-                StopCoroutine(_animationSpeedCoroutine);
-                _animator.speed = _defaultAnimatorSpeed;
-            }
-
+            _moveInput = Vector2.zero;
+            ResetNavTriggers(); // Ensure no navigation triggers are pending
             string triggerName = GetAnimationTriggerName(actionType);
-            if (!string.IsNullOrEmpty(triggerName))
+
+            if (_animationClipLengths.TryGetValue(triggerName, out float clipLength))
             {
-                // Get the current state hash before triggering the animation
-                int previousStateHash = _animator.GetCurrentAnimatorStateInfo(0).fullPathHash;
-                
-                _animator.SetTrigger(triggerName);
-                
-                // Start coroutine to synchronize animation speed with action time
-                if (actionTime > 0f)
+                if (actionTime > 0f && clipLength > 0f)
                 {
-                    _animationSpeedCoroutine = StartCoroutine(SynchronizeAnimationSpeed(previousStateHash, actionTime));
+                    _animator.speed = clipLength / actionTime;
+                }
+                else
+                {
+                    _animator.speed = _defaultAnimatorSpeed;
                 }
             }
-        }
-
-        private IEnumerator SynchronizeAnimationSpeed(int previousStateHash, float actionTime)
-        {
-            // Wait until the animator transitions to a new state
-            AnimatorStateInfo currentStateInfo;
-            int maxWaitFrames = 30; // Safety limit - max 0.5 seconds at 60fps
-            int framesWaited = 0;
-            
-            do
+            else
             {
-                yield return null;
-                currentStateInfo = _animator.GetCurrentAnimatorStateInfo(0);
-                framesWaited++;
-            } while (currentStateInfo.fullPathHash == previousStateHash && framesWaited < maxWaitFrames);
-            
-            // Check if we successfully transitioned to a new state
-            if (currentStateInfo.fullPathHash == previousStateHash)
-            {
-                // Transition didn't happen, abort
-                _animationSpeedCoroutine = null;
-                yield break;
-            }
-            
-            // Wait one more frame to ensure we're fully in the new state (not in transition)
-            yield return null;
-            currentStateInfo = _animator.GetCurrentAnimatorStateInfo(0);
-            
-            // Check if we're in a valid state with a valid length
-            if (currentStateInfo.length > 0f && actionTime > 0f)
-            {
-                float clipLength = currentStateInfo.length;
-                
-                // Calculate speed multiplier: if clip is 2s and action is 1s, speed should be 2x
-                // This makes the animation complete in exactly actionTime seconds
-                float speedMultiplier = clipLength / actionTime;
-                _animator.speed = _defaultAnimatorSpeed * speedMultiplier;
-                
-                // Wait for the action to complete
-                yield return new WaitForSeconds(actionTime);
-                
-                // Reset animator speed to default
+                DebugHelper.LogWarning(this, $"Animation clip '{triggerName}' not found in cache. Using default speed.");
                 _animator.speed = _defaultAnimatorSpeed;
             }
-            
-            _animationSpeedCoroutine = null;
+
+            _animator.SetTrigger(triggerName);
+            _currentAnimationState = AnimationState.Action;
         }
 
         private IInteractableGameObject FindInteractableWithRaycast(Vector3 direction, Color color)
@@ -441,25 +532,51 @@ namespace RabbitVsMole
 
         private void UpdateAnimations()
         {
-            if (_animator == null)
-                return;
+            if (_animator == null) return;
+
+            // If performing an action, we do nothing - TriggerActionAnimation handles logical state
+            // But we must ensure specific states if NOT acting
+            if (_isPerformingAction) return;
 
             bool isMoving = _moveInput.sqrMagnitude > 0.01f && _speedController != null && _speedController.Current > _speedController.SpeedMargin;
-            bool wasWalking = _animator.GetBool(IsWalkingHash);
+            _animator.SetBool(IsWalkingHash, isMoving); // Restore Bool for controllers that rely on it
 
-            if (isMoving != wasWalking)
+            if (isMoving)
             {
-                _animator.SetBool(IsWalkingHash, isMoving);
-                if (isMoving)
+                if (_currentAnimationState != AnimationState.Walk)
                 {
-                    _animator.SetTrigger(StartWalkHash);
-                }
-                else
-                {
-                    _animator.SetTrigger(StopWalkHash);
+                    ResetNavTriggers();
+                    _animator.speed = _defaultAnimatorSpeed;
+                    _animator.SetTrigger("StartWalk");
+                    _currentAnimationState = AnimationState.Walk;
                 }
             }
+            else
+            {
+                if (_currentAnimationState == AnimationState.Walk)
+                {
+                    ResetNavTriggers();
+                    _animator.speed = _defaultAnimatorSpeed;
+                    _animator.SetTrigger("StopWalk");
+                    _currentAnimationState = AnimationState.Idle; 
+                }
 
+                if (_currentAnimationState != AnimationState.Idle)
+                {
+                    ResetNavTriggers();
+                    _animator.speed = _defaultAnimatorSpeed;
+                    string idleTrigger = $"{playerType}_Idle";
+                    _animator.SetTrigger(idleTrigger);
+                    _currentAnimationState = AnimationState.Idle;
+                }
+            }
+        }
+        
+        private void ResetNavTriggers()
+        {
+            _animator.ResetTrigger("StartWalk");
+            _animator.ResetTrigger("StopWalk");
+            _animator.ResetTrigger($"{playerType}_Idle");
         }
 
         public void MoveToLinkedField(InteractableGameObject.Base.FieldBase linkedField) =>
@@ -469,8 +586,21 @@ namespace RabbitVsMole
         {
             var moveInActionTime = GetActionTime(ActionType.EnterMound);
             var moveOutActionTime = GetActionTime(ActionType.ExitMound);
-            var newLocation = linkedField.gameObject.transform.position;
-            EventBus.Publish(new MoleTravelEvent() { EnterTime = moveInActionTime, ExitTime = moveOutActionTime, NewLocation = newLocation });
+
+            // Start raycast from above the field position to find ground surface
+            var fieldPosition = linkedField.gameObject.transform.position;
+            var rayStartPosition = fieldPosition + Vector3.up * 10f; 
+            var raycastDistance = 100f;
+            
+            var newLocation = fieldPosition; // Default fallback
+            
+            // Cast ray downward to find ground surface
+            if (Physics.Raycast(rayStartPosition, Vector3.down, out RaycastHit hit, raycastDistance, ~0, QueryTriggerInteraction.Ignore))
+            {
+                newLocation = hit.point;
+            }
+
+            EventBus.Publish(new TravelEvent() { NewLocation = newLocation, actionTypeAfterTravel = ActionType.ExitMound });
 
             float moveInElapsedTime = 0f;
             while (moveInElapsedTime < moveInActionTime)
@@ -483,7 +613,7 @@ namespace RabbitVsMole
             SetupNewTerrain();
         }
 
-        private void SetupNewTerrain()
+        public void SetupNewTerrain()
         {
             var walkingImmersion = GetComponentInChildren<WalkingImmersionSystemController>();
             if (walkingImmersion == null)

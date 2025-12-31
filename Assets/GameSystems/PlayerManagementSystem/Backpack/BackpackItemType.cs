@@ -5,7 +5,8 @@ namespace PlayerManagementSystem.Backpack
         Seed,
         Water,
         Dirt,
-        Carrot
+        Carrot,
+        Health
     }
 }
 

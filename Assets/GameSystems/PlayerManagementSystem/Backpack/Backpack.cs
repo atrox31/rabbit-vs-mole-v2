@@ -11,16 +11,28 @@ namespace PlayerManagementSystem.Backpack
         public Backpack(PlayerType playerType)
         {
             _playerType = playerType;
-            Seed = new BackpackItem(playerType, BackpackItemType.Seed, GameInspector.GameStats.BackpackCapacitySeed);
-            Water = new BackpackItem(playerType, BackpackItemType.Water, GameInspector.GameStats.BackpackCapacityWater);
-            Dirt = new BackpackItem(playerType, BackpackItemType.Dirt, GameInspector.GameStats.BackpackCapacityDirt);
+
             Carrot = new BackpackItem(playerType, BackpackItemType.Carrot, GameInspector.GameStats.BackpackCapacityCarrot);
+
+            if (playerType == PlayerType.Rabbit)
+            {
+                Seed = new BackpackItem(playerType, BackpackItemType.Seed, GameInspector.GameStats.BackpackCapacitySeed);
+                Water = new BackpackItem(playerType, BackpackItemType.Water, GameInspector.GameStats.BackpackCapacityWater);
+                return;
+            }
+
+            if (playerType == PlayerType.Mole)
+            {
+                Dirt = new BackpackItem(playerType, BackpackItemType.Dirt, GameInspector.GameStats.BackpackCapacityDirt);
+                Health = new BackpackItem(playerType, BackpackItemType.Health, GameInspector.GameStats.FightMoleHealthPoints, true);
+            }
         }
 
         public BackpackItem Seed;
         public BackpackItem Water;
         public BackpackItem Dirt;
         public BackpackItem Carrot;
+        public BackpackItem Health;
     }
 }
 

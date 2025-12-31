@@ -3,6 +3,8 @@
     public enum ActionType
     {
         None,
+        Attack,
+        Stun,
         // farm field
         PlantSeed,
         WaterField,
@@ -21,5 +23,9 @@
         PickWater,
         PutDownCarrot,
         StealCarrotFromStorage,
+        Respawn,
+        Death,
+        Victory,
+        Defeat
     }
 }

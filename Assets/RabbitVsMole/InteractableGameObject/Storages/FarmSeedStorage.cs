@@ -9,14 +9,14 @@ namespace RabbitVsMole.InteractableGameObject.Storages
 {
     public class FarmSeedStorage : StorageBase
     {
-        protected override void OnCancelAction() { }
+        protected override void OnCancelAction(Action action) { }
         public override bool CanInteract(Backpack backpack)
         {
             if (backpack.PlayerType != PlayerType.Rabbit)
                 return false;
 
             var canInsertSeed = backpack.Seed.CanInsert(GameInspector.GameStats.SeedStorageValuePerAction);
-
+            
             return canInsertSeed;
         }
 

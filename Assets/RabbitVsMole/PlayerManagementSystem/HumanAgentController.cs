@@ -7,8 +7,10 @@ using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.InputSystem;
+using UnityEngine.Splines;
 using UnityEngine.UI;
 using static RabbitVsMole.GameManager;
+using static UnityEngine.LowLevelPhysics2D.PhysicsLayers;
 
 namespace RabbitVsMole
 {
@@ -16,6 +18,7 @@ namespace RabbitVsMole
     {
         [SerializeField] private FarmFieldTileHighlighter farmFieldTileHighlighter;
         private PlayerType _playerType;
+        private bool _initialized;
         private CinemachineCamera _cinemachineCamera;
         [SerializeField] Image _blackMask;
 
@@ -23,7 +26,7 @@ namespace RabbitVsMole
         {
             var prefab = _agentPrefabs.GetPrefab(PlayerControlAgent.Human);
             var instance = Instantiate(prefab).GetComponent<HumanAgentController>();
-
+            
             if (instance == null)
             {
                 DebugHelper.LogError(null, "Failed to instantiate RabbitVsMoleHumanAgentController prefab");
@@ -31,6 +34,8 @@ namespace RabbitVsMole
             }
 
             instance._playerType = playerType;
+            instance._initialized = true;
+            instance.SubscribeEvents();
             instance.SetupInputContol();
 
             if (!instance.Initialize(playerType, playGameSettings.IsGamepadUsing(playerType)))
@@ -51,6 +56,7 @@ namespace RabbitVsMole
         private void Start()
         {
             Instantiate(farmFieldTileHighlighter).Setup(_playerType);
+            ChangeView(_playerAvatar.IsOnSurface);
         }
 
         private void SetupInputContol()
@@ -100,6 +106,12 @@ namespace RabbitVsMole
                 return false;
             }
 
+            int layerIndex = LayerMask.NameToLayer($"FrameFor{_playerType}");
+            if (layerIndex != -1)
+            {
+                camera.cullingMask |= (1 << layerIndex);
+            }
+
             // Set camera viewport rect based on split-screen mode and player type
             camera.rect = (GameInspector.IsSplitScreen, _playerType == PlayerType.Rabbit) switch
             {
@@ -115,8 +127,19 @@ namespace RabbitVsMole
                 return false;
             }
             cinemachineBrain.ChannelMask = Getchannel(_playerType);
-
+            
             return true;
+        }
+
+        void ChangeView(bool isOnSurface)
+        {
+            if (!_cinemachineCamera.TryGetComponent<CinemachineFollow>(out var followComponent))
+                return;
+
+            if (isOnSurface)
+                followComponent.FollowOffset = new Vector3(0, 5, -5);
+            else
+                followComponent.FollowOffset = new Vector3(0, 8, -3);
         }
 
         public void OnMove(InputValue value)
@@ -145,42 +168,67 @@ namespace RabbitVsMole
 
         private void OnEnable()
         {
-            EventBus.Subscribe<MoleTravelEvent>(MoleTravel);
+            if (_initialized)
+                SubscribeEvents();
         }
 
-        private void OnDisable() 
+        private void OnDisable()
         {
-            EventBus.Unsubscribe<MoleTravelEvent>(MoleTravel);
+            if (_initialized)
+                UnsubscribeEvents();
         }
 
-        private void MoleTravel(MoleTravelEvent moleTravelEvent) =>
+        private void SubscribeEvents()
+        {
+            if (_playerType == PlayerType.Mole)
+                EventBus.Subscribe<TravelEvent>(MoleTravel);
+        }
+
+        private void UnsubscribeEvents()
+        {
+            if (_playerType == PlayerType.Mole)
+                EventBus.Unsubscribe<TravelEvent>(MoleTravel);
+        }
+
+        private void MoleTravel(TravelEvent moleTravelEvent) =>
             StartCoroutine(MoleTravelInternal(moleTravelEvent));
 
-        private IEnumerator MoleTravelInternal(MoleTravelEvent moleTravelEvent)
+        private IEnumerator MoleTravelInternal(TravelEvent moleTravelEvent)
         {
-            float moveInElapsedTime = 0f; 
-            Color maskColor = _blackMask.color;
+            _blackMask.gameObject.SetActive(true);
 
-            maskColor.a = 0f;
-            while (moveInElapsedTime < moleTravelEvent.EnterTime)
+            yield return StartCoroutine(FadeMask( new Color(0f,0f,0f,0f), new Color(0f, 0f, 0f, 1f), GameInspector.GameStats.TimeActionEnterMound));
+
+            yield return null;
+
+            Vector3 delta = moleTravelEvent.NewLocation - _playerAvatar.transform.position;
+            
+            _playerAvatar.transform.position = moleTravelEvent.NewLocation;
+
+            ChangeView(_playerAvatar.IsOnSurface);
+            CinemachineCore.OnTargetObjectWarped(_playerAvatar.transform, delta);
+
+            yield return null;
+            _playerAvatar.PerformAction(moleTravelEvent.actionTypeAfterTravel);
+
+            yield return StartCoroutine(FadeMask(new Color(0f, 0f, 0f, 1f), new Color(0f, 0f, 0f, 0f), GameInspector.GameStats.TimeActionExitMound));
+
+            _blackMask.gameObject.SetActive(false);
+        }
+
+        private IEnumerator FadeMask(Color fromColor, Color toColor, float duration)
+        {
+            float elapsedTime = 0;
+            _blackMask.color = fromColor;
+            while (elapsedTime < duration)
             {
-                moveInElapsedTime += Time.deltaTime;
-                var progress = Mathf.Clamp01(moveInElapsedTime / moleTravelEvent.EnterTime);
-                maskColor.a = progress;
+                elapsedTime += Time.deltaTime;
+                var progress = Mathf.Clamp01(elapsedTime / duration);
+                Debug.Log(progress);
+                _blackMask.color = Color.Lerp(fromColor, toColor, progress);
                 yield return null;
             }
-            maskColor.a = 1f;
-            _playerAvatar.transform.position = moleTravelEvent.NewLocation + new Vector3(0f, .5f, 0f);
-
-            float moveOutElapsedTime = 0f;
-            while (moveOutElapsedTime < moleTravelEvent.ExitTime)
-            {
-                moveOutElapsedTime += Time.deltaTime;
-                var progress = Mathf.Clamp01(moveOutElapsedTime / moleTravelEvent.ExitTime);
-                maskColor.a = progress;
-                yield return null;
-            }
-            maskColor.a = 0f;
+            _blackMask.color = toColor;
         }
 
     }

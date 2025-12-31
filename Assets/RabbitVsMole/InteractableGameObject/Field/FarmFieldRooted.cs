@@ -5,6 +5,7 @@ using PlayerManagementSystem;
 using PlayerManagementSystem.Backpack;
 using RabbitVsMole.InteractableGameObject.Enums;
 using UnityEngine;
+using RabbitVsMole.InteractableGameObject.Base;
 
 namespace RabbitVsMole.InteractableGameObject.Field
 {
@@ -13,7 +14,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
         public FarmFieldRooted(FarmFieldBase parent) : base(parent)
         {
         }
-        private int _hitCount = 0;
+        private int _hitCount;
 
         protected override void OnStart()
         {
@@ -30,15 +31,19 @@ namespace RabbitVsMole.InteractableGameObject.Field
             FieldParent.DestroyRoots();
         }
 
-        protected override bool CanInteractForRabbit(Backpack backpack)
-        {
-            return backpack.Carrot.Count == 0;
-        }
+        protected override bool CanInteractForRabbit(Backpack backpack) =>
+            GameInspector.GameStats.GameRulesRootsAllowDamageRootsWithCarrotInHand switch
+            {
+                true => true,
+                false => backpack.Carrot.IsEmpty
+            };
 
-        protected override bool CanInteractForMole(Backpack backpack)
-        {
-            return backpack.Carrot.Count == 0;
-        }
+        protected override bool CanInteractForMole(Backpack backpack) =>
+            GameInspector.GameStats.GameRulesRootsAllowDamageRootsWithCarrotInHand switch
+            {
+                true => true,
+                false => backpack.Carrot.IsEmpty
+            };
 
         protected override bool ActionForRabbit(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
@@ -56,15 +61,23 @@ namespace RabbitVsMole.InteractableGameObject.Field
         {
             var rootsIsDestroyed = _hitCount >= GameInspector.GameStats.RootsHealthPoint;
 
-            return StandardAction(
-                true,
-                onActionRequested,
-                onActionCompleted,
-                ActionType.RemoveRoots,
-                rootsIsDestroyed
-                    ? FieldParent.CreateFarmCleanState()
-                    : null,
-                null);
+            return StandardAction(new InteractionConfig
+            {
+                ActionType = ActionType.RemoveRoots,
+                //BackpackAction = true,
+
+                NewFieldStateProvider = rootsIsDestroyed
+                        ? () => FieldParent.CreateFarmCleanState()
+                        : null,
+
+                //NewLinkedFieldStateProvider = null,
+                OnActionRequested = onActionRequested,
+                //OnActionStart = null,
+                OnActionCompleted = onActionCompleted,
+                //FinalValidation = null,
+                //OnPreStateChange = null,
+                //OnPostStateChange = null
+            });
         }
 
     }

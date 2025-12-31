@@ -4,6 +4,7 @@ using System;
 using PlayerManagementSystem;
 using PlayerManagementSystem.Backpack;
 using RabbitVsMole.InteractableGameObject.Enums;
+using RabbitVsMole.InteractableGameObject.Base;
 
 namespace RabbitVsMole.InteractableGameObject.Field
 {
@@ -24,38 +25,44 @@ namespace RabbitVsMole.InteractableGameObject.Field
             FieldParent.DestroySeed();
         }
 
-        protected override bool CanInteractForRabbit(Backpack backpack)
-        {
-            return backpack.Water.CanGet(GameInspector.GameStats.CostRabbitForWaterAction);
-        }
+        protected override bool CanInteractForRabbit(Backpack backpack) => 
+            backpack.Water.CanGet(GameInspector.GameStats.CostRabbitForWaterAction);
 
-        protected override bool CanInteractForMole(Backpack backpack)
-        {
-            return true;
-        }
+        protected override bool CanInteractForMole(Backpack backpack) =>
+            true;
 
         protected override bool ActionForRabbit(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
-            return StandardAction(
-                playerAvatar.Backpack.Water.TryGet(GameInspector.GameStats.CostRabbitForWaterAction),
-                onActionRequested,
-                onActionCompleted,
-                ActionType.WaterField,
-                FieldParent.CreateFarmWithCarrotState(),
-                null,
-                () => { FieldParent.AddWater(GameInspector.GameStats.FarmFieldWaterInsertPerAction); });
+            return StandardAction(new InteractionConfig
+            {
+                ActionType = ActionType.WaterField,
+                BackpackAction = playerAvatar.Backpack.Water.TryGet(GameInspector.GameStats.CostRabbitForWaterAction),
+                NewFieldStateProvider = () => FieldParent.CreateFarmWithCarrotState(),
+                //NewLinkedFieldStateProvider = null,
+                OnActionRequested = onActionRequested,
+                //OnActionStart = null,
+                OnActionCompleted = onActionCompleted,
+                //FinalValidation = null,
+                //OnPreStateChange = null,
+                //OnPostStateChange = null,
+            });
         }
 
         protected override bool ActionForMole(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
-            return StandardAction(
-                true,
-                onActionRequested,
-                onActionCompleted,
-                ActionType.DigMound,
-                FieldParent.CreateFarmMoundedState(),
-                FieldParent.LinkedField.CreateUndergroundMoundedState()
-            );
+            return StandardAction(new InteractionConfig
+            {
+                ActionType = ActionType.DigMound,
+                //BackpackAction = true,
+                NewFieldStateProvider = () => FieldParent.CreateFarmMoundedState(),
+                NewLinkedFieldStateProvider = () => FieldParent.LinkedField.CreateUndergroundMoundedState(),
+                OnActionRequested = onActionRequested,
+                OnActionStart = null,
+                OnActionCompleted = onActionCompleted,
+                //FinalValidation = null,
+                //OnPreStateChange = null,
+                OnPostStateChange = () => playerAvatar.TryActionDown()
+            });
         }
 
     }

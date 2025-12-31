@@ -40,7 +40,7 @@ namespace RabbitVsMole.InteractableGameObject.Storages
             }
         }
 
-        protected override void OnCancelAction() { }
+        protected override void OnCancelAction(Action action) { }
 
         private void Start()
         {

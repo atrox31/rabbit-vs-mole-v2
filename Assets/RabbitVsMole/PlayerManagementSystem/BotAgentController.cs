@@ -16,9 +16,7 @@ namespace RabbitVsMole
 
     public class BotAgentController : BotAgentControllerBase<PlayerType, PlayerAvatar>
     {
-        [SerializeField] private FarmFieldTileHighlighter farmFieldTileHighlighter;
-
-        private PlayerType _playerType;
+         private PlayerType _playerType;
         private BehaviorGraphAgent _graphAgent;
         private BlackboardReference _blackboardReference;
         private float _intelligence;
@@ -77,7 +75,6 @@ namespace RabbitVsMole
             {
                 DebugHelper.LogError(this, "can not find NavMeshAgent");
             }
-            Instantiate(farmFieldTileHighlighter).Setup(_playerType);
         }
 
         private void Update()
@@ -153,7 +150,7 @@ namespace RabbitVsMole
 
         private void SetupEnemy()
         {
-            _enemy = FindObjectsByType<PlayerAvatar>(FindObjectsSortMode.None).Where(pa => pa.playerType != _playerAvatar.playerType).First();
+            _enemy = FindObjectsByType<PlayerAvatar>(FindObjectsSortMode.None).Where(pa => pa.PlayerType != _playerAvatar.PlayerType).First();
             if (_enemy is null)
             {
                 DebugHelper.LogError(this, "Cannot find enemy, switch to peace");
@@ -222,31 +219,33 @@ namespace RabbitVsMole
 
         private void OnEnable()
         {
-            EventBus.Subscribe<MoleTravelEvent>(MoleTravel);
+            if (_playerType == PlayerType.Mole)
+                EventBus.Subscribe<TravelEvent>(MoleTravel);
         }
 
         private void OnDisable()
         {
-            EventBus.Unsubscribe<MoleTravelEvent>(MoleTravel);
+            if (_playerType == PlayerType.Mole)
+                EventBus.Unsubscribe<TravelEvent>(MoleTravel);
         }
 
-        private void MoleTravel(MoleTravelEvent moleTravelEvent) =>
+        private void MoleTravel(TravelEvent moleTravelEvent) =>
             StartCoroutine(MoleTravelInternal(moleTravelEvent));
 
-        private IEnumerator MoleTravelInternal(MoleTravelEvent moleTravelEvent)
+        private IEnumerator MoleTravelInternal(TravelEvent moleTravelEvent)
         {
-            float moveInElapsedTime = 0f;
-            while (moveInElapsedTime < moleTravelEvent.EnterTime)
-            {
-                moveInElapsedTime += Time.deltaTime;
-                yield return null;
-            }
+            yield return new WaitForSeconds(GameInspector.GameStats.TimeActionEnterMound);
 
             if (_navMeshAgent != null)
             {
                 _navMeshAgent.Warp(moleTravelEvent.NewLocation);
                 _navMeshAgent.ResetPath();
             }
+
+            yield return null;
+            _playerAvatar.PerformAction(moleTravelEvent.actionTypeAfterTravel);
+
+            _playerAvatar.SetupNewTerrain();
         }
     }
 }

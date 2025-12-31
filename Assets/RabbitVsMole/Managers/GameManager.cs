@@ -1,5 +1,6 @@
 using InputManager;
 using PlayerManagementSystem;
+using RabbitVsMole.InteractableGameObject.Enums;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -497,14 +498,70 @@ namespace RabbitVsMole
             return Instance._playerStoryProgressMole[dayOfWeek];
         }
 
+
+        enum WinPlayer
+        {
+            None, Rabbit, Mole, Both
+        }
+
+        //  public int carrotGoal = 0;
+        //  public float timeLimitInMinutes = 0;
+        //  public GameModeWinCondition winCondition = GameModeWinCondition.Sandbox;
+        //CarrotCollection,   // who collect target carrot number first
+        //TimeLimit,          // who has the most carrots when time runs out
+        //Rivalry,           // rabbit when collects carrots or mole when time runs out
+        //Cooperation         // players work together to achieve a common goal and win or lose together
+        private WinPlayer GetLeader()
+        {
+            int comparison = GameInspector.RabbitCarrotCount.CompareTo(GameInspector.MoleCarrotCount);
+
+            // comparison > 0 means Rabbit has more
+            // comparison < 0 means Mole has more
+            // comparison == 0 means equal
+            return comparison > 0 ? WinPlayer.Rabbit : (comparison < 0 ? WinPlayer.Mole : WinPlayer.Both);
+        }
+
+        private WinPlayer GetWinnerByTime() => GameInspector.CurrentGameMode.winCondition switch
+        {
+            GameModeWinCondition.TimeLimit => GetLeader(),
+            GameModeWinCondition.Rivalry => WinPlayer.Mole,
+            _ => WinPlayer.None
+        };
+
+        private WinPlayer GetWinnerByGoal() => GameInspector.CurrentGameMode.winCondition switch
+        {
+            GameModeWinCondition.CarrotCollection => GetLeader(),
+            GameModeWinCondition.Rivalry => WinPlayer.Rabbit,
+            GameModeWinCondition.Cooperation => WinPlayer.Both,
+            _ => WinPlayer.None
+        };
+
         internal static void GamePlayTimeEnd()
         {
-            throw new NotImplementedException();
+            Instance.OnGameEnd(Instance.GetWinnerByTime());
         }
 
         internal static void GamePlayCarrotGoal()
         {
-            throw new NotImplementedException();
+            Instance.OnGameEnd(Instance.GetWinnerByGoal());
+        }
+
+        void OnGameEnd(WinPlayer winningPlayer)
+        {
+            GameInspector.StopTimer();
+
+            bool DidPlayerWin(WinPlayer player) => winningPlayer == player || winningPlayer == WinPlayer.Both;
+
+            TriggerEndGameAnimation(PlayerAvatar.RabbitStaticInstance, DidPlayerWin(WinPlayer.Rabbit));
+            TriggerEndGameAnimation(PlayerAvatar.MoleStaticInstance, DidPlayerWin(WinPlayer.Mole));
+        }
+
+        private void TriggerEndGameAnimation(PlayerAvatar player, bool isWinner)
+        {
+            if (player == null) return;
+
+            ActionType finalAction = isWinner ? ActionType.Victory : ActionType.Defeat;
+            player.PerformAction(finalAction, null, null, true);
         }
 
         private bool _isPaused;

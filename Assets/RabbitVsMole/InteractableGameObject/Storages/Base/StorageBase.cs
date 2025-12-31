@@ -13,17 +13,20 @@ namespace RabbitVsMole.InteractableGameObject.Base
 {
     public abstract class StorageBase : MonoBehaviour, IInteractableGameObject
     {
-        protected abstract void OnCancelAction();
+        protected abstract void OnCancelAction(Action OnActionCompleted);
         public abstract bool CanInteract(Backpack backpack);
         public bool Interact(
             [NotNull] PlayerAvatar playerAvatar,
             [NotNull] Func<ActionType, float> OnActionRequested,
             [NotNull] Action OnActionCompleted,
-            out Action CancelAction)
+            out Action<Action> CancelAction)
         {
             CancelAction = OnCancelAction;
             if (!CanInteract(playerAvatar.Backpack))
+            {
+                AudioManager.PlaySound3D(SoundDB.SoundDB.GetSound(ActionType.None, playerAvatar.PlayerType), transform.position, AudioManager.AudioChannel.SFX);
                 return false;
+            }
 
             if (OnActionRequested == null)
                 return false;
@@ -31,7 +34,11 @@ namespace RabbitVsMole.InteractableGameObject.Base
             if (OnActionCompleted == null)
                 return false;
 
-            return Action(playerAvatar.Backpack, OnActionRequested, OnActionCompleted);
+            return Action(playerAvatar.Backpack, (type) =>
+            {
+                AudioManager.PlaySound3D(SoundDB.SoundDB.GetSound(type, playerAvatar.PlayerType), transform.position, AudioManager.AudioChannel.SFX);
+                return OnActionRequested(type);
+            }, OnActionCompleted);
         }
 
         protected abstract bool Action(Backpack backpack, Func<ActionType, float> OnActionRequested, Action OnActionCompleted);
@@ -105,5 +112,6 @@ namespace RabbitVsMole.InteractableGameObject.Base
             _outline.OutlineWidth = targetWidth;
             _outlineCoroutine = null;
         }
+
     }
 }

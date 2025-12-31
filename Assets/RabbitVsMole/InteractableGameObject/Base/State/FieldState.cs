@@ -17,14 +17,18 @@ namespace RabbitVsMole.InteractableGameObject.Base
             Parent = parent;
             OnStart();
         }
-        protected abstract void OnCancelAction();
+        protected virtual void OnCancelAction(Action action)
+        {
+            Parent.StopAllCoroutines();
+            action?.Invoke();
+        }
         public abstract bool CanInteract(Backpack backpack);
 
         internal bool InteractWithField(
             [NotNull] PlayerAvatar playerAvatar,
             [NotNull] Func<ActionType, float> onActionRequested,
             [NotNull] Action onActionCompleted, 
-            out Action cancelAction)
+            out Action<Action> cancelAction)
         {
             cancelAction = null;
 
@@ -34,13 +38,20 @@ namespace RabbitVsMole.InteractableGameObject.Base
                 return false;
 
             if (!CanInteract(playerAvatar.Backpack))
+            {
+                AudioManager.PlaySound3D(SoundDB.SoundDB.GetSound(ActionType.None, playerAvatar.PlayerType), Parent.transform.position, AudioManager.AudioChannel.SFX);
                 return false;
+            }
 
             cancelAction = OnCancelAction;
 
             return Action(
                 playerAvatar,
-                onActionRequested, 
+                (type) =>
+                {
+                    AudioManager.PlaySound3D(SoundDB.SoundDB.GetSound(type, playerAvatar.PlayerType), Parent.transform.position, AudioManager.AudioChannel.SFX);
+                    return onActionRequested(type);
+                }, 
                 onActionCompleted
                 );
         }
@@ -64,20 +75,13 @@ namespace RabbitVsMole.InteractableGameObject.Base
             return newFieldState;
         }
 
-        protected bool StandardAction(
-            bool backpackAction,
-            Func<ActionType, float> onActionRequested,
-            Action onActionCompleted,
-            ActionType actionType,
-            FieldState newFieldState,
-            FieldState newLinkedFieldState,
-            Action nonStandardAction = null)
+        protected bool StandardAction(InteractionConfig config)
         {
-            if (!backpackAction)
+            if (!config.BackpackAction)
                 return false;
-            var actionTime = onActionRequested.Invoke(actionType);
-            nonStandardAction?.Invoke();
-            Parent.StartCoroutine(Parent.CompliteAction(onActionCompleted, actionTime, newFieldState, newLinkedFieldState));
+            var actionTime = config.OnActionRequested.Invoke(config.ActionType);
+            config.OnActionStart?.Invoke();
+            Parent.StartCoroutine(Parent.CompliteAction(config, actionTime));
             return true;
         }
     }

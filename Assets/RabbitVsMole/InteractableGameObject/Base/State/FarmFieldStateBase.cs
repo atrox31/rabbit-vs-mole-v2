@@ -15,9 +15,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
         {
         }
 
-        protected override void OnCancelAction()
-        {
-        }
+
 
         protected virtual bool CanInteractForRabbit(Backpack backpack) => false;
         protected virtual bool CanInteractForMole(Backpack backpack) => false;
