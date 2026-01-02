@@ -22,11 +22,16 @@ namespace RabbitVsMole.GameData.Editor
                 if (EditorGUI.DropdownButton(rect, new GUIContent("Add Effect"), FocusType.Keyboard))
                 {
                     var menu = new GenericMenu();
-                    menu.AddItem(new GUIContent("Stat Modifier"), false, () => SetEffect(property, typeof(StatModifier)));
-                    menu.AddItem(new GUIContent("Flag Modifier"), false, () => SetEffect(property, typeof(FlagModifier)));
-                    menu.AddItem(new GUIContent("Int Modifier"), false, () => SetEffect(property, typeof(IntModifier)));
-                    menu.AddItem(new GUIContent("Time Modifier"), false, () => SetEffect(property, typeof(TimeModifier)));
-                    menu.AddItem(new GUIContent("Chance Modifier"), false, () => SetEffect(property, typeof(ChanceModifier)));
+                    menu.AddItem(new GUIContent("Game Rules Bool Modifier"), false, () => SetEffect(property, typeof(GameRulesBoolModifier)));
+                    menu.AddItem(new GUIContent("Game Objects Int Modifier"), false, () => SetEffect(property, typeof(GameObjectsIntModifier)));
+                    menu.AddItem(new GUIContent("Game Objects Float Modifier"), false, () => SetEffect(property, typeof(GameObjectsFloatModifier)));
+                    menu.AddItem(new GUIContent("Fight Int Modifier"), false, () => SetEffect(property, typeof(FightIntModifier)));
+                    menu.AddItem(new GUIContent("Fight Float Modifier"), false, () => SetEffect(property, typeof(FightFloatModifier)));
+                    menu.AddItem(new GUIContent("Economy Int Modifier"), false, () => SetEffect(property, typeof(EconomyIntModifier)));
+                    menu.AddItem(new GUIContent("Economy Float Modifier"), false, () => SetEffect(property, typeof(EconomyFloatModifier)));
+                    menu.AddItem(new GUIContent("Backpack Int Modifier"), false, () => SetEffect(property, typeof(BackpackIntModifier)));
+                    menu.AddItem(new GUIContent("Avatar Float Modifier"), false, () => SetEffect(property, typeof(AvatarFloatModifier)));
+                    menu.AddItem(new GUIContent("Action Times Float Modifier"), false, () => SetEffect(property, typeof(ActionTimesFloatModifier)));
                     menu.ShowAsContext();
                 }
             }

@@ -12,19 +12,19 @@ namespace PlayerManagementSystem.Backpack
         {
             _playerType = playerType;
 
-            Carrot = new BackpackItem(playerType, BackpackItemType.Carrot, GameInspector.GameStats.BackpackCapacityCarrot);
+            Carrot = new BackpackItem(playerType, BackpackItemType.Carrot, GameManager.CurrentGameStats.BackpackCapacityCarrot);
 
             if (playerType == PlayerType.Rabbit)
             {
-                Seed = new BackpackItem(playerType, BackpackItemType.Seed, GameInspector.GameStats.BackpackCapacitySeed);
-                Water = new BackpackItem(playerType, BackpackItemType.Water, GameInspector.GameStats.BackpackCapacityWater);
+                Seed = new BackpackItem(playerType, BackpackItemType.Seed, GameManager.CurrentGameStats.BackpackCapacitySeed);
+                Water = new BackpackItem(playerType, BackpackItemType.Water, GameManager.CurrentGameStats.BackpackCapacityWater);
                 return;
             }
 
             if (playerType == PlayerType.Mole)
             {
-                Dirt = new BackpackItem(playerType, BackpackItemType.Dirt, GameInspector.GameStats.BackpackCapacityDirt);
-                Health = new BackpackItem(playerType, BackpackItemType.Health, GameInspector.GameStats.FightMoleHealthPoints, true);
+                Dirt = new BackpackItem(playerType, BackpackItemType.Dirt, GameManager.CurrentGameStats.BackpackCapacityDirt);
+                Health = new BackpackItem(playerType, BackpackItemType.Health, GameManager.CurrentGameStats.FightMoleHealthPoints, true);
             }
         }
 

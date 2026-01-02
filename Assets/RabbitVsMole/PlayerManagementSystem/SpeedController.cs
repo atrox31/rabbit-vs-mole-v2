@@ -17,20 +17,22 @@ namespace RabbitVsMole
 
         public SpeedController(PlayerType playerType)
         {
+            var stats = GameManager.CurrentGameStats;
+            
             switch (playerType)
             {
                 case PlayerType.Rabbit:
-                    _baseSpeed = GameInspector.GameStats.StatsBaseWalkingSpeedRabbit;
-                    _baseAcceleration = GameInspector.GameStats.StatsBaseAccelerationRabbit;
-                    _baseDeceleration = GameInspector.GameStats.StatsBaseDecelerationRabbit;
-                    _baseRotationSpeed = GameInspector.GameStats.StatsBaseRotationSpeedRabbit;
+                    _baseSpeed = stats.StatsBaseWalkingSpeedRabbit;
+                    _baseAcceleration = stats.StatsBaseAccelerationRabbit;
+                    _baseDeceleration = stats.StatsBaseDecelerationRabbit;
+                    _baseRotationSpeed = stats.StatsBaseRotationSpeedRabbit;
                     break;
                 case PlayerType.Mole:
 
-                    _baseSpeed = GameInspector.GameStats.StatsBaseWalkingSpeedMole;
-                    _baseAcceleration = GameInspector.GameStats.StatsBaseAccelerationMole;
-                    _baseDeceleration = GameInspector.GameStats.StatsBaseDecelerationMole;
-                    _baseRotationSpeed = GameInspector.GameStats.StatsBaseRotationSpeedMole;
+                    _baseSpeed = stats.StatsBaseWalkingSpeedMole;
+                    _baseAcceleration = stats.StatsBaseAccelerationMole;
+                    _baseDeceleration = stats.StatsBaseDecelerationMole;
+                    _baseRotationSpeed = stats.StatsBaseRotationSpeedMole;
                     break;
                 default:
 

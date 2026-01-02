@@ -1,3 +1,6 @@
+using NUnit.Framework;
+using RabbitVsMole.GameData.Mutator;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Localization;
 
@@ -21,6 +24,7 @@ namespace RabbitVsMole
         public Sprite modeImage;
         public LocalizedString modeDescription;
         public LocalizedString modeConfiguration;
+        public List<MutatorSO> mutators;
 
         [Header("Game Mode Settings")]
         public bool allowMultiplayer = true;

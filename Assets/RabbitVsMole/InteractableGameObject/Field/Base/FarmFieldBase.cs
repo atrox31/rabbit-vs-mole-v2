@@ -47,7 +47,7 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
             get => _waterLevelBacking;
             set
             {
-                _waterLevelBacking = Mathf.Clamp(value, 0f, GameInspector.GameStats.FarmFieldMaxWaterLevel);
+                _waterLevelBacking = Mathf.Clamp(value, 0f, GameManager.CurrentGameStats.FarmFieldMaxWaterLevel);
                 HaveWater = _waterLevelBacking > 0f;
                 if (HaveWater != _isMeshWet)
                 {
@@ -72,7 +72,11 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
 
         void Awake()
         {
-            _fieldState = CreateFarmCleanState();
+            if(GameManager.CurrentGameStats.GameRulesFarmFieldStartsWithRoots)
+                _fieldState = CreateFarmRootedState();
+            else
+                _fieldState = CreateFarmCleanState();
+
             if(_meshWaterLevel0 == null) { DebugHelper.LogError(this, "Property '_meshWaterLevel0' not set in inspector!"); return; }
             if(_meshWaterLevel1 == null){DebugHelper.LogError(this, "Property '_meshWaterLevel1' not set in inspector!");return;}
             if(_modelMeshFilter == null){DebugHelper.LogError(this, "Property '_modelMeshFilter' not set in inspector!");return;}
@@ -88,23 +92,23 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
             if (_farmCarrotVisual == null) 
                 yield break;
 
-            _farmCarrotVisual.SetDuration(GameInspector.GameStats.CarrotGrowingTimeInSec);
+            _farmCarrotVisual.SetDuration(GameManager.CurrentGameStats.CarrotGrowingTimeInSec);
             
             if (HaveWater)
             {
                 _farmCarrotVisual.Resume();
-                _fieldState.SetAIPriority(GameInspector.GameStats.AIStats.FarmFieldWithCarrotWorking);
+                _fieldState.SetAIPriority(GameManager.CurrentGameStats.AIStats.FarmFieldWithCarrotWorking);
             }
             else
             {
                 _farmCarrotVisual.Pause();
-                _fieldState.SetAIPriority(GameInspector.GameStats.AIStats.FarmFieldWithCarrotNeedWater);
+                _fieldState.SetAIPriority(GameManager.CurrentGameStats.AIStats.FarmFieldWithCarrotNeedWater);
             }
             
             bool prevHaveWater = HaveWater;
             while (!IsCarrotReady)
             {
-                WaterLevel -= GameInspector.GameStats.FarmFieldWaterDrainByCarrotPerSec * Time.deltaTime;
+                WaterLevel -= GameManager.CurrentGameStats.FarmFieldWaterDrainByCarrotPerSec * Time.deltaTime;
                 
                 bool currentHaveWater = HaveWater;
                 if(prevHaveWater != currentHaveWater)
@@ -112,12 +116,12 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
                     if (currentHaveWater)
                     {
                         _farmCarrotVisual.Resume();
-                        _fieldState.SetAIPriority(GameInspector.GameStats.AIStats.FarmFieldWithCarrotWorking);
+                        _fieldState.SetAIPriority(GameManager.CurrentGameStats.AIStats.FarmFieldWithCarrotWorking);
                     }
                     else
                     {
                         _farmCarrotVisual.Pause();
-                        _fieldState.SetAIPriority(GameInspector.GameStats.AIStats.FarmFieldWithCarrotNeedWater);
+                        _fieldState.SetAIPriority(GameManager.CurrentGameStats.AIStats.FarmFieldWithCarrotNeedWater);
 
                     }
                 }
@@ -128,7 +132,7 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
 
             _farmCarrotVisual.SetDuration(0.5f);
             _growCarrotCoroutine = null;
-            _fieldState.SetAIPriority(GameInspector.GameStats.AIStats.FieldWithCarrotReady);
+            _fieldState.SetAIPriority(GameManager.CurrentGameStats.AIStats.FieldWithCarrotReady);
             _farmCarrotVisual.StartGlow();
             OnCarrotReady();
         }
@@ -141,7 +145,7 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
             {
                 StopCoroutine(_stealCarrotCorutine);
             }
-            _stealCarrotCorutine = StartCoroutine(AnimateCarrotPull(_farmCarrotVisual.transform, GameInspector.GameStats.TimeActionStealCarrotFromUndergroundField, 1f));
+            _stealCarrotCorutine = StartCoroutine(AnimateCarrotPull(_farmCarrotVisual.transform, GameManager.CurrentGameStats.TimeActionStealCarrotFromUndergroundField, 1f));
         }
         public void StopStealCarrot()
         {
@@ -203,7 +207,7 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
 
         private void Update()
         {
-            WaterLevel -= GameInspector.GameStats.FarmFieldWaterDrainPerSec;
+            WaterLevel -= GameManager.CurrentGameStats.FarmFieldWaterDrainPerSec;
 
             if (State is FarmFieldRooted)
                 HandleRoots();
@@ -212,9 +216,11 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
         StringBuilder sb = new StringBuilder();
         private void OnDrawGizmos()
         {
+            if (!Application.isPlaying)
+                return;
             sb.Clear(); 
             sb.Append("Field State: ").AppendLine(State.GetType().Name);
-            sb.AppendFormat("Water level: {0:0.00}/{1}\n", WaterLevel, GameInspector.GameStats.FarmFieldMaxWaterLevel);
+            sb.AppendFormat("Water level: {0:0.00}/{1}\n", WaterLevel, GameManager.CurrentGameStats.FarmFieldMaxWaterLevel);
             if (_farmCarrotVisual != null)
             {
                 sb.Append("Carrot progress: ")
@@ -259,7 +265,7 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
         private void HandleRoots()
         {
             if(RandomUtils.Chance(.95f)) // little bit of randomness
-                rootSpreadCounter += Time.deltaTime * GameInspector.GameStats.RootsTickRate;
+                rootSpreadCounter += Time.deltaTime * GameManager.CurrentGameStats.RootsTickRate;
 
             if (rootSpreadCounter < 1f)
                 return;
@@ -270,13 +276,13 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
             if (neighborsFieldList.Count == 0)
                 return;
 
-            var neighborsRootChance = GameInspector.GameStats.RootsBirthChance + GameInspector.GameStats.RootsSpreadIncreaseByNeibour * neighborsFieldList.Count;
+            var neighborsRootChance = GameManager.CurrentGameStats.RootsBirthChance + GameManager.CurrentGameStats.RootsSpreadIncreaseByNeibour * neighborsFieldList.Count;
             if (!RandomUtils.Chance(neighborsRootChance))
                 return;
 
             foreach(var neighbor in neighborsFieldList)
             {
-                if (RandomUtils.Chance(GameInspector.GameStats.RootsBirthChance)
+                if (RandomUtils.Chance(GameManager.CurrentGameStats.RootsBirthChance)
                 && CanGrowRoots(neighbor))
                     neighbor.SetNewState(neighbor.CreateFarmRootedState());
             }
@@ -284,16 +290,16 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
 
         private bool CanGrowRoots(FarmFieldBase farmFieldBase)
         {
-            var stats = GameInspector.GameStats;
+            var stats = GameManager.CurrentGameStats;
 
             return farmFieldBase.State switch
             {
-                FarmFieldClean => stats.RootsCanSpawnOnCleanField,
-                FarmFieldPlanted => stats.RootsCanSpawnOnPlantedField,
+                FarmFieldClean => stats.GameRulesRootsCanSpawnOnCleanField,
+                FarmFieldPlanted => stats.GameRulesRootsCanSpawnOnPlantedField,
                 FarmFieldWithCarrot => farmFieldBase.IsCarrotReady
-                    ? stats.RootsCanSpawnOnWithCarrotFullGrowField
-                    : stats.RootsCanSpawnOnWithCarrotField,
-                FarmFieldMounded => stats.RootsCanSpawnOnMoundedField,
+                    ? stats.GameRulesRootsCanSpawnOnWithCarrotFullGrowField
+                    : stats.GameRulesRootsCanSpawnOnWithCarrotField,
+                FarmFieldMounded => stats.GameRulesRootsCanSpawnOnMoundedField,
                 FarmFieldRooted => false,
                 _ => false 
             };
@@ -306,7 +312,7 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
 
             int currentX = myXy.Value.x;
             int currentY = myXy.Value.y;
-            int offset = GameInspector.GameStats.RootsSpreadRadius;
+            int offset = GameManager.CurrentGameStats.RootsSpreadRadius;
 
             for (int xOffset = -offset; xOffset <= offset; xOffset++)
             {

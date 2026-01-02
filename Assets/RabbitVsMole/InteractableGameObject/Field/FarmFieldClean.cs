@@ -16,7 +16,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
 
         protected override void OnStart()
         {
-            AIPriority = GameInspector.GameStats.AIStats.CleanField;
+            AIPriority = GameManager.CurrentGameStats.AIStats.CleanField;
             FieldParent.DestroyCarrot();
             FieldParent.DestroyMound();
             FieldParent.DestroyRoots();
@@ -28,7 +28,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
         }
 
         protected override bool CanInteractForRabbit(Backpack backpack) =>
-            backpack.Seed.CanGet(GameInspector.GameStats.CostRabbitForSeedAction);
+            backpack.Seed.CanGet(GameManager.CurrentGameStats.CostRabbitForSeedAction);
         
         protected override bool CanInteractForMole(Backpack backpack) =>
             true;
@@ -38,7 +38,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
             return StandardAction(new InteractionConfig
             {
                 ActionType = ActionType.PlantSeed,
-                BackpackAction = playerAvatar.Backpack.Seed.TryGet(GameInspector.GameStats.CostRabbitForSeedAction),
+                BackpackAction = playerAvatar.Backpack.Seed.TryGet(GameManager.CurrentGameStats.CostRabbitForSeedAction),
                 NewFieldStateProvider = () => FieldParent.CreateFarmPlantedState(),
                 //NewLinkedFieldStateProvider = null,
                 OnActionRequested = onActionRequested,

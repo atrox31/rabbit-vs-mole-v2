@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace RabbitVsMole.GameData.Mutator
 {
@@ -10,7 +9,7 @@ namespace RabbitVsMole.GameData.Mutator
     {
         public string mutatorName;
         public string description;
-        public Image image;
+        public Sprite image;
 
         public Category category;
         public List<MutatorSO> incompatibleWith;
@@ -65,5 +64,5 @@ namespace RabbitVsMole.GameData.Mutator
         }
     }
 
-    public enum Category { RabbitPositive, RabbitNegative, MolePositive, MoleNegative, BothPositive, BothNegative, Neutral }
+    public enum Category { RabbitPositive, RabbitNegative, MolePositive, MoleNegative, BothPositive, BothNegative, Neutral, EditorOnly }
 }

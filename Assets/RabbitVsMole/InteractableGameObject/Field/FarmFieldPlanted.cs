@@ -16,7 +16,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
 
         protected override void OnStart()
         {
-            AIPriority = GameInspector.GameStats.AIStats.FarmFieldPlanted;
+            AIPriority = GameManager.CurrentGameStats.AIStats.FarmFieldPlanted;
             FieldParent.CreateSeed();
         }
 
@@ -26,7 +26,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
         }
 
         protected override bool CanInteractForRabbit(Backpack backpack) => 
-            backpack.Water.CanGet(GameInspector.GameStats.CostRabbitForWaterAction);
+            backpack.Water.CanGet(GameManager.CurrentGameStats.CostRabbitForWaterAction);
 
         protected override bool CanInteractForMole(Backpack backpack) =>
             true;
@@ -36,7 +36,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
             return StandardAction(new InteractionConfig
             {
                 ActionType = ActionType.WaterField,
-                BackpackAction = playerAvatar.Backpack.Water.TryGet(GameInspector.GameStats.CostRabbitForWaterAction),
+                BackpackAction = playerAvatar.Backpack.Water.TryGet(GameManager.CurrentGameStats.CostRabbitForWaterAction),
                 NewFieldStateProvider = () => FieldParent.CreateFarmWithCarrotState(),
                 //NewLinkedFieldStateProvider = null,
                 OnActionRequested = onActionRequested,
@@ -44,7 +44,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
                 OnActionCompleted = onActionCompleted,
                 //FinalValidation = null,
                 //OnPreStateChange = null,
-                OnPostStateChange = () => FieldParent.AddWater(GameInspector.GameStats.FarmFieldWaterInsertPerAction),
+                OnPostStateChange = () => FieldParent.AddWater(GameManager.CurrentGameStats.FarmFieldWaterInsertPerAction),
             });
         }
 

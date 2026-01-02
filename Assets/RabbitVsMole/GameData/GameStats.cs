@@ -5,6 +5,7 @@ namespace RabbitVsMole.GameData
     [System.Serializable]
     public class GameStats
     {
+        #region Fight
         // Fight
         public float FightRabbitAttackActionTime = 2.25f;
         public float FightMoleDeath = 2f;
@@ -13,8 +14,9 @@ namespace RabbitVsMole.GameData
         public int FightRabbitDamageDeal = 42;
         public int FightMoleHealthPoints = 100;
         public int FightMoleHealthRegenerationPerSec = 12;
-        public bool FightMoleAllowRegenerationOnSurface = false;
+        #endregion
 
+        #region Avatar
         // Avatar stats
         public float StatsBaseWalkingSpeedRabbit = 4.5f;
         public float StatsBaseRotationSpeedRabbit = 4.5f;
@@ -26,12 +28,18 @@ namespace RabbitVsMole.GameData
         public float StatsBaseAccelerationMole = 10f;
         public float StatsBaseDecelerationMole = 20f;
 
+        #endregion
+
+        #region Backpack
         // Backpack
         public int BackpackCapacitySeed = 3;
         public int BackpackCapacityWater = 8;
         public int BackpackCapacityDirt = 5;
         public int BackpackCapacityCarrot = 1;
 
+        #endregion
+
+        #region Economy
         // Cost - Mole
         public int CostDirtForMoleMound = 3;
 
@@ -49,15 +57,18 @@ namespace RabbitVsMole.GameData
         public int WaterSourceWaterToInventoryPerDrain = 4;
 
         // Carrot
-        public float CarrotGrowingTimeInSec = 10f;
+        public float CarrotGrowingTimeInSec = 12f;
         public float CarrotSpoilTimeInSec = 120f;
 
         // FarmField
         public float FarmFieldMaxWaterLevel = 6f;
         public float FarmFieldWaterDrainPerSec = 0f;
-        public float FarmFieldWaterDrainByCarrotPerSec = .33f;
+        public float FarmFieldWaterDrainByCarrotPerSec = 1f;
         public float FarmFieldWaterInsertPerAction = 4f;
 
+        #endregion
+
+        #region GameObjects
         // Mound
         public float MoundCreateTime = 4f;
         public float MoundCreateTimePernalityForNotCleanUnderground = 3f;
@@ -74,13 +85,6 @@ namespace RabbitVsMole.GameData
         public float RootsSpreadIncreaseByNeibour = 0.10f;
         public int RootsSpreadRadius = 1;
 
-        public bool RootsCanSpawnOnCleanField = true;
-        public bool RootsCanSpawnOnPlantedField = true;
-        public bool RootsCanSpawnOnWithCarrotField = true;
-
-        public bool RootsCanSpawnOnWithCarrotFullGrowField = false;
-        public bool RootsCanSpawnOnMoundedField = false;
-
         // Wall
         public int WallDirtHealthPoint = 1;
         public int WallDirtDamageByMole = 1;
@@ -88,12 +92,15 @@ namespace RabbitVsMole.GameData
         public float WallDestroyTime = 1.33f;
         public float WallBuildTime = 2f;
 
+        #endregion
+
+        #region ActionTimes
         // Times
-        public float TimeActionPlantSeed = 2f;
-        public float TimeActionWaterField = 3f;
+        public float TimeActionPlantSeed = 1.33f;
+        public float TimeActionWaterField = 2.5f;
         public float TimeActionHarvestCarrot = 2.5f;
         public float TimeActionRemoveRoots = 2.5f;
-        public float TimeActionStealCarrotFromUndergroundField = 6f;
+        public float TimeActionStealCarrotFromUndergroundField = 5f;
         public float TimeActionDigUndergroundWall = 2.85f;
         public float TimeActionDigMoundUnderground = 3f;
         public float TimeActionDigMoundOnSurface = 4f;
@@ -101,13 +108,31 @@ namespace RabbitVsMole.GameData
         public float TimeActionEnterMound = 2f;
         public float TimeActionExitMound = 2f;
         public float TimeActionPickSeed = 3f;
-        public float TimeActionPickWater = 3.5f;
+        public float TimeActionPickWater = 2.5f;
         public float TimeActionPutDownCarrot = 1.2f;
         public float TimeActionStealCarrotFromStorage = 3.8f;
 
+        #endregion
+
+        #region GameRules
         //Game rules
+        public bool GameRulesFightMoleAllowRegenerationOnSurface = false;
+
+        public bool GameRulesRootsCanSpawnOnCleanField = true;
+        public bool GameRulesRootsCanSpawnOnPlantedField = true;
+        public bool GameRulesRootsCanSpawnOnWithCarrotField = true;
+
+        public bool GameRulesRootsCanSpawnOnWithCarrotFullGrowField = false;
+        public bool GameRulesRootsCanSpawnOnMoundedField = false;
+
         public bool GameRulesRootsAllowDamageRootsWithCarrotInHand = true;
         public bool GameRulesMoleCanEnterUndergroundMoundWithCarrotInHand = false;
+        public bool GameRulesFarmFieldStartsWithRoots = false;
+
+        public bool GameRulesAllowMoleToStealFromRabbitStorage = true;
+        public bool GameRulesAllowMolePickUpCarrotFromFarm = true;
+
+        #endregion
 
         public AI AIStats = new AI();
         public class AI

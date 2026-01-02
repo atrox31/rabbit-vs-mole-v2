@@ -26,6 +26,8 @@ namespace RabbitVsMole
         [Header("Addons")]
         [SerializeField] private List<AvatarAddon> _avatarAddonListPrefab;
         private List<AvatarAddon> _activeAvatarAddon = new();
+        [SerializeField] private ParticleSystem _hitParticles;
+        [SerializeField] private ParticleSystem _deathParticles;
 
         [Header("Sounds")]
         [SerializeField] private AudioClip _audioHit;
@@ -36,7 +38,6 @@ namespace RabbitVsMole
         [Header("Interaction Settings")]
         [SerializeField] private float _raycastDistance = 1f;
         [SerializeField] private LayerMask interactionLayerMask = -1;
-        [SerializeField] private ParticleSystem _hitParticles;
 
         private Rigidbody _rigidbody;
         private SpeedController _speedController;
@@ -269,12 +270,12 @@ namespace RabbitVsMole
             if (_isPerformingAction)
                 return false;
 
-            if (EnemyIsInRange && GameInspector.CurrentGameMode.AllowFight)
+            if (EnemyIsInRange && GameManager.CurrentGameMode.AllowFight)
             {
                 return PerformAction(
                         actionType: ActionType.Attack,
                         onBegin: () => {
-                            _enemy.Hit(GameInspector.GameStats.FightRabbitDamageDeal, true);
+                            _enemy.Hit(GameManager.CurrentGameStats.FightRabbitDamageDeal, true);
                             AudioManager.PlaySound3D(_audioHit, transform.position);
                             },
                         onEnd: null,
@@ -366,16 +367,33 @@ namespace RabbitVsMole
                 // healts is too low
                 Backpack.Health.GetAll();
                 AudioManager.PlaySound3D(_audioDeathDamage, transform.position);
+                Vector3 oldPosition = transform.position;
                 return PerformAction(
                         actionType: ActionType.Death,
-                        onBegin: () => _hitParticles.SafePlay(),
+                        onBegin: null,
                         onEnd: () =>
                         {
+                            PlayDeathParticles(oldPosition);
+                            PlayDeathParticles(_respawnPosition);
                             EventBus.Publish(new TravelEvent() { NewLocation = _respawnPosition, actionTypeAfterTravel = ActionType.Respawn });
                             _healthRegeneration ??= StartCoroutine(HealthRegenerationCoroutine());
                         },
                         blockAfterAction: true
                     ); 
+            }
+        }
+
+        void PlayDeathParticles(Vector3 position)
+        {
+            if (_deathParticles == null)
+                return;
+
+            var ps = Instantiate(_deathParticles, position, Quaternion.identity);
+            if (ps != null)
+            {
+                var pMain = ps.main;
+                pMain.duration = GetActionTime(ActionType.Respawn);
+                ps.Play(true);
             }
         }
 
@@ -391,17 +409,17 @@ namespace RabbitVsMole
                 return;
 
             if(collapsedUndergroundField == fieldThatPlayerIsStandingOn)
-                Hit(GameInspector.GameStats.FightMoleHealthPoints + 1, true);
+                Hit(GameManager.CurrentGameStats.FightMoleHealthPoints + 1, true);
         }
 
         IEnumerator HealthRegenerationCoroutine()
         {
             while (!Backpack.Health.IsFull)
             {
-                bool canRegenerate = !IsOnSurface || GameInspector.GameStats.FightMoleAllowRegenerationOnSurface;
+                bool canRegenerate = !IsOnSurface || GameManager.CurrentGameStats.GameRulesFightMoleAllowRegenerationOnSurface;
 
                 if (canRegenerate)
-                    Backpack.Health.TryInsert(GameInspector.GameStats.FightMoleHealthRegenerationPerSec, true);
+                    Backpack.Health.TryInsert(GameManager.CurrentGameStats.FightMoleHealthRegenerationPerSec, true);
 
                 yield return new WaitForSeconds(1f);
             }
@@ -483,30 +501,30 @@ namespace RabbitVsMole
         private float GetActionTime(ActionType actionType) =>
             actionType switch
             {
-                ActionType.PlantSeed => GameInspector.GameStats.TimeActionPlantSeed,
-                ActionType.WaterField => GameInspector.GameStats.TimeActionWaterField,
-                ActionType.HarvestCarrot => GameInspector.GameStats.TimeActionHarvestCarrot,
-                ActionType.RemoveRoots => GameInspector.GameStats.TimeActionRemoveRoots,
-                ActionType.StealCarrotFromUndergroundField => GameInspector.GameStats.TimeActionStealCarrotFromUndergroundField,
-                ActionType.DigUndergroundWall => GameInspector.GameStats.TimeActionDigUndergroundWall,
+                ActionType.PlantSeed => GameManager.CurrentGameStats.TimeActionPlantSeed,
+                ActionType.WaterField => GameManager.CurrentGameStats.TimeActionWaterField,
+                ActionType.HarvestCarrot => GameManager.CurrentGameStats.TimeActionHarvestCarrot,
+                ActionType.RemoveRoots => GameManager.CurrentGameStats.TimeActionRemoveRoots,
+                ActionType.StealCarrotFromUndergroundField => GameManager.CurrentGameStats.TimeActionStealCarrotFromUndergroundField,
+                ActionType.DigUndergroundWall => GameManager.CurrentGameStats.TimeActionDigUndergroundWall,
                 ActionType.DigMound => IsOnSurface
-                    ? GameInspector.GameStats.TimeActionDigMoundOnSurface
-                    : GameInspector.GameStats.TimeActionDigMoundUnderground,
-                ActionType.CollapseMound => GameInspector.GameStats.TimeActionCollapseMound,
-                ActionType.EnterMound => GameInspector.GameStats.TimeActionEnterMound,
-                ActionType.ExitMound => GameInspector.GameStats.TimeActionExitMound,
-                ActionType.PickSeed => GameInspector.GameStats.TimeActionPickSeed,
-                ActionType.PickWater => GameInspector.GameStats.TimeActionPickWater,
-                ActionType.PutDownCarrot => GameInspector.GameStats.TimeActionPutDownCarrot,
-                ActionType.StealCarrotFromStorage => GameInspector.GameStats.TimeActionStealCarrotFromStorage,
-                ActionType.Attack => GameInspector.GameStats.FightRabbitAttackActionTime,
-                ActionType.Stun => GameInspector.GameStats.FightMoleStunTime,
-                ActionType.Respawn => GameInspector.GameStats.FightMoleRespawnTime,
-                ActionType.Death => GameInspector.GameStats.FightMoleDeath,
-                ActionType.None => 0f,
-                ActionType.Victory => float.MaxValue,
-                ActionType.Defeat => float.MaxValue,
-                _ => 0f
+                    ? GameManager.CurrentGameStats.TimeActionDigMoundOnSurface
+                    : GameManager.CurrentGameStats.TimeActionDigMoundUnderground,
+                ActionType.CollapseMound => GameManager.CurrentGameStats.TimeActionCollapseMound,
+                ActionType.EnterMound => GameManager.CurrentGameStats.TimeActionEnterMound,
+                ActionType.ExitMound => GameManager.CurrentGameStats.TimeActionExitMound,
+                ActionType.PickSeed => GameManager.CurrentGameStats.TimeActionPickSeed,
+                ActionType.PickWater => GameManager.CurrentGameStats.TimeActionPickWater,
+                ActionType.PutDownCarrot => GameManager.CurrentGameStats.TimeActionPutDownCarrot,
+                ActionType.StealCarrotFromStorage => GameManager.CurrentGameStats.TimeActionStealCarrotFromStorage,
+                ActionType.Attack => GameManager.CurrentGameStats.FightRabbitAttackActionTime,
+                ActionType.Stun => GameManager.CurrentGameStats.FightMoleStunTime,
+                ActionType.Respawn => GameManager.CurrentGameStats.FightMoleRespawnTime,
+                ActionType.Death => GameManager.CurrentGameStats.FightMoleDeath,
+                ActionType.None => -1f,
+                ActionType.Victory => -1f,
+                ActionType.Defeat => -1f,
+                _ => -1f
             };
         
         private void TriggerActionAnimation(ActionType actionType, float actionTime)
@@ -517,23 +535,15 @@ namespace RabbitVsMole
             _moveInput = Vector2.zero;
             ResetNavTriggers(); // Ensure no navigation triggers are pending
             string triggerName = GetAnimationTriggerName(actionType);
+            _animator.speed = _defaultAnimatorSpeed;
 
             if (_animationClipLengths.TryGetValue(triggerName, out float clipLength))
             {
                 if (actionTime > 0f && clipLength > 0f)
-                {
                     _animator.speed = clipLength / actionTime;
-                }
-                else
-                {
-                    _animator.speed = _defaultAnimatorSpeed;
-                }
             }
             else
-            {
                 DebugHelper.LogWarning(this, $"Animation clip '{triggerName}' not found in cache. Using default speed.");
-                _animator.speed = _defaultAnimatorSpeed;
-            }
 
             _animator.SetTrigger(triggerName);
             _currentAnimationState = AnimationState.Action;

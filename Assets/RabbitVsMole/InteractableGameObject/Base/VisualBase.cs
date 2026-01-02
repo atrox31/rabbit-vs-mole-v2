@@ -155,12 +155,6 @@ namespace RabbitVsMole.InteractableGameObject.Base
             {
                 InitializeScaleElements();
             }
-            if (!TryGetComponent(out _outline))
-            {
-                DebugHelper.LogError(this, "You forgot to add component Outline to this interactable!");
-                return;
-            }
-            _outline.enabled = false;
         }
 
         protected virtual void InitializeScaleElements()
@@ -498,50 +492,5 @@ namespace RabbitVsMole.InteractableGameObject.Base
                 _ => linearT,
             };
         }
-
-        private Outline _outline;
-        private Coroutine _outlineCoroutine;
-        private const float MIN_WIDTH = 0f;
-        private const float MAX_WIDTH = 10f;
-        private const float DURATION = 0.5f;
-
-        public void LightUp(PlayerType playerType) => StartEffect(true);
-        public void LightDown(PlayerType playerType) => StartEffect(false);
-
-        private void StartEffect(bool increase)
-        {
-            if (_outline == null) return;
-
-            if (_outlineCoroutine != null)
-                StopCoroutine(_outlineCoroutine);
-
-            if (increase)
-                _outline.enabled = true;
-
-            _outlineCoroutine = StartCoroutine(AnimateOutline(increase));
-        }
-
-        private IEnumerator AnimateOutline(bool increase)
-        {
-            float startWidth = _outline.OutlineWidth;
-            float targetWidth = increase ? MAX_WIDTH : MIN_WIDTH;
-            float elapsed = 0f;
-
-            while (elapsed < 1f)
-            {
-                elapsed += Time.deltaTime / DURATION;
-
-                _outline.OutlineWidth = Mathf.Lerp(startWidth, targetWidth, elapsed);
-
-                yield return null;
-            }
-
-            if (!increase)
-                _outline.enabled = false;
-
-            _outline.OutlineWidth = targetWidth;
-            _outlineCoroutine = null;
-        }
-
     }
 }

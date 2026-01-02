@@ -49,7 +49,9 @@ namespace RabbitVsMole.InteractableGameObject.Storages
                 // put carrot
                 PlayerType.Rabbit => !_carrotStealProgress && backpack.Carrot.Count == 1,
                 // steal carrot
-                PlayerType.Mole => (CanStealCarrot && backpack.Carrot.Count == 0),
+                PlayerType.Mole => GameManager.CurrentGameStats.GameRulesAllowMoleToStealFromRabbitStorage 
+                    ? (CanStealCarrot && backpack.Carrot.Count == 0)
+                    : backpack.Carrot.Count == 1,
                 _ => false,
             };
 
@@ -63,23 +65,33 @@ namespace RabbitVsMole.InteractableGameObject.Storages
 
         private bool ActionForRabbit(Backpack backpack, Func<ActionType, float> OnActionRequested, Action OnActionCompleted)
         {
-            if (!backpack.Carrot.TryGet())
-                return false;
-
-            SpawnCarrotVisual();
-            GameInspector.CarrotPicked(PlayerType.Rabbit);
-
-            var actionTime = OnActionRequested.Invoke(ActionType.PutDownCarrot);
-            _rabbitActionCorutine = StartCoroutine(CompliteAction(OnActionCompleted, actionTime));
-            return true;
+            return PutDownCarrotAction(backpack, OnActionRequested, OnActionCompleted);
         }
 
         private bool ActionForMole(Backpack backpack, Func<ActionType, float> OnActionRequested, Action OnActionCompleted)
         {
-            var actionTime = OnActionRequested.Invoke(ActionType.StealCarrotFromStorage);
-            _breakActionCorutine = StartCoroutine(CompliteActionForMole(backpack, OnActionCompleted, actionTime));
+            if (GameManager.CurrentGameStats.GameRulesAllowMoleToStealFromRabbitStorage)
+            {
+                var actionTime = OnActionRequested.Invoke(ActionType.StealCarrotFromStorage);
+                _breakActionCorutine = StartCoroutine(CompliteActionForMole(backpack, OnActionCompleted, actionTime));
 
-            _particleForCarrotStealProgress.SafePlay();
+                _particleForCarrotStealProgress.SafePlay();
+                return true;
+            }
+            else
+                return PutDownCarrotAction(backpack, OnActionRequested, OnActionCompleted);
+        }
+
+        private bool PutDownCarrotAction(Backpack backpack, Func<ActionType, float> OnActionRequested, Action OnActionCompleted)
+        {
+            if (!backpack.Carrot.TryGet())
+                return false;
+
+            SpawnCarrotVisual();
+            GameManager.CurrentGameInspector?.CarrotPicked(backpack.PlayerType);
+
+            var actionTime = OnActionRequested.Invoke(ActionType.PutDownCarrot);
+            _rabbitActionCorutine = StartCoroutine(CompliteAction(OnActionCompleted, actionTime));
             return true;
         }
 
@@ -109,7 +121,7 @@ namespace RabbitVsMole.InteractableGameObject.Storages
                 {
                     if (backpack.Carrot.TryInsert())
                     {
-                        GameInspector.CarrotStealed(PlayerType.Rabbit);
+                        GameManager.CurrentGameInspector?.CarrotStealed(PlayerType.Rabbit);
                         _particleForCarrotStealProgress.SafeStop();
                         DeleteCarrotVisual();
                         action?.Invoke();

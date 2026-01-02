@@ -58,7 +58,7 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
 
         internal void DestroyMound()
         {
-            _moundVisual?.SetDuration(GameInspector.GameStats.TimeActionCollapseMound);
+            _moundVisual?.SetDuration(GameManager.CurrentGameStats.TimeActionCollapseMound);
             DestroyVisual(ref _moundVisual);
         }
 
@@ -79,7 +79,7 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
 
         internal void DestroyWall()
         {
-            _wallsVisual?.SetDuration(GameInspector.GameStats.TimeActionDigUndergroundWall);
+            _wallsVisual?.SetDuration(GameManager.CurrentGameStats.TimeActionDigUndergroundWall);
             DestroyVisual(ref _wallsVisual);
         }
 
@@ -95,14 +95,12 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
 
         public override void LightUp(PlayerType playerType)
         {
-            //FarmFieldTileHighlighter.Instance(playerType)?.SetTarget(transform.position);
-            _currentVisual?.LightUp(playerType);
+            FarmFieldTileHighlighter.Instance(playerType)?.SetTarget(transform.position);
         }
 
         public override void LightDown(PlayerType playerType)
         {
-            //FarmFieldTileHighlighter.Instance(playerType)?.Hide();
-            _currentVisual?.LightDown(playerType);
+            FarmFieldTileHighlighter.Instance(playerType)?.Hide();
         }
 
 

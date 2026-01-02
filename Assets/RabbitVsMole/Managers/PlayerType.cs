@@ -1,4 +1,4 @@
-﻿
+
 namespace RabbitVsMole
 {
     public enum PlayerType

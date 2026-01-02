@@ -1,6 +1,7 @@
 using Extensions;
 using InputManager;
 using PlayerManagementSystem;
+using RabbitVsMole.GameData.Mutator;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -39,6 +40,9 @@ namespace RabbitVsMole
                             { PlayerType.Mole, moleControlAgent }
                         };
             }
+
+            public void AddMutator(MutatorSO mutatorSO) =>
+                gameMode.mutators.Add(mutatorSO);
 
             public PlayerControlAgent GetPlayerControlAgent(PlayerType playerType)
             {

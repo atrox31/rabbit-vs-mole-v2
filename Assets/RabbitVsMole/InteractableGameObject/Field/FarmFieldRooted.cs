@@ -15,10 +15,10 @@ namespace RabbitVsMole.InteractableGameObject.Field
         {
         }
         private int _hitCount;
-        public int GetHP => GameInspector.GameStats.RootsHealthPoint - _hitCount;
+        public int GetHP => GameManager.CurrentGameStats.RootsHealthPoint - _hitCount;
         protected override void OnStart()
         {
-            AIPriority = GameInspector.GameStats.AIStats.FarmFieldRooted;
+            AIPriority = GameManager.CurrentGameStats.AIStats.FarmFieldRooted;
             FieldParent.DestroyCarrot();
             FieldParent.DestroySeed();
 
@@ -32,14 +32,14 @@ namespace RabbitVsMole.InteractableGameObject.Field
         }
 
         protected override bool CanInteractForRabbit(Backpack backpack) =>
-            GameInspector.GameStats.GameRulesRootsAllowDamageRootsWithCarrotInHand switch
+            GameManager.CurrentGameStats.GameRulesRootsAllowDamageRootsWithCarrotInHand switch
             {
                 true => true,
                 false => backpack.Carrot.IsEmpty
             };
 
         protected override bool CanInteractForMole(Backpack backpack) =>
-            GameInspector.GameStats.GameRulesRootsAllowDamageRootsWithCarrotInHand switch
+            GameManager.CurrentGameStats.GameRulesRootsAllowDamageRootsWithCarrotInHand switch
             {
                 true => true,
                 false => backpack.Carrot.IsEmpty
@@ -47,19 +47,19 @@ namespace RabbitVsMole.InteractableGameObject.Field
 
         protected override bool ActionForRabbit(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
-            _hitCount += GameInspector.GameStats.RootsDamageByRabbit;
+            _hitCount += GameManager.CurrentGameStats.RootsDamageByRabbit;
             return RemoveRootsAction(onActionRequested, onActionCompleted);
         }
 
         protected override bool ActionForMole(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
-            _hitCount += GameInspector.GameStats.RootsDamageByMole;
+            _hitCount += GameManager.CurrentGameStats.RootsDamageByMole;
             return RemoveRootsAction(onActionRequested, onActionCompleted);
         }
 
         private bool RemoveRootsAction(Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
-            var rootsIsDestroyed = _hitCount >= GameInspector.GameStats.RootsHealthPoint;
+            var rootsIsDestroyed = _hitCount >= GameManager.CurrentGameStats.RootsHealthPoint;
 
             return StandardAction(new InteractionConfig
             {

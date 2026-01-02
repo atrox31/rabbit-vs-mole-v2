@@ -52,9 +52,12 @@ dodatkowo nie synchronizują się statusy (po zniszczeniu blokują pole)
 [X] addons - 2 na raz
 [X] walking symulator nie aktualizuje terenu
 
+[X] naprawiono ustawienie głośności przy starcie aplikacji
+[X] naprawiono ikony klawiszy sterowania
+[X] naprawiono błąd UI, end game (zamiana tytułu z treścią panelu)
+[X] naprawiono animacje victory/defeat
+
 BUG:
-[ ] animacje victory/defeat coś jest nie tak
-[ ] naprawić game input w menu, obrazki się nie wyświetlają gamepad
 
 FEATURE:
 [ ] indykator marchewki na GAMEIU

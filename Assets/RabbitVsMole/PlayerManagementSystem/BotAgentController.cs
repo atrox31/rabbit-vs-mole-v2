@@ -234,7 +234,7 @@ namespace RabbitVsMole
 
         private IEnumerator MoleTravelInternal(TravelEvent moleTravelEvent)
         {
-            yield return new WaitForSeconds(GameInspector.GameStats.TimeActionEnterMound);
+            yield return new WaitForSeconds(GameManager.CurrentGameStats.TimeActionEnterMound);
 
             if (_navMeshAgent != null)
             {

@@ -1,4 +1,4 @@
-﻿namespace RabbitVsMole.InteractableGameObject.Enums
+namespace RabbitVsMole.InteractableGameObject.Enums
 {
     public enum ActionType
     {

@@ -24,7 +24,7 @@ namespace RabbitVsMole.InteractableGameObject.Storages
         private void AddCarrot()
         {
             _carrotList.Add(Instantiate(_carrotModelInStorage, _carrotSpawnPoint.position, Quaternion.identity, transform));
-            GameInspector.CarrotPicked(PlayerType.Mole);
+            GameManager.CurrentGameInspector?.CarrotPicked(PlayerType.Mole);
         }
 
         public override bool CanInteract(Backpack backpack)

@@ -17,8 +17,8 @@ namespace RabbitVsMole.InteractableGameObject.Storages
             {
                 _waterLevel = value;
 
-                if(_waterLevel > GameInspector.GameStats.WaterSourceMaxWaterLevel)
-                    _waterLevel = GameInspector.GameStats.WaterSourceMaxWaterLevel;
+                if(_waterLevel > GameManager.CurrentGameStats.WaterSourceMaxWaterLevel)
+                    _waterLevel = GameManager.CurrentGameStats.WaterSourceMaxWaterLevel;
 
                 if(_waterLevel < 0)
                     _waterLevel = 0;
@@ -34,9 +34,9 @@ namespace RabbitVsMole.InteractableGameObject.Storages
 
         void Update()
         {
-            if(WaterCurrentLevel < GameInspector.GameStats.WaterSourceMaxWaterLevel)
+            if(WaterCurrentLevel < GameManager.CurrentGameStats.WaterSourceMaxWaterLevel)
             {
-                WaterCurrentLevel += GameInspector.GameStats.WaterSourceWaterPerSec * Time.deltaTime;
+                WaterCurrentLevel += GameManager.CurrentGameStats.WaterSourceWaterPerSec * Time.deltaTime;
             }
         }
 
@@ -44,12 +44,12 @@ namespace RabbitVsMole.InteractableGameObject.Storages
 
         private void Start()
         {
-            WaterCurrentLevel = GameInspector.GameStats.WaterSourceMaxWaterLevel;
+            WaterCurrentLevel = GameManager.CurrentGameStats.WaterSourceMaxWaterLevel;
         }
 
         private void SetWaterLevelVisual()
         {
-            var waterLevel = Mathf.Clamp01(WaterCurrentLevel / GameInspector.GameStats.WaterSourceMaxWaterLevel);
+            var waterLevel = Mathf.Clamp01(WaterCurrentLevel / GameManager.CurrentGameStats.WaterSourceMaxWaterLevel);
             _waterGameObject.transform.localPosition = Vector3.Lerp(_waterLevel0.localPosition, _waterLevel1.localPosition, waterLevel);
         }
 
@@ -64,8 +64,8 @@ namespace RabbitVsMole.InteractableGameObject.Storages
                 return false;
             //TODO: add mutator flag "water spoliage"
 
-            var canDrain = CanDrain(GameInspector.GameStats.WaterSourceWaterDrainPerAction);
-            var canPutToBackpack = backpack.Water.CanInsert(GameInspector.GameStats.WaterSourceWaterToInventoryPerDrain);
+            var canDrain = CanDrain(GameManager.CurrentGameStats.WaterSourceWaterDrainPerAction);
+            var canPutToBackpack = backpack.Water.CanInsert(GameManager.CurrentGameStats.WaterSourceWaterToInventoryPerDrain);
             return (canDrain && canPutToBackpack);
         }
 
@@ -76,10 +76,10 @@ namespace RabbitVsMole.InteractableGameObject.Storages
             /// 2. Water level is ok
             /// 3. Rabbit can hold more water
 
-            if (!backpack.Water.TryInsert(GameInspector.GameStats.WaterSourceWaterToInventoryPerDrain, true))
+            if (!backpack.Water.TryInsert(GameManager.CurrentGameStats.WaterSourceWaterToInventoryPerDrain, true))
                 return false;
 
-            WaterCurrentLevel -= GameInspector.GameStats.WaterSourceWaterDrainPerAction;
+            WaterCurrentLevel -= GameManager.CurrentGameStats.WaterSourceWaterDrainPerAction;
 
             var actionTime = OnActionRequested.Invoke(ActionType.PickWater);
             StartCoroutine(CompliteAction(OnActionCompleted, actionTime));

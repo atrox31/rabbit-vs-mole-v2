@@ -17,7 +17,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
 
         protected override void OnStart()
         {
-            AIPriority = GameInspector.GameStats.AIStats.UndergroundFieldClean;
+            AIPriority = GameManager.CurrentGameStats.AIStats.UndergroundFieldClean;
             FieldParent.DestroyWall();
             FieldParent.DestroyCarrot();
             FieldParent.DestroyMound();
@@ -26,14 +26,14 @@ namespace RabbitVsMole.InteractableGameObject.Field
         protected override void OnDestroy() {}
 
         protected override bool CanInteractForMole(Backpack backpack) =>
-            backpack.Dirt.CanGet(GameInspector.GameStats.CostDirtForMoleMound);
+            backpack.Dirt.CanGet(GameManager.CurrentGameStats.CostDirtForMoleMound);
 
         protected override bool ActionForMole(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
             return StandardAction(new InteractionConfig
             {
                 ActionType = ActionType.DigMound,
-                BackpackAction = playerAvatar.Backpack.Dirt.TryGet(GameInspector.GameStats.CostDirtForMoleMound),
+                BackpackAction = playerAvatar.Backpack.Dirt.TryGet(GameManager.CurrentGameStats.CostDirtForMoleMound),
                 NewFieldStateProvider = () => FieldParent.CreateUndergroundMoundedState(),
                 NewLinkedFieldStateProvider = () => FieldParent.LinkedField.CreateFarmMoundedState(),
                 OnActionRequested = onActionRequested,

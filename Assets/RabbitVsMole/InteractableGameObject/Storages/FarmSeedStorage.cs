@@ -15,7 +15,7 @@ namespace RabbitVsMole.InteractableGameObject.Storages
             if (backpack.PlayerType != PlayerType.Rabbit)
                 return false;
 
-            var canInsertSeed = backpack.Seed.CanInsert(GameInspector.GameStats.SeedStorageValuePerAction);
+            var canInsertSeed = backpack.Seed.CanInsert(GameManager.CurrentGameStats.SeedStorageValuePerAction);
             
             return canInsertSeed;
         }
@@ -26,7 +26,7 @@ namespace RabbitVsMole.InteractableGameObject.Storages
             /// 1. Player is Rabbit
             /// 2. Rabbit can hold more seed
 
-            if (!backpack.Seed.TryInsert(GameInspector.GameStats.SeedStorageValuePerAction, true))
+            if (!backpack.Seed.TryInsert(GameManager.CurrentGameStats.SeedStorageValuePerAction, true))
                 return false;
 
             var actionTime = OnActionRequested.Invoke(ActionType.PickSeed);

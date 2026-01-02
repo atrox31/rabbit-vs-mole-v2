@@ -16,7 +16,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
 
         protected override void OnStart()
         {
-            AIPriority = GameInspector.GameStats.AIStats.UndergroundFieldWall;
+            AIPriority = GameManager.CurrentGameStats.AIStats.UndergroundFieldWall;
             FieldParent.DestroyCarrot();
             FieldParent.DestroyMound();
 
@@ -46,16 +46,16 @@ namespace RabbitVsMole.InteractableGameObject.Field
 
 
         protected override bool CanInteractForMole(Backpack backpack) => 
-            backpack.Dirt.CanInsert(GameInspector.GameStats.WallDirtCollectPerAction);
+            backpack.Dirt.CanInsert(GameManager.CurrentGameStats.WallDirtCollectPerAction);
 
         protected override bool ActionForMole(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
-            _hitCount += GameInspector.GameStats.WallDirtDamageByMole;
-            var wallIsDestroyed = _hitCount >= GameInspector.GameStats.WallDirtHealthPoint;
+            _hitCount += GameManager.CurrentGameStats.WallDirtDamageByMole;
+            var wallIsDestroyed = _hitCount >= GameManager.CurrentGameStats.WallDirtHealthPoint;
             return StandardAction(new InteractionConfig
             {
                 ActionType = ActionType.DigUndergroundWall,
-                BackpackAction = playerAvatar.Backpack.Dirt.TryInsert(GameInspector.GameStats.WallDirtCollectPerAction),
+                BackpackAction = playerAvatar.Backpack.Dirt.TryInsert(GameManager.CurrentGameStats.WallDirtCollectPerAction),
                 NewFieldStateProvider = () => DetermineNewFieldState(wallIsDestroyed),
                 //NewLinkedFieldStateProvider = null,
                 OnActionRequested = onActionRequested,

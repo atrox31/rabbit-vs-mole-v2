@@ -1,5 +1,5 @@
+using DebugTools;
 using GameSystems;
-using NUnit.Framework;
 using PlayerManagementSystem;
 using RabbitVsMole.Events;
 using RabbitVsMole.GameData;
@@ -7,136 +7,74 @@ using RabbitVsMole.GameData.Mutator;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor.Localization.Plugins.XLIFF.V12;
 using UnityEngine;
 
 namespace RabbitVsMole
 {
-
+    /// <summary>
+    /// Manages a single game session.
+    /// Tracks session state (carrot counts, timer), evaluates win conditions,
+    /// and communicates with GameManager via events.
+    /// </summary>
     public class GameInspector : MonoBehaviour
     {
-        private static float LAST_SECONDS_IN_GAME = 10f;
-        private static GameInspector _instance;
-        public static bool IsActive => _instance != null;
+        private const float LAST_SECONDS_IN_GAME = 10f;
 
-        GameModeData _currentGameMode;
-        GameStats _currentGameStats;
-        public static GameStats GameStats =>
-            _instance._currentGameStats;
+        // Event fired when game ends with win result
+        public event Action<WinConditionEvaluator.WinResult> OnGameEnded;
 
+        [SerializeField] private GameUI gameUIPrefab;
+        private GameUI _gameUIInstance;
 
-        internal static void InicializeGameStats(List<MutatorSO> mutatotList)
+        private GameModeData _currentGameMode;
+        private GameStats _currentGameStats;
+        private PlayerType _currentPlayerOnStory;
+        private PlayerControlAgent _rabbitControlAgent;
+        private PlayerControlAgent _moleControlAgent;
+        private readonly int[] _carrotCount = new int[Enum.GetValues(typeof(PlayerType)).Length];
+        private Coroutine _gameTimerCoroutine;
+
+        // Public accessors for game state
+        public GameUI GameUI => _gameUIInstance;
+        public GameModeData CurrentGameMode => _currentGameMode;
+        public GameStats GameStats => _currentGameStats;
+        public PlayerType CurrentPlayerOnStory => _currentPlayerOnStory;
+        public PlayerControlAgent RabbitControlAgent => _rabbitControlAgent;
+        public PlayerControlAgent MoleControlAgent => _moleControlAgent;
+        public int RabbitCarrotCount => _carrotCount[(int)PlayerType.Rabbit];
+        public int MoleCarrotCount => _carrotCount[(int)PlayerType.Mole];
+        public bool IsSplitScreen => _rabbitControlAgent == PlayerControlAgent.Human && 
+                                     _moleControlAgent == PlayerControlAgent.Human;
+
+        /// <summary>
+        /// Initializes game statistics with optional mutators.
+        /// </summary>
+        public void InitializeGameStats(List<MutatorSO> mutatorList)
         {
-            if(!IsActive) return;
-
-            _instance._currentGameStats = new GameStats();
-            if(mutatotList != null && mutatotList.Count > 0)
+            _currentGameStats = new GameStats();
+            if (mutatorList != null && mutatorList.Count > 0)
             {
-                foreach (var item in mutatotList)
+                foreach (var mutator in mutatorList)
                 {
-                    item.Apply(_instance._currentGameStats);
+                    DebugHelper.Log(this, $"Apply mutator settings: {mutator.name}");
+                    mutator.Apply(_currentGameStats);
                 }
             }
         }
 
-        void Awake()
+        /// <summary>
+        /// Initializes the game inspector with settings from GameManager.
+        /// </summary>
+        public void Initialize(GameManager.PlayGameSettings playGameSettings)
         {
-            if (_instance != null && _instance != this)
-            {
-                Destroy(this.gameObject);
-                return;
-            }
-            DebugHelper.Log(this, "GameInspektor is alive!");
-            _instance = this;
+            InitializeGameStats(playGameSettings.gameMode.mutators);
+            _currentGameMode = playGameSettings.gameMode;
+            _currentPlayerOnStory = playGameSettings.playerTypeForStory;
+            _rabbitControlAgent = playGameSettings.GetPlayerControlAgent(PlayerType.Rabbit);
+            _moleControlAgent = playGameSettings.GetPlayerControlAgent(PlayerType.Mole);
         }
 
-        [SerializeField] GameUI gameUI;
-        private GameUI _instanceOnGameUI;
-        public static GameUI GameUI =>
-            _instance?._instanceOnGameUI;
-
-        public static GameModeData CurrentGameMode
-        {
-            get
-            {
-                if (_instance == null) return null;
-                return _instance._currentGameMode;
-            }
-            set
-            {
-                if (_instance == null) return;
-                _instance._currentGameMode = value;
-            }
-        }
-        public static int RabbitCarrotCount => _instance?.CarrotCount[(int)PlayerType.Rabbit] ?? 0;
-        public static int MoleCarrotCount => _instance?.CarrotCount[(int)PlayerType.Mole] ?? 0;
-
-        private readonly int[] CarrotCount = new int[Enum.GetValues(typeof(PlayerType)).Length];
-        private PlayerType _currentPlayerOnStory;
-        public static PlayerType CurrentPlayerOnStory
-        {
-            get
-            {
-                if (_instance == null) return PlayerType.Rabbit; // Default value
-                return _instance._currentPlayerOnStory;
-            }
-            set
-            {
-                if (_instance == null) return;
-                _instance._currentPlayerOnStory = value;
-            }
-        }
-
-        private PlayerControlAgent _rabbitControlAgent;
-        private PlayerControlAgent _moleControlAgent;
-        public static PlayerControlAgent RabbitControlAgent
-        {
-            get
-            {
-                if (_instance == null) return PlayerControlAgent.None;
-                return _instance._rabbitControlAgent;
-            }
-            set
-            {
-                if (_instance == null) return;
-                _instance._rabbitControlAgent = value;
-            }
-        }
-        public static PlayerControlAgent MoleControlAgent
-        {
-            get
-            {
-                if (_instance == null) return PlayerControlAgent.None;
-                return _instance._moleControlAgent;
-            }
-            set
-            {
-                if (_instance == null) return;
-                _instance._moleControlAgent = value;
-            }
-        }
-
-        public static bool IsSplitScreen
-        {
-            get
-            {
-                if (_instance == null) return false;
-                return _instance._rabbitControlAgent == PlayerControlAgent.Human &&
-                       _instance._moleControlAgent == PlayerControlAgent.Human;
-            }
-        }
-
-        private void OnDestroy()
-        {
-            if (_instance == this)
-            {
-                _instance = null;
-            }
-        }
-
-        private Coroutine _gameTimerCoroutine;
-
-        void Start()
+        private void Start()
         {
             if (_currentGameMode == null)
             {
@@ -145,40 +83,50 @@ namespace RabbitVsMole
             }
         }
 
-        public static void StopTimer()
+        private void OnDestroy()
         {
-            if (_instance == null)
+            if (_gameTimerCoroutine != null)
             {
-                DebugHelper.LogWarning(null, "GameInspector.StartGameTimer: Instance is null.");
-                return;
+                StopCoroutine(_gameTimerCoroutine);
             }
-            _instance.StopCoroutine(_instance._gameTimerCoroutine);
+        }
+
+        /// <summary>
+        /// Starts the game session: initializes UI and starts timer.
+        /// </summary>
+        public void StartGame()
+        {
+            StartGameTimer();
+            _gameUIInstance = Instantiate(gameUIPrefab).GetComponent<GameUI>();
+            GameUI.SetInventoryVisible(PlayerType.Rabbit, RabbitControlAgent == PlayerControlAgent.Human);
+            GameUI.SetInventoryVisible(PlayerType.Mole, MoleControlAgent == PlayerControlAgent.Human);
+        }
+
+        /// <summary>
+        /// Stops the game timer.
+        /// </summary>
+        public void StopTimer()
+        {
+            if (_gameTimerCoroutine != null)
+            {
+                StopCoroutine(_gameTimerCoroutine);
+                _gameTimerCoroutine = null;
+            }
         }
 
         private void StartGameTimer()
         {
-            if (_instance == null)
+            if (_gameTimerCoroutine != null)
             {
-                DebugHelper.LogWarning(null, "GameInspector.StartGameTimer: Instance is null.");
-                return;
-            }
-            if (_instance._gameTimerCoroutine != null)
-            {
-                _instance.StopCoroutine(_instance._gameTimerCoroutine);
+                StopCoroutine(_gameTimerCoroutine);
             }
 
-            _instance._gameTimerCoroutine = _instance.StartCoroutine(_instance.GameTimer());
+            _gameTimerCoroutine = StartCoroutine(GameTimer());
         }
 
-        IEnumerator GameTimer()
+        private IEnumerator GameTimer()
         {
-            if (_instance == null)
-            {
-                DebugHelper.LogWarning(this, "GameInspector.GameTimer: Instance is null.");
-                yield break;
-            }
-
-            if (CurrentGameMode == null)
+            if (_currentGameMode == null)
             {
                 DebugHelper.LogWarning(this, "GameInspector.GameTimer: CurrentGameMode is null.");
                 yield break;
@@ -189,7 +137,8 @@ namespace RabbitVsMole
             float elapsedTime = 0f;
             int lastSecond = 0;
 
-            DebugHelper.Log(this, $"Count down started for: {timeLimitInSeconds} secconds");
+            DebugHelper.Log(this, $"Timer started for: {timeLimitInSeconds} seconds");
+
             while (true)
             {
                 elapsedTime += Time.deltaTime;
@@ -201,21 +150,16 @@ namespace RabbitVsMole
                     UpdateTimeDisplay(elapsedTime, haveTimeLimit, timeLimitInSeconds);
                 }
 
-                if (haveTimeLimit)
+                if (haveTimeLimit && elapsedTime > timeLimitInSeconds)
                 {
-                    if (elapsedTime > timeLimitInSeconds)
-                    {
-                        DebugHelper.Log(this, $"Time end");
-                        GameManager.GamePlayTimeEnd();
-                        yield break;
-                    }
+                    DebugHelper.Log(this, "Time limit reached");
+                    HandleTimeEnd();
+                    yield break;
                 }
 
                 yield return null;
-
             }
         }
-
 
         private void UpdateTimeDisplay(float elapsedTime, bool haveTimeLimit, float timeLimitInSeconds)
         {
@@ -235,81 +179,121 @@ namespace RabbitVsMole
             });
         }
 
-        public static void CarrotPicked(PlayerType player)
+        /// <summary>
+        /// Called when a player picks a carrot.
+        /// Updates count and checks win conditions.
+        /// </summary>
+        public void CarrotPicked(PlayerType player)
         {
-            if (_instance == null)
+            if (_currentGameMode == null)
             {
-                DebugHelper.LogWarning(null, "GameInspector.CarrotPicked: Instance is null.");
+                DebugHelper.LogWarning(this, "GameInspector.CarrotPicked: CurrentGameMode is null.");
                 return;
             }
 
-            if (CurrentGameMode == null)
-            {
-                DebugHelper.LogWarning(null, "GameInspector.CarrotPicked: CurrentGameMode is null.");
-                return;
-            }
-
-            _instance.CarrotCount[(int)player]++;
+            _carrotCount[(int)player]++;
             EventBus.Publish(new CarrotPickEvent
             {
                 PlayerType = player,
-                Count = _instance.CarrotCount[(int)player]
+                Count = _carrotCount[(int)player]
             });
 
-            if (CurrentGameMode.carrotGoal == 0)
-                return;
-
-            if (_instance.CarrotCount[(int)PlayerType.Rabbit] + _instance.CarrotCount[(int)PlayerType.Mole] >= CurrentGameMode.carrotGoal && CurrentGameMode.winCondition == GameModeWinCondition.Cooperation)
+            // Check if carrot goal reached
+            if (_currentGameMode.carrotGoal > 0)
             {
-                GameManager.GamePlayCarrotGoal();
-                return;
+                // Cooperation mode: check combined carrot count
+                if (_currentGameMode.winCondition == GameModeWinCondition.Cooperation)
+                {
+                    int totalCarrots = _carrotCount[(int)PlayerType.Rabbit] + _carrotCount[(int)PlayerType.Mole];
+                    if (totalCarrots >= _currentGameMode.carrotGoal)
+                    {
+                        HandleCarrotGoalReached();
+                        return;
+                    }
+                }
+                // Other modes: check individual carrot count
+                else if (_carrotCount[(int)player] >= _currentGameMode.carrotGoal)
+                {
+                    HandleCarrotGoalReached();
+                }
             }
-
-            if (_instance.CarrotCount[(int)player] >= CurrentGameMode.carrotGoal)
-                GameManager.GamePlayCarrotGoal();
-
         }
 
-        public static void CarrotStealed(PlayerType player)
+        /// <summary>
+        /// Called when a player has a carrot stolen.
+        /// Updates count and publishes event.
+        /// </summary>
+        public void CarrotStealed(PlayerType player)
         {
-            if (_instance == null)
+            if (_currentGameMode == null)
             {
-                DebugHelper.LogWarning(null, "GameInspector.CarrotPicked: Instance is null.");
+                DebugHelper.LogWarning(this, "GameInspector.CarrotStealed: CurrentGameMode is null.");
                 return;
             }
 
-            if (CurrentGameMode == null)
-            {
-                DebugHelper.LogWarning(null, "GameInspector.CarrotPicked: CurrentGameMode is null.");
-                return;
-            }
-
-            _instance.CarrotCount[(int)player]--;
+            _carrotCount[(int)player]--;
             EventBus.Publish(new CarrotPickEvent
             {
                 PlayerType = player,
-                Count = _instance.CarrotCount[(int)player]
+                Count = _carrotCount[(int)player]
             });
         }
 
-        internal static void StartGame()
+        /// <summary>
+        /// Handles game end when time limit is reached.
+        /// Evaluates winner and triggers game end event.
+        /// </summary>
+        private void HandleTimeEnd()
         {
-            if (_instance == null)
-                return;
+            var winResult = WinConditionEvaluator.EvaluateByTime(
+                _currentGameMode, 
+                RabbitCarrotCount, 
+                MoleCarrotCount);
 
-            _instance.StartGameTimer();
-            _instance._instanceOnGameUI = Instantiate(_instance.gameUI).GetComponent<GameUI>();
-            GameUI.SetInventoryVisible(PlayerType.Rabbit, RabbitControlAgent == PlayerControlAgent.Human);
-            GameUI.SetInventoryVisible(PlayerType.Mole, MoleControlAgent == PlayerControlAgent.Human);
+            TriggerGameEnd(winResult);
         }
 
-        internal static void Inicialize(List<MutatorSO> mutatotList, GameManager.PlayGameSettings playGameSettings)
+        /// <summary>
+        /// Handles game end when carrot goal is reached.
+        /// Evaluates winner and triggers game end event.
+        /// </summary>
+        private void HandleCarrotGoalReached()
         {
-            InicializeGameStats(mutatotList);
-            CurrentGameMode = playGameSettings.gameMode;
-            CurrentPlayerOnStory = playGameSettings.playerTypeForStory;
-            RabbitControlAgent = playGameSettings.GetPlayerControlAgent(PlayerType.Rabbit);
-            MoleControlAgent = playGameSettings.GetPlayerControlAgent(PlayerType.Mole);
+            var winResult = WinConditionEvaluator.EvaluateByGoal(
+                _currentGameMode, 
+                RabbitCarrotCount, 
+                MoleCarrotCount);
+
+            TriggerGameEnd(winResult);
         }
+
+        /// <summary>
+        /// Triggers the game end event with the specified win result.
+        /// </summary>
+        private void TriggerGameEnd(WinConditionEvaluator.WinResult winResult)
+        {
+            DebugHelper.Log(this, $"Game ended. Winner: {winResult.winner}");
+            OnGameEnded?.Invoke(winResult);
+        }
+
+#if UNITY_EDITOR
+
+        void OnGUI()
+        {
+            List<(string label, Action action)> debugOptions = new ()
+            {
+                ("Carrot Rabbit", () => CarrotPicked(PlayerType.Rabbit)),
+                ("Carrot Mole", () => CarrotPicked(PlayerType.Mole)),
+            };
+
+            for (int i = 0; i < debugOptions.Count; i++)
+            {
+                Rect buttonRect = new(10, 10 + (i * 60), 150, 50);
+                if (GUI.Button(buttonRect, debugOptions[i].label))
+                    debugOptions[i].action.Invoke();
+            }
+        }
+
+#endif
     }
 }

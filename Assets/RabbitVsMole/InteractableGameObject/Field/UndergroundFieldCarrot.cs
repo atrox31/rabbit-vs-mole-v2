@@ -16,7 +16,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
 
         protected override void OnStart()
         {
-            AIPriority = GameInspector.GameStats.AIStats.UndergroundFieldCarrot;
+            AIPriority = GameManager.CurrentGameStats.AIStats.UndergroundFieldCarrot;
             FieldParent.CreateCarrot();
         }
 
@@ -56,7 +56,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
                 false => StandardAction(new InteractionConfig
                 {
                     ActionType = ActionType.DigMound,
-                    BackpackAction = playerAvatar.Backpack.Dirt.TryGet(GameInspector.GameStats.CostDirtForMoleMound),
+                    BackpackAction = playerAvatar.Backpack.Dirt.TryGet(GameManager.CurrentGameStats.CostDirtForMoleMound),
                     NewFieldStateProvider = () => FieldParent.CreateUndergroundMoundedState(),
                     NewLinkedFieldStateProvider = () => FieldParent.LinkedField.CreateFarmMoundedState(),
                     OnActionRequested = onActionRequested,

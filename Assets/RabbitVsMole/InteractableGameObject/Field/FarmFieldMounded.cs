@@ -16,7 +16,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
 
         protected override void OnStart()
         {
-            AIPriority = GameInspector.GameStats.AIStats.FarmFieldMounded;
+            AIPriority = GameManager.CurrentGameStats.AIStats.FarmFieldMounded;
             FieldParent.DestroyCarrot();
             FieldParent.DestroyRoots();
             FieldParent.DestroySeed();
@@ -38,8 +38,8 @@ namespace RabbitVsMole.InteractableGameObject.Field
 
         protected override bool ActionForRabbit(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
-            _hitCount += GameInspector.GameStats.MoundDamageByRabbit;
-            var moundIsDestroyed = _hitCount >= GameInspector.GameStats.MoundHealthPoint;
+            _hitCount += GameManager.CurrentGameStats.MoundDamageByRabbit;
+            var moundIsDestroyed = _hitCount >= GameManager.CurrentGameStats.MoundHealthPoint;
 
             return StandardAction(new InteractionConfig
             {

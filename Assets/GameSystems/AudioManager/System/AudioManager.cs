@@ -1,3 +1,4 @@
+using RabbitVsMole;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
@@ -100,6 +101,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
     protected override void Ready()
     {
         DebugHelper.Log(this, "AudioManager: Awake called.");
+        
         InitializeAudioSources();
         InitializeSfxPool();
         _selfAudioLisner = gameObject.GetOrAddComponent<AudioListener>();
@@ -109,7 +111,23 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         DebugHelper.Log(this, "AudioManager: Singleton instance set.");
     }
 
-    public override void OnGameStart() { }
+    public override void OnGameStart() {
+        float ambientVol = PlayerPrefs.GetFloat(PlayerPrefsConst.AMBIENT_VOLUME, 1.0f);
+        float sfxVol = PlayerPrefs.GetFloat(PlayerPrefsConst.SFX_VOLUME, 1.0f);
+        float musicVol = PlayerPrefs.GetFloat(PlayerPrefsConst.MUSIC_VOLUME, 0.8f);
+        float dialogueVol = PlayerPrefs.GetFloat(PlayerPrefsConst.DIALOGUES_VOLUME, 1.0f);
+        float masterVol = PlayerPrefs.GetFloat(PlayerPrefsConst.MASTER_VOLUME, 1.0f);
+
+        DebugHelper.Log(this, $"AudioManager: Loading volumes from PlayerPrefs - " +
+            $"Ambient: {ambientVol:F2}, SFX: {sfxVol:F2}, Music: {musicVol:F2}, " +
+            $"Dialogue: {dialogueVol:F2}, Master: {masterVol:F2}");
+
+        SetAmbientVolume(ambientVol);
+        SetSFXVolume(sfxVol);
+        SetMusicVolume(musicVol);
+        SetDialoguesVolume(dialogueVol);
+        SetMasterVolume(masterVol);
+    }
 
     void Update()
     {
@@ -176,11 +194,24 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
     /// </summary>
     private void SetVolume(string channel, float volume)
     {
+        if (mainMixer == null)
+        {
+            Debug.LogError($"AudioManager.SetVolume: mainMixer is null! Cannot set {channel} volume to {volume:F2}");
+            return;
+        }
+
         string parameterName = channel + "Volume"; // e.g., "MusicVolume"
 
         // Convert linear volume (0-1) to logarithmic (dB)
         float dbVolume = Mathf.Log10(Mathf.Clamp(volume, 0.0001f, 1.0f)) * 20;
-        mainMixer.SetFloat(parameterName, dbVolume);
+        
+        bool success = mainMixer.SetFloat(parameterName, dbVolume);
+        
+        if (!success)
+        {
+            Debug.LogWarning($"AudioManager.SetVolume: Failed to set '{parameterName}' to {dbVolume:F2} dB (linear: {volume:F2}). " +
+                "Parameter might not be exposed in AudioMixer!");
+        }
     }
 
     /// <summary>

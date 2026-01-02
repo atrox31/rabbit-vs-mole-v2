@@ -340,9 +340,9 @@ public class GameUI : MonoBehaviour
         _gameTimerTMP.text = "00:00"; 
         _rabbitCarrotCounterTMP.text = "0";
         _moleCarrotCounterTMP.text = "0";
-        _inwentoryRabbitSeedCounter.text = $"0/{GameInspector.GameStats.BackpackCapacitySeed}";
-        _inwentoryRabbitWaterCounter.text = $"0/{GameInspector.GameStats.BackpackCapacityWater}";
-        _inwentoryMoleDirtCounter.text = $"0/{GameInspector.GameStats.BackpackCapacityDirt}";
+        _inwentoryRabbitSeedCounter.text = $"0/{GameManager.CurrentGameStats.BackpackCapacitySeed}";
+        _inwentoryRabbitWaterCounter.text = $"0/{GameManager.CurrentGameStats.BackpackCapacityWater}";
+        _inwentoryMoleDirtCounter.text = $"0/{GameManager.CurrentGameStats.BackpackCapacityDirt}";
         _inwentoryMoleHealthCounter.text = "100%";
 
 

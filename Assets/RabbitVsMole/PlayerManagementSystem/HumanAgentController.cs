@@ -65,7 +65,7 @@ namespace RabbitVsMole
             SetGamepadSchemaName("Gamepad");
             SetupInputActions();
 
-            if (GameInspector.IsSplitScreen)
+            if (GameManager.CurrentGameInspector.IsSplitScreen)
                 SetKeyboardSchemaName($"KeyboardP{(_playerType == PlayerType.Rabbit ? "1" : "2")}");
             else
                 SetKeyboardSchemaName("KeyboardP1");
@@ -113,7 +113,7 @@ namespace RabbitVsMole
             }
 
             // Set camera viewport rect based on split-screen mode and player type
-            camera.rect = (GameInspector.IsSplitScreen, _playerType == PlayerType.Rabbit) switch
+            camera.rect = (GameManager.CurrentGameInspector.IsSplitScreen, _playerType == PlayerType.Rabbit) switch
             {
                 (false, _) => new Rect(0.0f, 0.0f, 1f, 1f), // Not split-screen -> Full screen
                 (true, true) => new Rect(0.0f, 0.0f, 0.5f, 1f), // Split-screen & Rabbit -> Left side
@@ -197,7 +197,7 @@ namespace RabbitVsMole
         {
             _blackMask.gameObject.SetActive(true);
 
-            yield return StartCoroutine(FadeMask( new Color(0f,0f,0f,0f), new Color(0f, 0f, 0f, 1f), GameInspector.GameStats.TimeActionEnterMound));
+            yield return StartCoroutine(FadeMask( new Color(0f,0f,0f,0f), new Color(0f, 0f, 0f, 1f), GameManager.CurrentGameStats.TimeActionEnterMound));
 
             yield return null;
 
@@ -211,7 +211,7 @@ namespace RabbitVsMole
             yield return null;
             _playerAvatar.PerformAction(moleTravelEvent.actionTypeAfterTravel);
 
-            yield return StartCoroutine(FadeMask(new Color(0f, 0f, 0f, 1f), new Color(0f, 0f, 0f, 0f), GameInspector.GameStats.TimeActionExitMound));
+            yield return StartCoroutine(FadeMask(new Color(0f, 0f, 0f, 1f), new Color(0f, 0f, 0f, 0f), GameManager.CurrentGameStats.TimeActionExitMound));
 
             _blackMask.gameObject.SetActive(false);
             _playerAvatar.SetupNewTerrain();

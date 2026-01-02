@@ -14,7 +14,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
 
         protected override void OnStart()
         {
-            AIPriority = GameInspector.GameStats.AIStats.UndergroundFieldMounded;
+            AIPriority = GameManager.CurrentGameStats.AIStats.UndergroundFieldMounded;
             FieldParent.DestroyCarrot();
             FieldParent.DestroyWall();
 
@@ -28,7 +28,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
         }
 
         protected override bool CanInteractForMole(Backpack backpack) =>
-            GameInspector.GameStats.GameRulesMoleCanEnterUndergroundMoundWithCarrotInHand switch
+            GameManager.CurrentGameStats.GameRulesMoleCanEnterUndergroundMoundWithCarrotInHand switch
             {
                 true => true,
                 false => backpack.Carrot.IsEmpty

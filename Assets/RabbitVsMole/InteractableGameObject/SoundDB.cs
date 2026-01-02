@@ -31,7 +31,7 @@ namespace RabbitVsMole.InteractableGameObject.SoundDB
                 { GetKey(ActionType.Stun, PlayerType.Mole), "Goblin Scream" },
                 //{ GetKey(ActionType.PlantSeed, PlayerType.Mole), "plant_seed_sound" },
                 //{ GetKey(ActionType.WaterField, PlayerType.Mole), "water_splash" },
-                //{ GetKey(ActionType.HarvestCarrot, PlayerType.Mole), "harvest_crunch" },
+                { GetKey(ActionType.HarvestCarrot, PlayerType.Mole), "CarrotPickUpSound" },
                 { GetKey(ActionType.RemoveRoots, PlayerType.Mole), "shovel" },
                 { GetKey(ActionType.StealCarrotFromUndergroundField, PlayerType.Mole), "tom" },
                 { GetKey(ActionType.DigUndergroundWall, PlayerType.Mole), "Falling Rock" },
