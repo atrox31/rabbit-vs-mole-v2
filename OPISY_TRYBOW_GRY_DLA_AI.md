@@ -191,3 +191,5 @@
 - **Grywalne elementy:** Postacie (Królik i Kret), marchewki, narzędzia
 - **Emocje:** Każdy tryb powinien przekazywać odpowiednią atmosferę (spokój, napięcie, współpraca, rywalizacja)
 
+
+

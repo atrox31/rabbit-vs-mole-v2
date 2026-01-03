@@ -8,7 +8,7 @@ namespace RabbitVsMole.InteractableGameObject.SoundDB
     {
         private static readonly Dictionary<long, string> _fastLookup = new Dictionary<long, string>()
         {
-                { GetKey(ActionType.None, PlayerType.Rabbit), "pizzicato down 1" },
+                { GetKey(ActionType.None, PlayerType.Rabbit), "wind bend down 1" },
                 { GetKey(ActionType.Attack, PlayerType.Rabbit), "269230__johnfolker__punch-4" },
                 { GetKey(ActionType.Stun, PlayerType.Rabbit), string.Empty },
                 { GetKey(ActionType.PlantSeed, PlayerType.Rabbit), "CarrotPickUpSound" },
@@ -26,7 +26,7 @@ namespace RabbitVsMole.InteractableGameObject.SoundDB
                 { GetKey(ActionType.PutDownCarrot, PlayerType.Rabbit), "pizzicato up 2" },
                 //{ GetKey(ActionType.StealCarrotFromStorage, PlayerType.Rabbit), "storage_steal" },
 
-                { GetKey(ActionType.None, PlayerType.Mole), "pizzicato down 1" },
+                { GetKey(ActionType.None, PlayerType.Mole), "wind bend down 1" },
                 { GetKey(ActionType.Attack, PlayerType.Mole), string.Empty },
                 { GetKey(ActionType.Stun, PlayerType.Mole), "Goblin Scream" },
                 //{ GetKey(ActionType.PlantSeed, PlayerType.Mole), "plant_seed_sound" },

@@ -132,6 +132,15 @@ namespace RabbitVsMole.GameData
         public bool GameRulesAllowMoleToStealFromRabbitStorage = true;
         public bool GameRulesAllowMolePickUpCarrotFromFarm = true;
 
+        public bool SystemAllowToPlantSeed = true;
+        public bool SystemAllowToWaterField = true;
+        public bool SystemAllowToPickCarrot = true;
+        public bool SystemAllowToGrowCarrot = true;
+        public bool SystemAllowCollapseMound = true;
+        public bool SystemAllowEnterMound = true;
+        public bool SystemAllowDigMound = true;
+        public bool SystemAllowToAttackRoots = true;
+        public bool SystemShowInventoryOnStart = true;
         #endregion
 
         public AI AIStats = new AI();

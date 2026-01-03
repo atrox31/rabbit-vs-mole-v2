@@ -213,7 +213,6 @@ namespace RabbitVsMole.InteractableGameObject.Base
 
         protected virtual IEnumerator AnimateScale(bool grow)
         {
-            _isPaused = false;
             InitializeScaleAnimation();
 
             bool isAnimating = true;
@@ -317,7 +316,6 @@ namespace RabbitVsMole.InteractableGameObject.Base
                 yield break;
             }
 
-            _isPaused = false;
             Vector3 randomOffset = ApplyRandomPositionOffset(show);
             var animationData = PreparePositionAnimation(show, randomOffset);
             

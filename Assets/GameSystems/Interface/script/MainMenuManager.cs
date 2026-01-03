@@ -1,11 +1,13 @@
+using Interface.Element;
+using Steamworks;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Interface.Element;
+using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.Localization;
-using UnityEngine.InputSystem;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+using UnityEngine.Localization;
 
 namespace Interface
 {
@@ -20,6 +22,10 @@ namespace Interface
         [SerializeField] private GameObject _keyBinderPrefab;
         [SerializeField] private GameObject _toolTipPrefab;
         [SerializeField] private GameObject _labelPrefab;
+
+        [Header("Steam")]
+        [SerializeField] private SteamAvatar _avatarPrefab;
+        public SteamAvatar SteamAvatar { get { return _avatarPrefab; } private set { _avatarPrefab = value; }}
 
         [Header("Settings")]
         [SerializeField] private Transform _panelsParent;
@@ -50,14 +56,15 @@ namespace Interface
         {
             if (_panelsParent == null)
             {
-                _panelsParent = transform;
+                DebugHelper.LogError(this, "PanelsParent is not assigned, create default Canvas");
+                _panelsParent = gameObject.AddComponent<Canvas>().transform;
             }
             _eventSystem = GetComponentInChildren<EventSystem>();
             if(_eventSystem == null)
             {
                 DebugHelper.LogError(this, "Event system is not found");
             }
-            
+
             // Setup Cancel action from Input System
             SetupCancelAction();
         }

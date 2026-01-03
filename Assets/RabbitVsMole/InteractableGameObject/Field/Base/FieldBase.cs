@@ -21,11 +21,13 @@ namespace RabbitVsMole.InteractableGameObject.Base
         public FieldState State =>
             _fieldState;
 
+        public bool Active { get; set; } = true;
+
         public bool Interact(PlayerAvatar playerAvatar, Func<ActionType, float> OnActionRequested, Action OnActionCompleted, out Action<Action> CancelAction) =>
             _fieldState.InteractWithField(playerAvatar, OnActionRequested, OnActionCompleted, out CancelAction);
 
-        public bool CanInteract(Backpack backpack) =>
-            _fieldState.CanInteract(backpack);
+        public bool CanInteract(Backpack backpack) => Active 
+            && _fieldState.CanInteract(backpack);
 
         public IEnumerator CompliteAction(InteractionConfig config, float time)
         {
@@ -34,7 +36,7 @@ namespace RabbitVsMole.InteractableGameObject.Base
                 config.OnPreStateChange?.Invoke();
 
                 SetNewState(config.NewFieldStateProvider?.Invoke());
-                LinkedField.SetNewState(config.NewLinkedFieldStateProvider?.Invoke());
+                LinkedField?.SetNewState(config.NewLinkedFieldStateProvider?.Invoke());
 
                 config.OnPostStateChange?.Invoke();
             }
@@ -56,7 +58,7 @@ namespace RabbitVsMole.InteractableGameObject.Base
                         config.OnPreStateChange?.Invoke();
 
                         SetNewState(config.NewFieldStateProvider?.Invoke());
-                        LinkedField.SetNewState(config.NewLinkedFieldStateProvider?.Invoke());
+                        LinkedField?.SetNewState(config.NewLinkedFieldStateProvider?.Invoke());
 
                         config.OnPostStateChange?.Invoke();
                     }
@@ -70,7 +72,7 @@ namespace RabbitVsMole.InteractableGameObject.Base
 
         void Awake()
         {
-
+           
         }
 
         public void SetNewState(FieldState fieldState) =>

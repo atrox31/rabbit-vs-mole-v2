@@ -1,5 +1,6 @@
 
 using Extensions;
+using GameSystems;
 using System;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
@@ -126,6 +127,9 @@ namespace DialogueSystem
             if (!PrepareActorModels()) return Cleanup();
 
             HideBackgroundImageAndText();
+
+            // Freeze all player avatars during dialogue
+            EventBus.Publish(new DialogueFreezeEvent(true));
 
             DebugHelper.Log(this, $"Dialogue System created for sequence: {sequenceToPlay.name}");
             _currentCoroutine = StartCoroutine(PlayDialogueRoutine());

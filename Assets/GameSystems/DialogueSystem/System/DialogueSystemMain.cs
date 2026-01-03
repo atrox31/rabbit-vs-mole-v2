@@ -1,11 +1,13 @@
+using DialogueSystem.Nodes;
+using Extensions;
+using GameSystems;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
-using DialogueSystem.Nodes;
-using Extensions;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Localization;
 using UnityEngine.UI;
 
 namespace DialogueSystem
@@ -17,6 +19,7 @@ namespace DialogueSystem
         private const bool FORCE_POSE = true;
         private const float DEFAULT_TEXT_LETTER_DELAY = 0.013f;
         private const float ACTOR_FADE_IN_DURATION = 1.0f;
+        private const string _localizationTableName = "DialogueTable";
 
         // const - do not change
         private static readonly int SIDE_SIZE = Enum.GetValues(typeof(ActorSideOnScreen)).Length;
@@ -50,6 +53,9 @@ namespace DialogueSystem
 
         private LayerMask[] _actorLayer = new LayerMask[SIDE_SIZE];
 
+        string GetLocalizedString(string key) => 
+            new LocalizedString(_localizationTableName, key).GetLocalizedString();
+
         /// <summary>
         /// Attempts to create and start a new dialogue system.
         /// Fails if another dialogue is currently running.
@@ -82,6 +88,55 @@ namespace DialogueSystem
 
             dialogueSystemGO.transform.SetPositionAndRotation(WORLD_POSITION, Quaternion.identity); // move to far far away
             return true;
+        }
+
+        /// <summary>
+        /// Creates and displays a simple one-line dialogue from code.
+        /// Note: The text parameter will be used as a localization key. Make sure the key exists in the DialogueTable.
+        /// </summary>
+        /// <param name="text">The localization key for the text to display in the dialogue.</param>
+        /// <param name="actor">Optional actor to display. If null, no actor will be shown.</param>
+        /// <param name="side">The side of the screen where the dialogue should appear. Defaults to Left.</param>
+        /// <param name="poseName">Optional pose name for the actor. Defaults to "(none)".</param>
+        /// <returns>True if the dialogue started, false otherwise.</returns>
+        public static bool ShowSimpleDialogue(string text, Actor actor = null, ActorSideOnScreen side = ActorSideOnScreen.Left, string poseName = "(none)")
+        {
+            // Check if a dialogue is already active.
+            if (_activeDialogueInstance != null)
+            {
+                DebugHelper.LogWarning(null, "DialogueSystemMain->ShowSimpleDialogue: A dialogue is already running. Cannot start a new one.");
+                return false;
+            }
+
+            // Create a runtime DialogueSequence
+            DialogueSequence sequence = ScriptableObject.CreateInstance<DialogueSequence>();
+            sequence.name = "Runtime Simple Dialogue";
+
+            // Create StartNode
+            StartNode startNode = new StartNode();
+            sequence.StartNode = startNode;
+
+            // Create DialogueNode
+            DialogueNode dialogueNode = new DialogueNode(Vector2.zero)
+            {
+                text = text,
+                _actor = actor,
+                ScreenPosition = side,
+                _poseName = poseName
+            };
+
+            // Add dialogue node to sequence
+            sequence.Nodes = new List<DialogueNode> { dialogueNode };
+
+            // Link StartNode to DialogueNode
+            NodeLink link = new NodeLink
+            {
+                TargetNodeGUID = dialogueNode.GUID
+            };
+            startNode.ExitPorts = new List<NodeLink> { link };
+
+            // Start the dialogue
+            return CreateDialogue(sequence);
         }
 
         private void SetActiveTextRenderer(ActorSideOnScreen side)
@@ -358,7 +413,7 @@ namespace DialogueSystem
                     }
 
                     // normal dialogue line show time
-                    yield return StartCoroutine(TypeText(dialogueNode.text, dialogueNode.ScreenPosition));
+                    yield return StartCoroutine(TypeText(GetLocalizedString(dialogueNode.text), dialogueNode.ScreenPosition));
                     yield return WaitForContinue();
 
                     if (dialogueNode.ExitPorts.Count > 0)
@@ -438,6 +493,9 @@ namespace DialogueSystem
 
         private bool Cleanup()
         {
+            // Unfreeze all player avatars after dialogue ends
+            EventBus.Publish(new DialogueFreezeEvent(false));
+
             foreach (ActorSideOnScreen side in Enum.GetValues(typeof(ActorSideOnScreen)))
             {
                 _textureRT[side.i()]?.Release();

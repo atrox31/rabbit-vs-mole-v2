@@ -26,6 +26,14 @@ namespace RabbitVsMole
             }
         }
 
+        public static WinResult GetWinner(PlayerType playerType) =>
+            playerType switch
+            {
+                PlayerType.Rabbit => new WinResult(Winner.Rabbit),
+                PlayerType.Mole => new WinResult(Winner.Mole),
+                _ => throw new System.NotImplementedException(),
+            };
+
         /// <summary>
         /// Evaluates winner when time runs out based on game mode and carrot counts.
         /// </summary>

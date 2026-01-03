@@ -36,6 +36,9 @@ namespace RabbitVsMole.InteractableGameObject.Field
 
         protected override bool ActionForMole(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
+            if (Parent.LinkedField == null)
+                return false;
+            
             return StandardAction(new InteractionConfig
             {
                 ActionType = ActionType.EnterMound,

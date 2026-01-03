@@ -13,6 +13,7 @@ namespace RabbitVsMole.InteractableGameObject.Base
 {
     public abstract class StorageBase : MonoBehaviour, IInteractableGameObject
     {
+        public bool Active { get; set; } = true;
         protected abstract void OnCancelAction(Action OnActionCompleted);
         public abstract bool CanInteract(Backpack backpack);
         public bool Interact(
@@ -22,6 +23,9 @@ namespace RabbitVsMole.InteractableGameObject.Base
             out Action<Action> CancelAction)
         {
             CancelAction = OnCancelAction;
+            if (!Active)
+                return false;
+
             if (!CanInteract(playerAvatar.Backpack))
             {
                 AudioManager.PlaySound3D(SoundDB.SoundDB.GetSound(ActionType.None, playerAvatar.PlayerType), transform.position, AudioManager.AudioChannel.SFX);

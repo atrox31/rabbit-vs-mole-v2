@@ -32,6 +32,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
         }
 
         protected override bool CanInteractForRabbit(Backpack backpack) =>
+            GameManager.CurrentGameStats.SystemAllowToAttackRoots &&
             GameManager.CurrentGameStats.GameRulesRootsAllowDamageRootsWithCarrotInHand switch
             {
                 true => true,
@@ -39,6 +40,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
             };
 
         protected override bool CanInteractForMole(Backpack backpack) =>
+            GameManager.CurrentGameStats.SystemAllowToAttackRoots &&
             GameManager.CurrentGameStats.GameRulesRootsAllowDamageRootsWithCarrotInHand switch
             {
                 true => true,

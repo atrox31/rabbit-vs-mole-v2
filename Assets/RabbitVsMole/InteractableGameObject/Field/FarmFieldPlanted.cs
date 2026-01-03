@@ -25,11 +25,11 @@ namespace RabbitVsMole.InteractableGameObject.Field
             FieldParent.DestroySeed();
         }
 
-        protected override bool CanInteractForRabbit(Backpack backpack) => 
-            backpack.Water.CanGet(GameManager.CurrentGameStats.CostRabbitForWaterAction);
+        protected override bool CanInteractForRabbit(Backpack backpack) =>
+            GameManager.CurrentGameStats.SystemAllowToWaterField && backpack.Water.CanGet(GameManager.CurrentGameStats.CostRabbitForWaterAction);
 
         protected override bool CanInteractForMole(Backpack backpack) =>
-            true;
+            GameManager.CurrentGameStats.SystemAllowDigMound;
 
         protected override bool ActionForRabbit(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
@@ -55,7 +55,9 @@ namespace RabbitVsMole.InteractableGameObject.Field
                 ActionType = ActionType.DigMound,
                 //BackpackAction = true,
                 NewFieldStateProvider = () => FieldParent.CreateFarmMoundedState(),
-                NewLinkedFieldStateProvider = () => FieldParent.LinkedField.CreateUndergroundMoundedState(),
+                NewLinkedFieldStateProvider = FieldParent.LinkedField != null 
+                    ? () => FieldParent.LinkedField.CreateUndergroundMoundedState() 
+                    : null,
                 OnActionRequested = onActionRequested,
                 OnActionStart = null,
                 OnActionCompleted = onActionCompleted,

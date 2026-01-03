@@ -54,6 +54,7 @@ namespace RabbitVsMole
 
         // Action States
         private bool _isPerformingAction;
+        public bool IsBusy => _isPerformingAction;
         private ActionType _currentActionType = ActionType.None;
         private float _defaultAnimatorSpeed = 1f;
 
@@ -135,10 +136,16 @@ namespace RabbitVsMole
                 activeAddon.Setup(this);
                 _activeAvatarAddon.Add(activeAddon);
             }
+
+            // Subscribe to dialogue freeze events
+            EventBus.Subscribe<DialogueFreezeEvent>(OnDialogueFreezeEvent);
         }
 
         private void OnDestroy()
         {
+            // Unsubscribe from dialogue freeze events
+            EventBus.Unsubscribe<DialogueFreezeEvent>(OnDialogueFreezeEvent);
+
             switch (playerType)
             {
                 case PlayerType.Rabbit:
@@ -147,6 +154,31 @@ namespace RabbitVsMole
                 case PlayerType.Mole:
                     MoleStaticInstance = null;
                     break;
+            }
+        }
+
+        /// <summary>
+        /// Handles dialogue freeze events - freezes or unfreezes the player during dialogue.
+        /// </summary>
+        private void OnDialogueFreezeEvent(DialogueFreezeEvent evt)
+        {
+            _isPerformingAction = evt.IsFrozen;
+            if (evt.IsFrozen)
+            {
+                _moveInput = Vector2.zero;
+                
+                // Stop walking animation and set to idle
+                if (_animator != null)
+                {
+                    _animator.SetBool(IsWalkingHash, false);
+                    _animator.SetTrigger($"{playerType}_Idle");
+                    _currentAnimationState = AnimationState.Idle;
+                }
+            }
+            else
+            {
+                // Reset animation state so UpdateAnimations can take over
+                _currentAnimationState = AnimationState.None;
             }
         }
 

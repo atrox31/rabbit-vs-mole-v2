@@ -72,6 +72,9 @@ namespace RabbitVsMole.InteractableGameObject.Field
             if (!wallIsDestroyed)
                 return null;
 
+            if (FieldParent.LinkedField == null)
+                return FieldParent.CreateUndergroundCleanState();
+
             if (FieldParent.LinkedField is FarmFieldBase farmField)
             {
                 if (farmField.IsCarrotReady)

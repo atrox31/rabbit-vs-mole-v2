@@ -35,7 +35,9 @@ namespace RabbitVsMole.InteractableGameObject.Field
                 ActionType = ActionType.DigMound,
                 BackpackAction = playerAvatar.Backpack.Dirt.TryGet(GameManager.CurrentGameStats.CostDirtForMoleMound),
                 NewFieldStateProvider = () => FieldParent.CreateUndergroundMoundedState(),
-                NewLinkedFieldStateProvider = () => FieldParent.LinkedField.CreateFarmMoundedState(),
+                NewLinkedFieldStateProvider = FieldParent.LinkedField != null 
+                    ? () => FieldParent.LinkedField.CreateFarmMoundedState() 
+                    : null,
                 OnActionRequested = onActionRequested,
                 //OnActionStart = null,
                 OnActionCompleted = onActionCompleted,

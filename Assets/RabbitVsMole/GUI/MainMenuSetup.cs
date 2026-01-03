@@ -100,6 +100,7 @@ namespace RabbitVsMole
         public void ShowMenu()
         {
             _menuManager.ChangePanel(_mainMenu);
+            _menuManager.SteamAvatar?.Show();
         }
 
         public void WebPageRedirect()

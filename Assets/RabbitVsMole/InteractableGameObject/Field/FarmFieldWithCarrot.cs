@@ -25,20 +25,18 @@ namespace RabbitVsMole.InteractableGameObject.Field
 
         protected override bool CanInteractForRabbit(Backpack backpack)
         {
-            return FieldParent.IsCarrotReady switch
-            {
-                true => backpack.Carrot.IsEmpty,
-                false => backpack.Water.CanGet(GameManager.CurrentGameStats.CostRabbitForWaterAction)
-            };
+            if (FieldParent.IsCarrotReady)
+                return GameManager.CurrentGameStats.SystemAllowToPickCarrot && backpack.Carrot.IsEmpty;
+            else
+                return GameManager.CurrentGameStats.SystemAllowToWaterField && backpack.Water.CanGet(GameManager.CurrentGameStats.CostRabbitForWaterAction);
         }
 
         protected override bool CanInteractForMole(Backpack backpack)
         {
-            return GameManager.CurrentGameStats.GameRulesAllowMolePickUpCarrotFromFarm switch
-            {
-                true => backpack.Carrot.IsEmpty,
-                false => !FieldParent.IsCarrotReady
-            };
+            if (GameManager.CurrentGameStats.GameRulesAllowMolePickUpCarrotFromFarm)
+                return GameManager.CurrentGameStats.SystemAllowToPickCarrot && backpack.Carrot.IsEmpty;
+            else
+                return !FieldParent.IsCarrotReady; // kret może kopać kopiec tylko gdy marchewka nie jest gotowa
         }
 
         protected override bool ActionForRabbit(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
@@ -80,19 +78,21 @@ namespace RabbitVsMole.InteractableGameObject.Field
                 {
                     true => false,
 
-                    false => StandardAction(new InteractionConfig
-                    {
-                        ActionType = ActionType.DigMound,
-                        //BackpackAction = true,
-                        NewFieldStateProvider = () => FieldParent.CreateFarmMoundedState(),
-                        NewLinkedFieldStateProvider = () => FieldParent.LinkedField.CreateUndergroundMoundedState(),
-                        OnActionRequested = onActionRequested,
-                        OnActionStart = null,
-                        OnActionCompleted = onActionCompleted,
-                        //FinalValidation = null,
-                        //OnPreStateChange = null,
-                        OnPostStateChange = () => playerAvatar.TryActionDown()
-                    })
+                false => StandardAction(new InteractionConfig
+                {
+                    ActionType = ActionType.DigMound,
+                    //BackpackAction = true,
+                    NewFieldStateProvider = () => FieldParent.CreateFarmMoundedState(),
+                    NewLinkedFieldStateProvider = FieldParent.LinkedField != null 
+                        ? () => FieldParent.LinkedField.CreateUndergroundMoundedState() 
+                        : null,
+                    OnActionRequested = onActionRequested,
+                    OnActionStart = null,
+                    OnActionCompleted = onActionCompleted,
+                    //FinalValidation = null,
+                    //OnPreStateChange = null,
+                    OnPostStateChange = () => playerAvatar.TryActionDown()
+                })
                 };
             }
         }
@@ -108,7 +108,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
                         ? () => FieldParent.CreateFarmRootedState()
                         : () => FieldParent.CreateFarmCleanState(),
 
-                NewLinkedFieldStateProvider = (FieldParent.LinkedField.State is UndergroundFieldCarrot undergroundFieldCarrot)
+                NewLinkedFieldStateProvider = (FieldParent.LinkedField != null && FieldParent.LinkedField.State is UndergroundFieldCarrot)
                         ? () => FieldParent.LinkedField.CreateUndergroundCleanState()
                         : null,
 

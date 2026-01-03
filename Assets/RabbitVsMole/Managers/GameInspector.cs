@@ -8,6 +8,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using static RabbitVsMole.WinConditionEvaluator;
 
 namespace RabbitVsMole
 {
@@ -98,8 +99,11 @@ namespace RabbitVsMole
         {
             StartGameTimer();
             _gameUIInstance = Instantiate(gameUIPrefab).GetComponent<GameUI>();
-            GameUI.SetInventoryVisible(PlayerType.Rabbit, RabbitControlAgent == PlayerControlAgent.Human);
-            GameUI.SetInventoryVisible(PlayerType.Mole, MoleControlAgent == PlayerControlAgent.Human);
+            if (GameStats.SystemShowInventoryOnStart)
+            {
+                GameUI.SetInventoryVisible(PlayerType.Rabbit, RabbitControlAgent == PlayerControlAgent.Human);
+                GameUI.SetInventoryVisible(PlayerType.Mole, MoleControlAgent == PlayerControlAgent.Human);
+            }
         }
 
         /// <summary>
@@ -266,6 +270,12 @@ namespace RabbitVsMole
 
             TriggerGameEnd(winResult);
         }
+
+        public void SinglePlayerVictory() =>
+            TriggerGameEnd(WinConditionEvaluator.GetWinner(CurrentPlayerOnStory));
+
+        public void SinglePlayerDefeat() =>
+            TriggerGameEnd(new WinResult(Winner.None));
 
         /// <summary>
         /// Triggers the game end event with the specified win result.

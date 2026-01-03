@@ -31,10 +31,10 @@ namespace RabbitVsMole.InteractableGameObject.Field
         }
 
         protected override bool CanInteractForRabbit(Backpack backpack) =>
-            true;
+            GameManager.CurrentGameStats.SystemAllowCollapseMound;
 
         protected override bool CanInteractForMole(Backpack backpack) =>
-            true;
+            GameManager.CurrentGameStats.SystemAllowEnterMound;
 
         protected override bool ActionForRabbit(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
@@ -50,7 +50,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
                     ? () => FieldParent.CreateFarmCleanState()
                     : null,
 
-                NewLinkedFieldStateProvider = moundIsDestroyed
+                NewLinkedFieldStateProvider = moundIsDestroyed && FieldParent.LinkedField != null
                     ? () => FieldParent.LinkedField.CreateUndergroundWallState()
                     : null,
 
@@ -65,6 +65,9 @@ namespace RabbitVsMole.InteractableGameObject.Field
 
         protected override bool ActionForMole(PlayerAvatar playerAvatar, Func<ActionType, float> onActionRequested, Action onActionCompleted)
         {
+            if (Parent.LinkedField == null)
+                return false;
+            
             return StandardAction(new InteractionConfig
             {
                 ActionType = ActionType.EnterMound,

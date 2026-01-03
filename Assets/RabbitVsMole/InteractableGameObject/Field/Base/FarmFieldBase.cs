@@ -72,7 +72,7 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
 
         void Awake()
         {
-            if(GameManager.CurrentGameStats.GameRulesFarmFieldStartsWithRoots)
+            if (GameManager.CurrentGameStats.GameRulesFarmFieldStartsWithRoots)
                 _fieldState = CreateFarmRootedState();
             else
                 _fieldState = CreateFarmCleanState();
@@ -93,40 +93,35 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
                 yield break;
 
             _farmCarrotVisual.SetDuration(GameManager.CurrentGameStats.CarrotGrowingTimeInSec);
+
+            bool canGrow = GameManager.CurrentGameStats.SystemAllowToGrowCarrot && HaveWater;
             
-            if (HaveWater)
-            {
-                _farmCarrotVisual.Resume();
-                _fieldState.SetAIPriority(GameManager.CurrentGameStats.AIStats.FarmFieldWithCarrotWorking);
-            }
-            else
-            {
+            if (!canGrow)
                 _farmCarrotVisual.Pause();
-                _fieldState.SetAIPriority(GameManager.CurrentGameStats.AIStats.FarmFieldWithCarrotNeedWater);
-            }
             
-            bool prevHaveWater = HaveWater;
+            SetCarrotGrowthAIPriority(canGrow);
+            bool wasGrowing = canGrow;
+
             while (!IsCarrotReady)
             {
-                WaterLevel -= GameManager.CurrentGameStats.FarmFieldWaterDrainByCarrotPerSec * Time.deltaTime;
-                
-                bool currentHaveWater = HaveWater;
-                if(prevHaveWater != currentHaveWater)
-                {
-                    if (currentHaveWater)
-                    {
-                        _farmCarrotVisual.Resume();
-                        _fieldState.SetAIPriority(GameManager.CurrentGameStats.AIStats.FarmFieldWithCarrotWorking);
-                    }
-                    else
-                    {
-                        _farmCarrotVisual.Pause();
-                        _fieldState.SetAIPriority(GameManager.CurrentGameStats.AIStats.FarmFieldWithCarrotNeedWater);
+                canGrow = GameManager.CurrentGameStats.SystemAllowToGrowCarrot && HaveWater;
 
-                    }
+                // Reaguj na zmiany stanu
+                if (canGrow != wasGrowing)
+                {
+                    if (canGrow)
+                        _farmCarrotVisual.Resume();
+                    else
+                        _farmCarrotVisual.Pause();
+
+                    SetCarrotGrowthAIPriority(canGrow);
+                    wasGrowing = canGrow;
                 }
-                
-                prevHaveWater = currentHaveWater;
+
+                // Zużywaj wodę tylko gdy marchewka faktycznie rośnie
+                if (canGrow)
+                    WaterLevel -= GameManager.CurrentGameStats.FarmFieldWaterDrainByCarrotPerSec * Time.deltaTime;
+
                 yield return null;
             }
 
@@ -136,6 +131,11 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
             _farmCarrotVisual.StartGlow();
             OnCarrotReady();
         }
+
+        private void SetCarrotGrowthAIPriority(bool isGrowing) =>
+            _fieldState.SetAIPriority(isGrowing
+                ? GameManager.CurrentGameStats.AIStats.FarmFieldWithCarrotWorking
+                : GameManager.CurrentGameStats.AIStats.FarmFieldWithCarrotNeedWater);
 
         public void StartStealCarrot() {
             if (!IsCarrotReady)
@@ -350,13 +350,13 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
 
         void OnCarrotReady()
         {
-            if(LinkedField.State is UndergroundFieldClean)
+            if(LinkedField != null && LinkedField.State is UndergroundFieldClean)
                 LinkedField.SetNewState(LinkedField.CreateUndergroundCarrotState());
         }
 
         void OnCarrotDestroy()
         {
-            if (LinkedField.State is UndergroundFieldCarrot)
+            if (LinkedField != null && LinkedField.State is UndergroundFieldCarrot)
                 LinkedField.SetNewState(LinkedField.CreateUndergroundCleanState());
         }
 

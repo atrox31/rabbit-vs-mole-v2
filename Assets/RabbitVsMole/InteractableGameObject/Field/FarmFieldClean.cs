@@ -28,7 +28,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
         }
 
         protected override bool CanInteractForRabbit(Backpack backpack) =>
-            backpack.Seed.CanGet(GameManager.CurrentGameStats.CostRabbitForSeedAction);
+            GameManager.CurrentGameStats.SystemAllowToPlantSeed && backpack.Seed.CanGet(GameManager.CurrentGameStats.CostRabbitForSeedAction);
         
         protected override bool CanInteractForMole(Backpack backpack) =>
             true;
@@ -57,7 +57,9 @@ namespace RabbitVsMole.InteractableGameObject.Field
                 ActionType = ActionType.DigMound,
                 //BackpackAction = true,
                 NewFieldStateProvider = () => FieldParent.CreateFarmMoundedState(),
-                NewLinkedFieldStateProvider = () => FieldParent.LinkedField.CreateUndergroundMoundedState(),
+                NewLinkedFieldStateProvider = FieldParent.LinkedField != null 
+                    ? () => FieldParent.LinkedField.CreateUndergroundMoundedState() 
+                    : null,
                 OnActionRequested = onActionRequested,
                 OnActionStart = null,
                 OnActionCompleted = onActionCompleted,
