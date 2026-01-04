@@ -16,68 +16,89 @@ namespace PlayerManagementSystem.Backpack
 
         public bool IsEmpty => Count == 0;
         public bool IsFull => Count == Capacity;
-        private void SendChangeEvent() =>
-            EventBus.Publish(new InventoryChangedEvent(ItemType, Count, Capacity));
+        private void SendChangeEvent(int diff) =>
+            EventBus.Publish(new InventoryChangedEvent(ItemType, Count, Capacity, diff));
         private void SendErrorEvent() =>
             EventBus.Publish(new InventoryErrorEvent(ItemType));
 
-        public bool CanInsert(int value = 1, bool rejectTheSuperstate = true) {
-            var answer = rejectTheSuperstate
-                ? Count<Capacity
+        public bool CanInsert(int value = 1, bool rejectTheSuperstate = true)
+        {
+            bool canFit = rejectTheSuperstate
+                ? Count < Capacity
                 : Count + value <= Capacity;
 
-            if (!answer)
+            if (!canFit)
+            {
                 SendErrorEvent();
-            return answer;
+                return false;
+            }
+            return true;
         }
 
         public bool CanGet(int value = 1)
         {
-            var answer = Count >= value;
-            if(!answer)
-                SendErrorEvent();
-            return answer;
+            if (Count >= value)
+                return true;
+
+            SendErrorEvent();
+            return false;
         }
 
         public bool TryGet(int value = 1)
         {
-            var newCount = Count - value;
-            if (newCount < 0)
+            if (value <= 0) 
                 return false;
-            Count = newCount;
-            SendChangeEvent();
+
+            if (Count < value)
+                return false;
+
+            Count -= value;
+            SendChangeEvent(-value);
             return true;
         }
 
         public int GetAll()
         {
-            var count = Count;
+            if (Count == 0) return 0;
+
+            int removedAmount = Count;
             Count = 0;
-            return count;
+
+            SendChangeEvent(-removedAmount);
+            return removedAmount;
         }
-        
+
         public bool TryInsert(int value = 1, bool rejectTheSuperstate = true)
         {
-            var capacity = Capacity;
-            if (Count == capacity)
+            // 1. Initial check: Is there any space at all?
+            if (Count >= Capacity || value <= 0)
                 return false;
 
-            var newCount = Count + value;
-            if (newCount > capacity)
+            // 2. Scenario: Full value fits easily
+            if (Count + value <= Capacity)
             {
-                if (rejectTheSuperstate)
-                {
-                    Count = capacity;
-                    SendChangeEvent();
-                    return true;
-                }
-                return false;
+                Count += value;
+                SendChangeEvent(value);
+                return true;
             }
-            Count = newCount;
-            SendChangeEvent();
-            return true;
+
+            // 3. Scenario: Not enough space for the full value
+            // If rejectTheSuperstate is true, we fill the remaining space.
+            // If false, we don't insert anything and return false.
+            if (rejectTheSuperstate)
+            {
+                int spaceLeft = Capacity - Count;
+                Count = Capacity;
+
+                // Report only the actual amount added
+                SendChangeEvent(spaceLeft);
+                return true;
+            }
+
+            // Full value didn't fit and partial insert is not allowed
+            return false;
         }
-        
+
         public BackpackItem(PlayerType playerType, BackpackItemType itemType, int capacity, bool startsFull = false)
         {
             PlayerType = playerType;

@@ -8,6 +8,9 @@ using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Localization;
+using UnityEngine.Localization.Settings;
+using UnityEngine.Localization.Tables;
+using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.UI;
 
 namespace DialogueSystem
@@ -18,8 +21,10 @@ namespace DialogueSystem
         private const string PATH_TO_VIEW_PREFAB = "Assets/Game Systems/DialogueSystem/DialogueCanvas.prefab";
         private const bool FORCE_POSE = true;
         private const float DEFAULT_TEXT_LETTER_DELAY = 0.013f;
+        private const float MIN_TEXT_LETTER_DELAY = 0.005f; // Minimum delay to keep text readable
         private const float ACTOR_FADE_IN_DURATION = 1.0f;
         private const string _localizationTableName = "DialogueTable";
+        private const string _dialogueAudioTableName = "DialogueAudio";
 
         // const - do not change
         private static readonly int SIDE_SIZE = Enum.GetValues(typeof(ActorSideOnScreen)).Length;
@@ -55,6 +60,60 @@ namespace DialogueSystem
 
         string GetLocalizedString(string key) => 
             new LocalizedString(_localizationTableName, key).GetLocalizedString();
+
+        /// <summary>
+        /// Tries to load dialogue audio from the DialogueAudio asset table.
+        /// Returns null if no audio is found for the given key.
+        /// </summary>
+        private IEnumerator TryLoadDialogueAudio(string key, System.Action<AudioClip> onComplete)
+        {
+            DebugHelper.Log(this, $"TryLoadDialogueAudio: Attempting to load audio for key '{key}'");
+            
+            var tableOperation = LocalizationSettings.AssetDatabase.GetTableAsync(_dialogueAudioTableName);
+            yield return tableOperation;
+
+            if (tableOperation.Status != AsyncOperationStatus.Succeeded || tableOperation.Result == null)
+            {
+                DebugHelper.LogWarning(this, $"DialogueSystemMain: Could not load DialogueAudio table. Status: {tableOperation.Status}");
+                onComplete?.Invoke(null);
+                yield break;
+            }
+
+            AssetTable table = tableOperation.Result;
+            DebugHelper.Log(this, $"TryLoadDialogueAudio: Table loaded successfully: {table.name}");
+            
+            var entry = table.GetEntry(key);
+            
+            if (entry == null)
+            {
+                DebugHelper.Log(this, $"TryLoadDialogueAudio: No entry found for key '{key}'");
+                onComplete?.Invoke(null);
+                yield break;
+            }
+            
+            if (entry.IsEmpty)
+            {
+                DebugHelper.Log(this, $"TryLoadDialogueAudio: Entry for key '{key}' is empty");
+                onComplete?.Invoke(null);
+                yield break;
+            }
+
+            DebugHelper.Log(this, $"TryLoadDialogueAudio: Entry found for key '{key}', loading asset...");
+            
+            var assetOperation = table.GetAssetAsync<AudioClip>(key);
+            yield return assetOperation;
+
+            if (assetOperation.Status == AsyncOperationStatus.Succeeded && assetOperation.Result != null)
+            {
+                DebugHelper.Log(this, $"TryLoadDialogueAudio: Audio loaded successfully for key '{key}': {assetOperation.Result.name}");
+                onComplete?.Invoke(assetOperation.Result);
+            }
+            else
+            {
+                DebugHelper.LogWarning(this, $"DialogueSystemMain: Failed to load audio for key '{key}'. Status: {assetOperation.Status}");
+                onComplete?.Invoke(null);
+            }
+        }
 
         /// <summary>
         /// Attempts to create and start a new dialogue system.
@@ -412,8 +471,8 @@ namespace DialogueSystem
                         hasAppeared[dialogueNode.ScreenPosition.i()] = actorIsPresent;
                     }
 
-                    // normal dialogue line show time
-                    yield return StartCoroutine(TypeText(GetLocalizedString(dialogueNode.text), dialogueNode.ScreenPosition));
+                    // normal dialogue line show time - pass the key for audio lookup
+                    yield return StartCoroutine(TypeText(GetLocalizedString(dialogueNode.text), dialogueNode.ScreenPosition, dialogueNode.text));
                     yield return WaitForContinue();
 
                     if (dialogueNode.ExitPorts.Count > 0)
@@ -462,16 +521,58 @@ namespace DialogueSystem
             SetActiveTextBackground(node.ScreenPosition);
         }
 
-        IEnumerator TypeText(string fullText, ActorSideOnScreen side)
+        IEnumerator TypeText(string fullText, ActorSideOnScreen side, string dialogueKey = null)
         {
             _currentTextMeshProUGUI.text = String.Empty;
-            _keyWasPressed = false; // prevent ship all text
+            _keyWasPressed = false; // prevent skip all text
+            
+            AudioClip dialogueAudio = null;
+            float letterDelay = DEFAULT_TEXT_LETTER_DELAY;
+            
+            // Try to load dialogue audio if key is provided
+            if (!string.IsNullOrEmpty(dialogueKey))
+            {
+                bool audioLoaded = false;
+                yield return TryLoadDialogueAudio(dialogueKey, (clip) => 
+                {
+                    dialogueAudio = clip;
+                    audioLoaded = true;
+                });
+                
+                // Wait for callback to complete
+                yield return new WaitUntil(() => audioLoaded);
+                
+                // If we have audio, calculate the letter delay to sync with audio duration
+                if (dialogueAudio != null)
+                {
+                    float audioDuration = dialogueAudio.length;
+                    int textLength = fullText.Length;
+                    
+                    if (textLength > 0)
+                    {
+                        // Calculate delay per letter to match audio duration
+                        letterDelay = audioDuration / textLength;
+                        
+                        // Ensure minimum delay for readability
+                        letterDelay = Mathf.Max(letterDelay, MIN_TEXT_LETTER_DELAY);
+                    }
+                    
+                    // Play the dialogue audio
+                    DebugHelper.Log(this, $"TypeText: About to play dialogue audio: {dialogueAudio.name} (duration: {audioDuration:F2}s)");
+                    AudioManager.PlayDialogue(dialogueAudio);
+                    DebugHelper.Log(this, $"TypeText: AudioManager.PlayDialogue called for '{dialogueKey}' (letterDelay: {letterDelay:F4}s)");
+                }
+                else
+                {
+                    DebugHelper.Log(this, $"TypeText: No audio found for key '{dialogueKey}', using default typewriter speed");
+                }
+            }
             
             // Use StringBuilder to avoid string concatenation allocations
             StringBuilder textBuilder = new StringBuilder(fullText.Length);
-            int textLength = fullText.Length;
+            int totalLength = fullText.Length;
             
-            for (int i = 0; i < textLength; i++)
+            for (int i = 0; i < totalLength; i++)
             {
                 textBuilder.Append(fullText[i]);
                 _currentTextMeshProUGUI.text = textBuilder.ToString();
@@ -482,8 +583,7 @@ namespace DialogueSystem
                     yield break;
                 }
 
-                // Opcjonalnie: odtwarzaj d�wi�k pisania
-                yield return new WaitForSeconds(DEFAULT_TEXT_LETTER_DELAY);
+                yield return new WaitForSeconds(letterDelay);
             }
         }
         public static void SetKeyWasPressed(bool state)

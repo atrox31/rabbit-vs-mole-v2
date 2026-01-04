@@ -1,4 +1,5 @@
 using GameSystems;
+using Interface.Element;
 using PlayerManagementSystem.Backpack;
 using PlayerManagementSystem.Backpack.Events;
 using RabbitVsMole;
@@ -8,6 +9,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 public class GameUI : MonoBehaviour
@@ -38,7 +40,9 @@ public class GameUI : MonoBehaviour
 
     [Header("Game over")]
     [SerializeField] GameObject _gameOverPanel;
+    [SerializeField] TextMeshProUGUI _gameOverTitle;
     [SerializeField] TextMeshProUGUI _gameOverText;
+    [SerializeField] GameObject _gameOverDefaultButton;
 
     [Header("Audio")]
     [SerializeField] AudioClip _LastSecondsSound;
@@ -74,12 +78,14 @@ public class GameUI : MonoBehaviour
     public void ButtonReturnToMenu() =>
         GameManager.GoToMainMenu();
 
-    public void ShowGameOverScreen(string text)
+    public void ShowGameOverScreen(string text, string title)
     {
         if (_gameOverPanel.activeSelf)
             return;
 
+        _gameOverTitle.text = title;
         _gameOverText.text = text;
+
         OnDisable();
         StopAllCoroutines();
         StartCoroutine(AnimateGameOverScreen());
@@ -103,6 +109,13 @@ public class GameUI : MonoBehaviour
             yield return null;
         }
         SetPanelsScale(1f, panels);
+
+
+        EventSystem _eventSystem = GetComponentInChildren<EventSystem>();
+        if (_eventSystem == null)
+            DebugHelper.LogError(this, "Event system is not found");
+
+        _eventSystem.SetSelectedGameObject(_gameOverDefaultButton);
     }
 
     void UpdateItem(InventoryChangedEvent inventoryChangedEvent)

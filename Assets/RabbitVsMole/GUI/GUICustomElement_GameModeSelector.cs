@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Localization;
 using UnityEngine.Localization.Components;
 
 namespace RabbitVsMole
@@ -31,6 +32,9 @@ namespace RabbitVsMole
         private List<GameModeData> _gameModes = new List<GameModeData>();
         private List<Button> _createdButtons = new List<Button>();
         private int _selectedIndex = 0;
+        
+        private LocalizeStringEvent _descriptionLocalizeEvent;
+        private LocalizeStringEvent _configurationLocalizeEvent;
 
         public override bool AllowAnchorModification => _allowAnchorModificationOverride;
 
@@ -299,43 +303,73 @@ namespace RabbitVsMole
                 _gameModeBackgroundImage.sprite = selectedMode.modeImage;
             }
 
-            // Update description text
+            // Update description text with LocalizeStringEvent for automatic language change updates
             if (_gameModeDescriptionText != null)
             {
                 if (!selectedMode.modeDescription.IsEmpty)
                 {
-                    selectedMode.modeDescription.GetLocalizedStringAsync().Completed += (op) =>
+                    if (_descriptionLocalizeEvent == null)
                     {
-                        if (op.IsDone && op.Result != null && _gameModeDescriptionText != null)
+                        _descriptionLocalizeEvent = _gameModeDescriptionText.GetComponent<LocalizeStringEvent>();
+                        if (_descriptionLocalizeEvent == null)
                         {
-                            _gameModeDescriptionText.text = op.Result;
+                            _descriptionLocalizeEvent = _gameModeDescriptionText.gameObject.AddComponent<LocalizeStringEvent>();
                         }
-                    };
+                        _descriptionLocalizeEvent.OnUpdateString.AddListener((localizedString) =>
+                        {
+                            if (_gameModeDescriptionText != null)
+                            {
+                                _gameModeDescriptionText.text = localizedString;
+                            }
+                        });
+                    }
+                    _descriptionLocalizeEvent.StringReference = selectedMode.modeDescription;
+                    _descriptionLocalizeEvent.RefreshString();
                 }
                 else
                 {
                     _gameModeDescriptionText.text = "";
                 }
             }
-            // Update configuration text
+            // Update configuration text with LocalizeStringEvent for automatic language change updates
             if (_gameModeConfigurationText != null)
             {
                 if (!selectedMode.modeConfiguration.IsEmpty)
                 {
-
-                    var gameModeDescriptionOp = new object[] {
-                    selectedMode.carrotGoal,
-                    TimeSpan.FromSeconds(selectedMode.timeLimitInMinutes * 60)
-                    .ToString("m\\:ss")
-                };
-
-                    selectedMode.modeConfiguration.GetLocalizedStringAsync(gameModeDescriptionOp).Completed += (op) =>
+                    if (_configurationLocalizeEvent == null)
                     {
-                        if (op.IsDone && op.Result != null && _gameModeConfigurationText != null)
+                        _configurationLocalizeEvent = _gameModeConfigurationText.GetComponent<LocalizeStringEvent>();
+                        if (_configurationLocalizeEvent == null)
                         {
-                            _gameModeConfigurationText.text = op.Result;
+                            _configurationLocalizeEvent = _gameModeConfigurationText.gameObject.AddComponent<LocalizeStringEvent>();
                         }
+                        _configurationLocalizeEvent.OnUpdateString.AddListener((localizedString) =>
+                        {
+                            if (_gameModeConfigurationText != null)
+                            {
+                                _gameModeConfigurationText.text = localizedString;
+                            }
+                        });
+                    }
+
+                    string timeLimitText = selectedMode.timeLimitInMinutes > 0f
+                        ? TimeSpan.FromSeconds(selectedMode.timeLimitInMinutes * 60f).ToString("m\\:ss")
+                        : "-";
+
+                    var configArgs = new object[] { selectedMode.carrotGoal, timeLimitText };
+
+                    // IMPORTANT: assigning StringReference triggers an immediate refresh internally.
+                    // Build a LocalizedString that already has Arguments set, otherwise entries that
+                    // contain "{1}" will throw before we get a chance to assign Arguments.
+                    var configLocalized = new LocalizedString
+                    {
+                        TableReference = selectedMode.modeConfiguration.TableReference,
+                        TableEntryReference = selectedMode.modeConfiguration.TableEntryReference,
+                        Arguments = configArgs
                     };
+
+                    _configurationLocalizeEvent.StringReference = configLocalized;
+                    _configurationLocalizeEvent.RefreshString();
                 }
                 else
                 {
@@ -354,6 +388,16 @@ namespace RabbitVsMole
                 {
                     button.onClick.RemoveAllListeners();
                 }
+            }
+            
+            // Clean up localization event listeners
+            if (_descriptionLocalizeEvent != null)
+            {
+                _descriptionLocalizeEvent.OnUpdateString.RemoveAllListeners();
+            }
+            if (_configurationLocalizeEvent != null)
+            {
+                _configurationLocalizeEvent.OnUpdateString.RemoveAllListeners();
             }
         }
     }

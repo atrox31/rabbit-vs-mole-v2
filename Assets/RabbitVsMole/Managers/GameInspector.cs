@@ -34,6 +34,7 @@ namespace RabbitVsMole
         private PlayerControlAgent _moleControlAgent;
         private readonly int[] _carrotCount = new int[Enum.GetValues(typeof(PlayerType)).Length];
         private Coroutine _gameTimerCoroutine;
+        public int CurrentGameTime { get; private set; } = 0;
 
         // Public accessors for game state
         public GameUI GameUI => _gameUIInstance;
@@ -148,6 +149,8 @@ namespace RabbitVsMole
                 elapsedTime += Time.deltaTime;
 
                 int currentSecond = Mathf.FloorToInt(elapsedTime);
+                CurrentGameTime = currentSecond;
+
                 if (currentSecond != lastSecond)
                 {
                     lastSecond = currentSecond;
@@ -285,7 +288,7 @@ namespace RabbitVsMole
             DebugHelper.Log(this, $"Game ended. Winner: {winResult.winner}");
             OnGameEnded?.Invoke(winResult);
         }
-
+/*
 #if UNITY_EDITOR
 
         void OnGUI()
@@ -305,5 +308,6 @@ namespace RabbitVsMole
         }
 
 #endif
+*/
     }
 }

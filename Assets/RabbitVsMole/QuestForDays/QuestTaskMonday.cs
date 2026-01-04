@@ -46,7 +46,7 @@ namespace RabbitVsMole.QuestForDays
                 onStart: () =>
                 {
                     EnableTrigger(triggerReachedFarm);
-                    ShowDialogue("monday_0", "One arm behind back");
+                    ShowDialogue("0", "One arm behind back");
                 }
             );
 
@@ -57,7 +57,7 @@ namespace RabbitVsMole.QuestForDays
                 {
                     GameManager.CurrentGameInspector.GameUI.SetInventoryVisible(PlayerType.Rabbit, true);
                     EnableStorages<FarmSeedStorage>();
-                    ShowDialogue("monday_2", "Thinking");
+                    ShowDialogue("2", "Thinking");
                 },
                 waitForIdle: true
             );
@@ -67,16 +67,16 @@ namespace RabbitVsMole.QuestForDays
                 onStart: () =>
                 {
                     EnableStorages<FarmWaterStorage>();
-                    ShowDialogue("monday_3", "Thinking");
+                    ShowDialogue("3", "Thinking");
                 },
-                onSuccess: () => ShowDialogue("monday_4", "Thinking"),
+                onSuccess: () => ShowDialogue("4", "Thinking"),
                 waitForIdle: true
             );
             
             AddQuest(taskId: 1, stepId: 2,
                 successCondition: () => WasTriggered(triggerReachedFarmField),
                 onStart: () => EnableTrigger(triggerReachedFarmField),
-                onSuccess: () => ShowDialogue("monday_5", "Ask")
+                onSuccess: () => ShowDialogue("5", "Ask")
             );
 
             // === TASK 2: Wyhoduj marchewki ===
@@ -91,7 +91,7 @@ namespace RabbitVsMole.QuestForDays
                 },
                 onSuccess: () =>
                 {
-                    ShowDialogue("monday_6", "Ask");
+                    ShowDialogue("6", "Ask");
                     GameManager.CurrentGameStats.SystemAllowToWaterField = true;
                 },
                 waitForIdle: true
@@ -100,7 +100,7 @@ namespace RabbitVsMole.QuestForDays
             AddQuestWithProgress(taskId: 2, stepId: 1,
                 currentGetter: CountWateredFields,
                 total: REQUIRED_SEEDS,
-                onSuccess: () => ShowDialogue("monday_7", "Stop"),
+                onSuccess: () => ShowDialogue("7", "Stop"),
                 waitForIdle: true
             );
 
@@ -111,7 +111,7 @@ namespace RabbitVsMole.QuestForDays
                 {
                     GameManager.CurrentGameStats.SystemAllowToGrowCarrot = true;
                 },
-                onSuccess: () => ShowDialogue("monday_8", "One arm behind back"),
+                onSuccess: () => ShowDialogue("8", "One arm behind back"),
                 waitForIdle: true
             );
 
@@ -122,7 +122,7 @@ namespace RabbitVsMole.QuestForDays
                 {
                     GameManager.CurrentGameStats.SystemAllowToPickCarrot = true;
                 },
-                onSuccess: () => ShowDialogue("monday_10", "Two arms behind head"),
+                onSuccess: () => ShowDialogue("10", "Two arms behind head"),
                 waitForIdle: true
             );
 
@@ -132,7 +132,7 @@ namespace RabbitVsMole.QuestForDays
                 onStart: () =>
                 {
                     EnableTrigger(triggerWentHome);
-                    ShowDialogue("monday_11", "Stop");
+                    ShowDialogue("11", "Stop");
                 }
             );
         }
@@ -175,10 +175,12 @@ namespace RabbitVsMole.QuestForDays
 
         #region Helper Methods
 
+
         private void ShowDialogue(string dialogueKey, string pose)
         {
-            DialogueSystemMain.ShowSimpleDialogue(dialogueKey, rabbitActor, ActorSideOnScreen.Right, pose);
+            DialogueSystemMain.ShowSimpleDialogue($"rabbit_monday_{dialogueKey}", rabbitActor, ActorSideOnScreen.Right, pose);
         }
+
 
         private void DisableAllGameplay()
         {

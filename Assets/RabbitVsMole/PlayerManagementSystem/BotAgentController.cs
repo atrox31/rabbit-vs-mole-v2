@@ -16,7 +16,10 @@ namespace RabbitVsMole
 
     public class BotAgentController : BotAgentControllerBase<PlayerType, PlayerAvatar>
     {
-         private PlayerType _playerType;
+        [SerializeField] BehaviorGraph _rabbitBehaviorGraph;
+        [SerializeField] BehaviorGraph _moleBehaviorGraph;
+
+        private PlayerType _playerType;
         private BehaviorGraphAgent _graphAgent;
         private BlackboardReference _blackboardReference;
         private float _intelligence;
@@ -32,7 +35,7 @@ namespace RabbitVsMole
                 AIConsts.MIN_AGGRO_SPHERE_RADIUS, AIConsts.MAX_AGGRO_SPHERE_RADIUS);
         private float GetAggroModyficator =>
             (AIConsts.AGGRO_INCREASE_RATIO_BY_INTELIIGENCE * _intelligence) * Time.deltaTime;
-        public static void CreateInstance(PlayGameSettings playGameSettings, PlayerType playerType, int intelligence = 80)
+        public static void CreateInstance(PlayGameSettings playGameSettings, PlayerType playerType, int intelligence = 90)
         {
             var prefab = _agentPrefabs.GetPrefab(PlayerControlAgent.Bot);
             var instance = Instantiate(prefab).GetOrAddComponent<BotAgentController>();
@@ -165,7 +168,7 @@ namespace RabbitVsMole
             }
         }
 
-        private bool SetupBehaviorGraphAgent(int intelligence)
+        private bool SetupBehaviorGraphAgent(int intelligence, BehaviorGraph nonStandardBehaviorGraph = null)
         {
             
             if (!TryGetComponent<BehaviorGraphAgent>(out _graphAgent))
@@ -173,11 +176,13 @@ namespace RabbitVsMole
                 DebugHelper.LogError(this, "Failed to find BehaviorGraphAgent");
                 return false;
             }
-            
-            if(_playerType == PlayerType.Mole)
+
+            _graphAgent.Graph = nonStandardBehaviorGraph ?? _playerType switch
             {
-                _graphAgent.enabled = false;
-            }
+                PlayerType.Rabbit => _rabbitBehaviorGraph,
+                PlayerType.Mole => _moleBehaviorGraph,
+                _ => null
+            };
 
             _blackboardReference = _graphAgent.BlackboardReference;
 

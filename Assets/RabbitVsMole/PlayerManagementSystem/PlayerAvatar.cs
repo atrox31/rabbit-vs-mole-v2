@@ -62,6 +62,7 @@ namespace RabbitVsMole
         private IInteractableGameObject _interactableDown;
         private IInteractableGameObject _interactableNearby;
         private PlayerAvatar _enemy;
+        public GameObject LastTargetField { get; set; }
         public PlayerAvatar EnemyInRange => _enemy;
         public bool EnemyIsInRange => _enemy != null;
         private Action<Action> _currentCancelAction;

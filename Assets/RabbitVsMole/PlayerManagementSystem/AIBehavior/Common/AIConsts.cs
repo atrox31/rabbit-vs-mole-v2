@@ -7,8 +7,8 @@ namespace PlayerManagementSystem.AIBehaviour.Common
         public static readonly int      MAX_INTELIGENCE = 100;
         public static readonly int      MIN_INTELIGENCE = 0;
 
-        public static readonly float    MIN_THINKING_TIME = 1.0f;
-        public static readonly float    MAX_THINKING_TIME = 5.0f;
+        public static readonly float    MIN_THINKING_TIME = 0.1f;
+        public static readonly float    MAX_THINKING_TIME = 2.0f;
 
         public static readonly float    MIN_AGGRO_SPHERE_RADIUS = 1.0f;
         public static readonly float    MAX_AGGRO_SPHERE_RADIUS = 5.0f;

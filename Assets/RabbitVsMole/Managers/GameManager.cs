@@ -1,14 +1,20 @@
+using GameSystems;
+using GameSystems.Steam;
+using GameSystems.Steam.Scripts;
 using InputManager;
 using PlayerManagementSystem;
+using PlayerManagementSystem.Backpack;
+using PlayerManagementSystem.Backpack.Events;
+using RabbitVsMole.Events;
 using RabbitVsMole.GameData;
 using RabbitVsMole.InteractableGameObject.Enums;
-using Steamworks;
 using System;
 using System.Collections;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Localization;
 using WalkingImmersionSystem;
+using EventBus = GameSystems.EventBus;
 
 namespace RabbitVsMole
 {
@@ -73,6 +79,81 @@ namespace RabbitVsMole
         {
             DebugHelper.Log(this, "GameManager: Ready started.");
             
+            // Steam achievements/statistics watcher (singleton) + manual registration of achievements from code.
+            AchievementsWatcher.Initialize(
+                achievements: new IAchievement[]
+                {
+                // Carrot stored first time (diff -1 when putting into storage)
+                new EventAchievement<InventoryChangedEvent>(
+                    "ACHIEVEMENT_CARROT_1",
+                    e => e.BackpackItemType == BackpackItemType.Carrot && e.Diff == -1),
+
+                // Carrot 100 progress via Steam stat (0..100)
+                new StatProgressAchievement<InventoryChangedEvent>(
+                    "ACHIEVEMENT_CARROT_100",
+                    statName: "CARROT100",
+                    max: 100,
+                    incrementPerTrigger: 1,
+                    condition: e => e.BackpackItemType == BackpackItemType.Carrot && e.Diff == -1),
+
+                // Seed achievements (use/plant consumes seeds -> diff < 0)
+                new EventAchievement<InventoryChangedEvent>(
+                    "ACHIEVEMENT_SEED_1",
+                    e => e.BackpackItemType == BackpackItemType.Seed && e.Diff < 0),
+                new StatProgressAchievement<InventoryChangedEvent>(
+                    "ACHIEVEMENT_SEED_100",
+                    statName: "SEED100",
+                    max: 100,
+                    incrementPerTrigger: 1,
+                    condition: e => e.BackpackItemType == BackpackItemType.Seed && e.Diff < 0),
+
+                // Water achievements (watering consumes water -> diff < 0)
+                new EventAchievement<InventoryChangedEvent>(
+                    "ACHIEVEMENT_WATER_1",
+                    e => e.BackpackItemType == BackpackItemType.Water && e.Diff < 0),
+                new StatProgressAchievement<InventoryChangedEvent>(
+                    "ACHIEVEMENT_WATER_100",
+                    statName: "WATER100",
+                    max: 100,
+                    incrementPerTrigger: 1,
+                    condition: e => e.BackpackItemType == BackpackItemType.Water && e.Diff < 0),
+
+                // Fast carrot: pick a carrot within first 30 seconds of the match (carrot added to inventory)
+                new EventAchievement<InventoryChangedEvent>(
+                    "ACHIEVEMENT_FAST_CARROT",
+                    e => e.BackpackItemType == BackpackItemType.Carrot
+                         && e.Diff > 0
+                         && CurrentGameInspector != null
+                         && CurrentGameInspector.CurrentGameTime <= 30),
+
+                // Golden carrots
+                new EventAchievement<GoldenCarrotCollectedEvent>(
+                    "ACHIEVEMENT_GOLDER_CARROT_1",
+                    _ => true),
+                // NOTE: Requires Steam stat configured on Steamworks side: GOLDEN_CARROT_COUNT (0..7)
+                new StatProgressAchievement<GoldenCarrotCollectedEvent>(
+                    "ACHIEVEMENT_GOLDER_CARROT_7",
+                    statName: "GOLDEN_CARROT_COUNT",
+                    max: 7,
+                    incrementPerTrigger: 1,
+                    condition: _ => true),
+
+                // Wins per mode (only when local player wins; disabled in splitscreen by watcher)
+                new EventAchievement<GameEndedEvent>(
+                    "ACHIEVEMENT_WIN_RIVALRY",
+                    e => e.WinCondition == GameModeWinCondition.Rivalry && DidLocalPlayerWin(e)),
+                new EventAchievement<GameEndedEvent>(
+                    "ACHIEVEMENT_WIN_TIME_ATTACK",
+                    e => e.WinCondition == GameModeWinCondition.TimeLimit && DidLocalPlayerWin(e)),
+                new EventAchievement<GameEndedEvent>(
+                    "ACHIEVEMENT_WIN_COOPERATION",
+                    e => e.WinCondition == GameModeWinCondition.Cooperation && DidLocalPlayerWin(e)),
+                new EventAchievement<GameEndedEvent>(
+                    "ACHIEVEMENT_WIN_CARROT_RACE",
+                    e => e.WinCondition == GameModeWinCondition.CarrotCollection && DidLocalPlayerWin(e)),
+                },
+                isTrackingAllowed: AchievementsEnabled);
+
             // Initialize managers
             if (!gameObject.TryGetComponent(out progressManager))
             {
@@ -87,6 +168,38 @@ namespace RabbitVsMole
             }
             
             DebugHelper.Log(this, "GameManager: Ready completed.");
+        }
+
+        private static bool DidLocalPlayerWin(GameEndedEvent e)
+        {
+            return e.WinResult.winner switch
+            {
+                WinConditionEvaluator.Winner.Rabbit => e.RabbitIsLocal,
+                WinConditionEvaluator.Winner.Mole => e.MoleIsLocal,
+                WinConditionEvaluator.Winner.Both => e.RabbitIsLocal || e.MoleIsLocal,
+                _ => false,
+            };
+        }
+
+        /// <summary>
+        /// Global switch for Steam achievements/stats tracking.
+        /// Enabled only for Story / vs AI / Online; disabled in local splitscreen.
+        /// </summary>
+        public static bool AchievementsEnabled()
+        {
+            var inspector = CurrentGameInspector;
+            if (inspector == null)
+                return false;
+
+            if (inspector.IsSplitScreen)
+                return false;
+
+            // Ignore bot-vs-bot / test sessions where nobody is actually playing.
+            bool rabbitCounts = inspector.RabbitControlAgent == PlayerControlAgent.Human
+                                || inspector.RabbitControlAgent == PlayerControlAgent.Online;
+            bool moleCounts = inspector.MoleControlAgent == PlayerControlAgent.Human
+                              || inspector.MoleControlAgent == PlayerControlAgent.Online;
+            return rabbitCounts || moleCounts;
         }
 
         public override void OnGameStart()
@@ -297,6 +410,24 @@ namespace RabbitVsMole
 
             _endGame = true;
 
+            // Publish a typed event for systems like Steam achievements.
+            // AchievementsWatcher will ignore this in splitscreen sessions.
+            if (_currentGameInspector?.CurrentGameMode != null)
+            {
+                bool rabbitLocal = _currentGameInspector.RabbitControlAgent == PlayerControlAgent.Human
+                                   || _currentGameInspector.RabbitControlAgent == PlayerControlAgent.Online;
+                bool moleLocal = _currentGameInspector.MoleControlAgent == PlayerControlAgent.Human
+                                 || _currentGameInspector.MoleControlAgent == PlayerControlAgent.Online;
+
+                EventBus.Publish(new GameEndedEvent
+                {
+                    WinCondition = _currentGameInspector.CurrentGameMode.winCondition,
+                    WinResult = winResult,
+                    RabbitIsLocal = rabbitLocal,
+                    MoleIsLocal = moleLocal,
+                });
+            }
+
             var inGameMenu = FindAnyObjectByType<InGameMenu>();
             if (inGameMenu != null)
                 inGameMenu.BlockMenu();
@@ -332,7 +463,9 @@ namespace RabbitVsMole
                     _ => "Error",
                 };
 
-                _currentGameInspector.GameUI.ShowGameOverScreen(winnerText);
+                var title = GetLocalizedString("title_end_game");
+
+                _currentGameInspector.GameUI.ShowGameOverScreen(winnerText, title);
             }
         }
 
@@ -359,9 +492,18 @@ namespace RabbitVsMole
                 return;
             }
 
+            var day = Instance._currentDayOfWeek;
+            var player = Instance._currentGameInspector.CurrentPlayerOnStory;
+
             Instance.progressManager.SetGoldenCarrotCollected(
-                Instance._currentDayOfWeek, 
-                Instance._currentGameInspector.CurrentPlayerOnStory);
+                day,
+                player);
+
+            EventBus.Publish(new GoldenCarrotCollectedEvent
+            {
+                DayOfWeek = day,
+                PlayerType = player,
+            });
         }
 
         /// <summary>

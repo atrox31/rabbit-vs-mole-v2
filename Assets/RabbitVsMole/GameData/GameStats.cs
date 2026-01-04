@@ -151,7 +151,7 @@ namespace RabbitVsMole.GameData
             public AIPriority FarmFieldPlanted = new AIPriority(70);
             public AIPriority FarmFieldRooted = new AIPriority(priority: 40, critical: 90, conditional: 3);
             public AIPriority FarmFieldWithCarrot = new AIPriority(priority: 0);
-            public AIPriority FarmFieldWithCarrotNeedWater = new AIPriority(priority: 75);
+            public AIPriority FarmFieldWithCarrotNeedWater = new AIPriority(priority: 60, critical: 75, conditional: 2);
             public AIPriority FarmFieldWithCarrotWorking = new AIPriority(priority: 10);
             public AIPriority FieldWithCarrotReady = new AIPriority(priority: 100);
 

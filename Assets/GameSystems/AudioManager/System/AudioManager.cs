@@ -555,7 +555,23 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
     /// <summary>
     /// Plays a dialogue line (Uses Dialogue Group).
     /// </summary>
-    public static void PlayDialogue(AudioClip clip) => PlayDialogue3D(clip, Instance.transform.position);
+    public static void PlayDialogue(AudioClip clip)
+    {
+        if (Instance == null)
+        {
+            Debug.LogError("AudioManager.PlayDialogue: Instance is null!");
+            return;
+        }
+        if (clip == null)
+        {
+            Debug.LogWarning("AudioManager.PlayDialogue: clip is null!");
+            return;
+        }
+        float dialogueVol = GetDialoguesVolume();
+        float masterVol = GetMasterVolume();
+        DebugHelper.Log(Instance, $"AudioManager.PlayDialogue: Playing clip '{clip.name}', DialogueVolume={dialogueVol:F2}, MasterVolume={masterVol:F2}");
+        PlayDialogue3D(clip, Instance.transform.position);
+    }
 
     /// <summary>
     /// Loads and plays a 3D dialogue line from Addressables (Uses Dialogue Group).
@@ -596,10 +612,18 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
     /// </summary>
     private void PlaySoundAtPosition(AudioClip clip, Vector3 position, AudioChannel channel)
     {
-        if (clip == null) return;
+        if (clip == null)
+        {
+            Debug.LogWarning("AudioManager.PlaySoundAtPosition: clip is null!");
+            return;
+        }
 
         AudioSource source = GetPooledSource();
-        if (source == null) return; // Could be null if no prefab is set AND pool is empty
+        if (source == null)
+        {
+            Debug.LogError("AudioManager.PlaySoundAtPosition: Could not get pooled source!");
+            return;
+        }
 
         source.transform.position = position;
         source.clip = clip;
@@ -613,6 +637,8 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
                 break;
             case AudioChannel.Dialogue:
                 source.outputAudioMixerGroup = dialogueGroup;
+                if (dialogueGroup == null)
+                    Debug.LogWarning("AudioManager.PlaySoundAtPosition: dialogueGroup is null! Sound will play without mixer.");
                 break;
             case AudioChannel.Ambient:
                 source.outputAudioMixerGroup = ambientGroup;
@@ -621,12 +647,17 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
                 break;
         }
 
-        // Configure 3D settings
-        source.spatialBlend = 1.0f;
+        // Configure spatial settings - Dialogue should be 2D (heard everywhere), others are 3D
+        source.spatialBlend = (channel == AudioChannel.Dialogue) ? 0f : 1.0f;
+        source.volume = 1.0f; // Ensure volume is set
         source.minDistance = 1.0f;
         source.maxDistance = 50.0f;
 
         source.Play();
+        
+        DebugHelper.Log(this, $"PlaySoundAtPosition: Started playing '{clip.name}' on channel {channel}, " +
+            $"spatialBlend={source.spatialBlend}, volume={source.volume}, isPlaying={source.isPlaying}, " +
+            $"mixerGroup={(source.outputAudioMixerGroup != null ? source.outputAudioMixerGroup.name : "NULL")}");
 
         // Return to pool after it's done
         StartCoroutine(ReturnSourceToPool(source, clip.length));

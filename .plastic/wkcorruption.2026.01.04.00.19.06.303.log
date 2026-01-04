@@ -1,0 +1,12 @@
+Process name: Unity
+Process image: C:\Program Files\Unity\Hub\Editor\6000.3.1f1\Editor\Unity.exe
+Process started: 2026.01.03.13.20.26.252
+Error: Ticks must be between DateTime.MinValue.Ticks and DateTime.MaxValue.Ticks.
+Parameter name: ticks
+StackTrace:   at System.DateTime..ctor (System.Int64 ticks) [0x00011] in <1eb9db207454431c84a47bcd81e79c37>:0 
+  at Codice.CM.WorkspaceServer.DataStore.WkTree.ReadLegacyWorkspaceTree.ReadFilelocalInfo (Codice.CM.Common.Serialization.PlasticBinaryReader reader, Codice.CM.WorkspaceServer.DataStore.WkTree.LegacyWorkspaceTreeOptions+Options options) [0x0001b] in <55db054733ff42f18b0afda45b209a2a>:0 
+  at Codice.CM.WorkspaceServer.DataStore.WkTree.ReadLegacyWorkspaceTree.ReadNode (Codice.CM.Common.Serialization.PlasticBinaryReader reader, System.Collections.IList repSpecs, System.Collections.IList seids, Codice.CM.WorkspaceServer.IWorkspaceRevisionInfoCache cache, Codice.CM.WorkspaceServer.DataStore.WkTree.LegacyWorkspaceTreeOptions+Options options) [0x00008] in <55db054733ff42f18b0afda45b209a2a>:0 
+  at Codice.CM.WorkspaceServer.DataStore.WkTree.ReadLegacyWorkspaceTree.ReadFromStream (System.Byte version, System.IO.Stream stream, Codice.CM.WorkspaceServer.IWorkspaceRevisionInfoCache revisionCache) [0x00026] in <55db054733ff42f18b0afda45b209a2a>:0 
+  at Codice.CM.WorkspaceServer.DataStore.WkTree.ReadLegacyWorkspaceTree.Read (System.Byte version, System.Int32 treeSize, System.IO.FileStream fileStream, System.Byte[] dataBuffer, System.Int32 dataOffset, System.Int32 dataSize, Codice.CM.WorkspaceServer.IWorkspaceRevisionInfoCache revisionCache) [0x0001d] in <55db054733ff42f18b0afda45b209a2a>:0 
+  at Codice.CM.WorkspaceServer.WorkspaceTreeDataStore.ReadWorkspaceContentFromFile (Codice.CM.Common.WorkspaceInfo wkInfo, System.String filePath, Codice.CM.WorkspaceServer.IWorkspaceRevisionInfoCache revisionCache, Codice.Utils.Buffers.FlexibleBufferPool bufferPool) [0x000e8] in <55db054733ff42f18b0afda45b209a2a>:0 
+  at Codice.CM.WorkspaceServer.WorkspaceTreeDataStore.ReadWorkspaceTreeContent (Codice.CM.Common.WorkspaceInfo wkInfo, System.String wkTreeFile, Codice.CM.WorkspaceServer.IWorkspaceRevisionInfoCache revisionCache, Codice.Utils.Buffers.FlexibleBufferPool bufferPool) [0x00008] in <55db054733ff42f18b0afda45b209a2a>:0 

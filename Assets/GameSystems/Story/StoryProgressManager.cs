@@ -1,3 +1,4 @@
+using DialogueSystem;
 using RabbitVsMole;
 using System;
 using System.Collections;
@@ -504,14 +505,14 @@ namespace GameSystems.Story
 
         private IEnumerator QuestProgressCoroutine()
         {
-            DebugHelper.Log(this, $"[Quest] Starting coroutine. Total quests in queue: {questTaskQueue.Count}");
+            //DebugHelper.Log(this, $"[Quest] Starting coroutine. Total quests in queue: {questTaskQueue.Count}");
             
             yield return new WaitForSeconds(initialDelay);
             ShowPanel();
             int previousTaskId = -1;
             bool firstShow = true;
 
-            DebugHelper.Log(this, $"[Quest] After initial delay. Quests remaining: {questTaskQueue.Count}");
+            //DebugHelper.Log(this, $"[Quest] After initial delay. Quests remaining: {questTaskQueue.Count}");
 
             while (questTaskQueue.Count > 0)
             {
@@ -549,7 +550,7 @@ namespace GameSystems.Story
                 {
                     if (currentQuest.SuccessCondition?.Invoke() == true)
                     {
-                        DebugHelper.Log(this, $"[Quest] Completed: task={currentQuest.TaskId}, step={currentQuest.StepId}");
+                        //DebugHelper.Log(this, $"[Quest] Completed: task={currentQuest.TaskId}, step={currentQuest.StepId}");
                         currentQuest.OnEndSuccess?.Invoke();
                         break;
                     }
@@ -573,10 +574,10 @@ namespace GameSystems.Story
                 }
 
                 previousTaskId = currentQuest.TaskId;
-                DebugHelper.Log(this, $"[Quest] Finished task={previousTaskId}. Quests remaining: {questTaskQueue.Count}");
+                //DebugHelper.Log(this, $"[Quest] Finished task={previousTaskId}. Quests remaining: {questTaskQueue.Count}");
             }
 
-            DebugHelper.Log(this, $"[Quest] While loop exited! Queue count: {questTaskQueue.Count}. Triggering victory...");
+            //DebugHelper.Log(this, $"[Quest] While loop exited! Queue count: {questTaskQueue.Count}. Triggering victory...");
             
             PlayTaskCompletedSound();
             yield return new WaitForSeconds(1f);
@@ -645,7 +646,7 @@ namespace GameSystems.Story
                 .WithCallbacks(onStart, onSuccess, onFailure);
             
             questTaskQueue.Enqueue(quest);
-            DebugHelper.Log(this, $"[Quest] Added: task={taskId}, step={stepId}. Queue size: {questTaskQueue.Count}");
+            //DebugHelper.Log(this, $"[Quest] Added: task={taskId}, step={stepId}. Queue size: {questTaskQueue.Count}");
         }
 
         protected void AddQuestWithProgress(int taskId, int stepId, 
