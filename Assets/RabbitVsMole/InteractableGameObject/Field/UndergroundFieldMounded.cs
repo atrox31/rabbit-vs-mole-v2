@@ -24,7 +24,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
         protected override void OnDestroy()
         {
             FieldParent.DestroyMound();
-            AudioManager.PlaySound3D("Assets/Audio/Sound/sfx/punch-a-rock-161647.mp3", FieldParent.transform.position);
+            AudioManager.PlaySound3D("Assets/Audio/Sound/sfx/punch-a-rock-161647.ogg", FieldParent.transform.position);
         }
 
         protected override bool CanInteractForMole(Backpack backpack) =>

@@ -23,8 +23,12 @@ using Steamworks;
 public class SteamManager : MonoBehaviour
 {
 #if !DISABLESTEAMWORKS
-	protected static bool s_EverInitialized = false; 
+	protected static bool s_EverInitialized = false;
+#if UNITY_EDITOR
+	private static uint _myAppId = 480;
+#else
 	private static uint _myAppId = 4302910;
+#endif
 
     protected static SteamManager s_instance;
 	protected static SteamManager Instance {

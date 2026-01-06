@@ -4,6 +4,7 @@ using RabbitVsMole.InteractableGameObject.AI;
 using RabbitVsMole.InteractableGameObject.Enums;
 using RabbitVsMole.InteractableGameObject.Field;
 using RabbitVsMole.InteractableGameObject.Field.Base;
+using RabbitVsMole.Online;
 using System;
 using System.Collections;
 using UnityEngine;
@@ -75,8 +76,14 @@ namespace RabbitVsMole.InteractableGameObject.Base
            
         }
 
-        public void SetNewState(FieldState fieldState) =>
+        public void SetNewState(FieldState fieldState)
+        {
+            if (!OnlineAuthority.CanChangeFieldState(this))
+                return;
+
             _fieldState = _fieldState.ChangeState(fieldState);
+            OnlineAuthority.NotifyHostFieldStateChanged(this, _fieldState);
+        }
         
 
         public abstract void LightUp(PlayerType playerType);

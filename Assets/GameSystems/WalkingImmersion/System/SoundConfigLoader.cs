@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -12,11 +13,15 @@ namespace WalkingImmersionSystem
 
         // The specific label assigned to ALL TerrainLayerData SOs
         private const string SoundConfigLabel = "TerrainDataConfigs";
+        
+        // Fallback path in Resources folder (used when Addressables fail)
+        private const string ResourcesFallbackPath = "WalkingImmersion/TerrainLayerData";
 
         // Public property to hold the loaded data
         private List<TerrainLayerData> _loadedSoundConfigs;
 
         private AsyncOperationHandle<IList<TerrainLayerData>> _loadHandle;
+        private bool _loadedFromAddressables = false;
 
         private static void CreateInstance()
         {
@@ -24,7 +29,7 @@ namespace WalkingImmersionSystem
             _instance = gameOB.AddComponent<SoundConfigLoader>();
             DontDestroyOnLoad(gameOB);
 
-            _instance.InitializeConfigsAsync();
+            _instance.InitializeConfigs();
         }
 
         public static void InitializeLoader()
@@ -41,32 +46,81 @@ namespace WalkingImmersionSystem
             return _instance._loadedSoundConfigs;
         }
 
-        public bool InitializeConfigsAsync()
+        public bool InitializeConfigs()
         {
-            // Load ALL assets that share the specified label
-            _loadHandle = Addressables.LoadAssetsAsync<TerrainLayerData>(
-                SoundConfigLabel,
-                null);
-
-            _loadHandle.WaitForCompletion();
-
-            if (_loadHandle.Status == AsyncOperationStatus.Succeeded)
+            // First, try to load from Addressables
+            if (TryLoadFromAddressables())
             {
-                // Store the result (a list of all loaded Scriptable Objects)
-                _loadedSoundConfigs = new List<TerrainLayerData>(_loadHandle.Result);
-                DebugHelper.Log(this, $"SoundConfigLoader->InitializeConfigsAsync (SUCCESS): Loaded {_loadedSoundConfigs.Count} sound configuration objects.");
                 return true;
             }
-            else
+            
+            // Fallback: try to load from Resources
+            Debug.LogWarning($"SoundConfigLoader: Addressables failed, trying Resources fallback from '{ResourcesFallbackPath}'...");
+            if (TryLoadFromResources())
             {
-                Debug.LogError($"SoundConfigLoader->InitializeConfigsAsync (ERROR): Failed to load sound configurations from label '{SoundConfigLabel}'. Status: {_loadHandle.Status}");
-                return false;
+                return true;
             }
+            
+            Debug.LogError($"SoundConfigLoader: Failed to load sound configurations from both Addressables and Resources. " +
+                          $"Make sure to either build Addressables before building the game, " +
+                          $"or place TerrainLayerData assets in 'Resources/{ResourcesFallbackPath}' folder.");
+            _loadedSoundConfigs = new List<TerrainLayerData>();
+            return false;
+        }
+        
+        private bool TryLoadFromAddressables()
+        {
+            try
+            {
+                // Load ALL assets that share the specified label
+                _loadHandle = Addressables.LoadAssetsAsync<TerrainLayerData>(
+                    SoundConfigLabel,
+                    null);
+
+                _loadHandle.WaitForCompletion();
+
+                if (_loadHandle.Status == AsyncOperationStatus.Succeeded && _loadHandle.Result != null && _loadHandle.Result.Count > 0)
+                {
+                    // Store the result (a list of all loaded Scriptable Objects)
+                    _loadedSoundConfigs = new List<TerrainLayerData>(_loadHandle.Result);
+                    _loadedFromAddressables = true;
+                    DebugHelper.Log(this, $"Loaded {_loadedSoundConfigs.Count} sound configurations from Addressables.");
+                    return true;
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"SoundConfigLoader: Addressables loading exception: {ex.Message}");
+            }
+            
+            return false;
+        }
+        
+        private bool TryLoadFromResources()
+        {
+            try
+            {
+                var loadedConfigs = Resources.LoadAll<TerrainLayerData>(ResourcesFallbackPath);
+                
+                if (loadedConfigs != null && loadedConfigs.Length > 0)
+                {
+                    _loadedSoundConfigs = loadedConfigs.ToList();
+                    _loadedFromAddressables = false;
+                    DebugHelper.Log(this, $"Loaded {_loadedSoundConfigs.Count} sound configurations from Resources fallback.");
+                    return true;
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"SoundConfigLoader: Resources loading exception: {ex.Message}");
+            }
+            
+            return false;
         }
 
         private void OnDestroy()
         {
-            if (_loadHandle.IsValid())
+            if (_loadedFromAddressables && _loadHandle.IsValid())
             {
                 Addressables.Release(_loadHandle);
                 DebugHelper.Log(this, "Released Addressables sound configurations handle.");

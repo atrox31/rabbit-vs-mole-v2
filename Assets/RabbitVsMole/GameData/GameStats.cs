@@ -117,6 +117,7 @@ namespace RabbitVsMole.GameData
         #region GameRules
         //Game rules
         public bool GameRulesFightMoleAllowRegenerationOnSurface = false;
+        public bool GameRulesAllowMoleToStoraCarrotInMound = false;
 
         public bool GameRulesRootsCanSpawnOnCleanField = true;
         public bool GameRulesRootsCanSpawnOnPlantedField = true;

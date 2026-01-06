@@ -1,11 +1,10 @@
-using RabbitVsMole.InteractableGameObject.AI;
 using RabbitVsMole.InteractableGameObject.Field.Base;
 using System;
-using PlayerManagementSystem;
 using PlayerManagementSystem.Backpack;
 using RabbitVsMole.InteractableGameObject.Enums;
 using RabbitVsMole.InteractableGameObject.Base;
-using UnityEditor.Build.Pipeline;
+using UnityEngine;
+using RabbitVsMole.InteractableGameObject.Storages;
 
 namespace RabbitVsMole.InteractableGameObject.Field
 {
@@ -67,20 +66,43 @@ namespace RabbitVsMole.InteractableGameObject.Field
         {
             if (Parent.LinkedField == null)
                 return false;
-            
-            return StandardAction(new InteractionConfig
+
+            if (GameManager.CurrentGameStats.GameRulesAllowMoleToStoraCarrotInMound && !playerAvatar.Backpack.Carrot.IsEmpty)
             {
-                ActionType = ActionType.EnterMound,
-                //BackpackAction = true,
-                //NewFieldStateProvider = null,
-                //NewLinkedFieldStateProvider = null,
-                OnActionRequested = onActionRequested,
-                OnActionStart = () => playerAvatar.MoveToLinkedField(Parent.LinkedField),
-                OnActionCompleted = onActionCompleted,
-                //FinalValidation = null,
-                //OnPreStateChange = null,
-                //OnPostStateChange = null
-            });
+                var undergroundCarrotStorage = GameObject.FindFirstObjectByType<UndergroundCarrotStorage>();
+                if (undergroundCarrotStorage == null)
+                    return false;
+
+                return StandardAction(new InteractionConfig
+                {
+                    ActionType = ActionType.PutDownCarrot,
+                    BackpackAction = playerAvatar.Backpack.Carrot.TryGet(1),
+                    //NewFieldStateProvider = null,
+                    //NewLinkedFieldStateProvider = null,
+                    OnActionRequested = onActionRequested,
+                    OnActionStart = () => undergroundCarrotStorage.AddCarrot(),
+                    OnActionCompleted = onActionCompleted,
+                    //FinalValidation = null,
+                    //OnPreStateChange = null,
+                    //OnPostStateChange = null
+                });
+            }
+            else
+            {
+                return StandardAction(new InteractionConfig
+                {
+                    ActionType = ActionType.EnterMound,
+                    //BackpackAction = true,
+                    //NewFieldStateProvider = null,
+                    //NewLinkedFieldStateProvider = null,
+                    OnActionRequested = onActionRequested,
+                    OnActionStart = () => playerAvatar.MoveToLinkedField(Parent.LinkedField),
+                    OnActionCompleted = onActionCompleted,
+                    //FinalValidation = null,
+                    //OnPreStateChange = null,
+                    //OnPostStateChange = null
+                });
+            }
         }
     }
 }

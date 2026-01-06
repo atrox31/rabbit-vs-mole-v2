@@ -73,6 +73,9 @@ namespace GameSystems.Steam.Scripts
             if (_condition != null && !_condition(e))
                 return;
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            DebugHelper.Log(null, $"[Achievements] Progress event '{typeof(TEvent).Name}' -> '{_achievementId}' (stat '{_statName}' +{_incrementPerTrigger}/{_max})");
+#endif
             _watcher.IncrementSteamStat(_statName, _incrementPerTrigger, clampMax: _max);
             _watcher.TryUnlockAchievementIfStatReached(_achievementId, _statName, _max);
         }

@@ -166,6 +166,15 @@ namespace RabbitVsMole
             _playerAvatar?.TryActionSpecial();
         }
 
+        private void LateUpdate()
+        {
+            // Safety: ensure camera keeps following the local avatar (covers lost references in prefab/scene).
+            if (_cinemachineCamera != null && _playerAvatar != null && _cinemachineCamera.Follow != _playerAvatar.transform)
+            {
+                _cinemachineCamera.Follow = _playerAvatar.transform;
+            }
+        }
+
         private void OnEnable()
         {
             if (_initialized)

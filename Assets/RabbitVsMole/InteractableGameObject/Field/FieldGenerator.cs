@@ -43,6 +43,7 @@ namespace RabbitVsMole.InteractableGameObject.Field
         private void OnDestroy()
         {
             FarmManager.ClearCache();
+            UndergroundManager.ClearCache();
         }
 
         private void GenerateFields()
@@ -116,8 +117,10 @@ namespace RabbitVsMole.InteractableGameObject.Field
                     field.transform.localPosition = new Vector3(posX, posY, posZ);
                     _fieldList.Add(field);
 
-                    if(fieldType == FieldType.Farm)
+                    if (fieldType == FieldType.Farm)
                         FarmManager.AddField(field.GetComponent<FarmFieldBase>());
+                    else
+                        UndergroundManager.AddField(field.GetComponent<UndergroundFieldBase>());
                 }
             }
         }

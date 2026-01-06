@@ -1,12 +1,15 @@
 using Extensions;
+using GameSystems.Steam.Scripts;
 using Interface;
 using PlayerManagementSystem;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Localization;
 using UnityEngine.Localization.Settings;
+using RabbitVsMole.GameData.Mutator;
 
 namespace RabbitVsMole
 {
@@ -26,6 +29,9 @@ namespace RabbitVsMole
         private GUIPanel _playPanelDuelLocalSolo;
         private GUIPanel _playPanelDuelLocalSplit;
         private GUIPanel _playPanelDuelOnline;
+        private GUIPanel _playPanelDuelOnlineHostSetup;
+        private GUIPanel _playPanelDuelOnlineHostLobby;
+        private GUIPanel _playPanelDuelOnlineJoinLobby;
         private GUIPanel _panelOptions;
         private GUIPanel _panelOptionsGeneral;
         private GUIPanel _panelOptionsGraphic;
@@ -35,10 +41,14 @@ namespace RabbitVsMole
         private GUIPanel _panelOptionsControlsKeyboardSecondary;
         private GUIPanel _panelOptionsControlsGamepad;
         private GUIPanel _creditsPanel;
+        private GUIPanel _playMutatorSelector;
 
         private GUIPanel _mainInputPrompt;
         private Action<PlayGameSettings> _fallbackAfterSelect;
         private PlayGameSettings _playGameSettings;
+        private GUICustomElement_MutatorSelector _mutatorSelectorElement;
+        private GUICustomElement_GameModeSelector _mutatorSourceSelector;
+        private readonly List<GUICustomElement_GameModeSelector> _mutatorAwareSelectors = new();
 
         private List<Interface.Element.GUILabel> _creditLabels = new List<Interface.Element.GUILabel>();
 
@@ -59,6 +69,11 @@ namespace RabbitVsMole
         [SerializeField] private GameObject daySelectorPrefab;
         [SerializeField] private GameObject widePanelPrefab;
         [SerializeField] private GameObject gameModeSelectorPrefab;
+        [SerializeField] private GameObject onlineSessionsTablePrefab;
+        [SerializeField] private GameObject mutatorSelectorPrefab;
+
+        [Header("Mutators")]
+        [SerializeField] private List<MutatorSO> _availableMutators = new();
 
         [Header("GameModes")]
         [SerializeField] private List<GameModeData> rabbitStoryGameModes;
@@ -103,6 +118,15 @@ namespace RabbitVsMole
             _menuManager.SteamAvatar?.Show();
         }
 
+        public void ShowOnlineDuelList()
+        {
+            _menuManager.ChangePanel(_playPanelDuelOnline);
+            _menuManager.SteamAvatar?.Show();
+            // Fake a reasonable back history: MainMenu -> Play -> Duel -> Online list
+            // (Do not include current panel in history; top should be previous panel.)
+            _menuManager.SeedHistory( _mainMenu, _playPanel, _playPanelDuel);
+        }
+
         public void WebPageRedirect()
         {
             Application.OpenURL("https://gamejolt.com/@atrox_studio");
@@ -116,6 +140,83 @@ namespace RabbitVsMole
             _fallbackAfterSelect = fallbackAfterSelect;
             _playGameSettings = playGameSettings;
             _menuManager.ChangePanel(_mainInputPrompt);
+        }
+
+        private List<MutatorSO> GetAvailableMutators()
+        {
+            if (_availableMutators != null && _availableMutators.Count > 0)
+                return _availableMutators;
+
+            var unique = new HashSet<MutatorSO>();
+            void Collect(IEnumerable<GameModeData> list)
+            {
+                if (list == null) return;
+                foreach (var gm in list)
+                {
+                    if (gm?.mutators == null) continue;
+                    foreach (var mut in gm.mutators)
+                    {
+                        if (mut != null)
+                            unique.Add(mut);
+                    }
+                }
+            }
+
+            Collect(rabbitStoryGameModes);
+            Collect(moleStoryGameModes);
+            Collect(challengeGameModes);
+            Collect(duelGameModes);
+
+            return unique.ToList();
+        }
+
+        private void BindMutatorButton(GUIPanel panel, string selectorId)
+        {
+            if (panel == null || string.IsNullOrWhiteSpace(selectorId))
+                return;
+
+            if (panel.GetElementByID(selectorId) is GUICustomElement_GameModeSelector selector)
+            {
+                if (_mutatorAwareSelectors.Contains(selector))
+                    return;
+
+                selector.MutatorConfigRequested += OnMutatorConfigRequested;
+                _mutatorAwareSelectors.Add(selector);
+            }
+        }
+
+        private void OnMutatorConfigRequested(GUICustomElement_GameModeSelector selector, GameModeData gameMode, List<MutatorSO> preselected)
+        {
+            if (_mutatorSelectorElement == null || _playMutatorSelector == null || _menuManager == null || gameMode == null)
+                return;
+
+            _mutatorSourceSelector = selector;
+
+            var available = GetAvailableMutators();
+            var selected = preselected ?? gameMode.mutators ?? new List<MutatorSO>();
+            var locked = gameMode.mutators ?? new List<MutatorSO>();
+
+            _mutatorSelectorElement.InitializeWithArgument(
+                new GUICustomElement_MutatorSelector.InitArgs(
+                    available,
+                    new List<MutatorSO>(selected.Where(m => m != null)),
+                    new List<MutatorSO>(locked.Where(m => m != null))));
+
+            _menuManager.ChangePanel(_playMutatorSelector);
+        }
+
+        private void OnMutatorAcceptClicked(List<MutatorSO> mutators)
+        {
+            var safe = mutators ?? new List<MutatorSO>();
+            _mutatorSourceSelector?.ApplyMutatorsToSelectedMode(safe);
+            _mutatorSourceSelector = null;
+            _menuManager.GoBack();
+        }
+
+        private void OnMutatorBackClicked()
+        {
+            _mutatorSourceSelector = null;
+            _menuManager.GoBack();
         }
 
         private int GetMaxStoryProgress(PlayerType playerType)
@@ -191,14 +292,113 @@ namespace RabbitVsMole
 
         void PlayDuelSolo(PlayerType playerType)
         {
-            var gamemode = (_playPanelDuelLocalSolo.GetElementByID("GameModeDuelLocalSolo") as GUICustomElement_GameModeSelector).GetSelectedGameMode();
+            var selector = _playPanelDuelLocalSolo.GetElementByID("GameModeDuelLocalSolo") as GUICustomElement_GameModeSelector;
+            var gamemode = selector.GetSelectedGameMode();
+            int aiIntelligence = selector != null ? selector.GetSelectedAiIntelligence() : 90;
             GameManager.PlayGame(
                 gameMode: gamemode,
                 map: GameSceneManager.SceneType.GamePlay_Duel,
                 day: System.DayOfWeek.Monday.SelectRandom(),
                 playerTypeForStory: playerType,
                 rabbitControlAgent: playerType == PlayerType.Rabbit ? PlayerControlAgent.Human : PlayerControlAgent.Bot,
-                moleControlAgent: playerType == PlayerType.Mole ? PlayerControlAgent.Human : PlayerControlAgent.Bot);
+                moleControlAgent: playerType == PlayerType.Mole ? PlayerControlAgent.Human : PlayerControlAgent.Bot,
+                aiIntelligence: aiIntelligence);
+        }
+
+        private bool TryBuildHostOnlinePlaySettings(out PlayGameSettings settings, out PlayerType onlineAgentPlayerType)
+        {
+            settings = default;
+            onlineAgentPlayerType = PlayerType.Rabbit;
+
+            var session = SteamLobbySession.Instance;
+            if (!session.IsInLobby || !session.IsHost)
+                return false;
+
+            string assetName = session.GetGameModeAssetName();
+            if (string.IsNullOrWhiteSpace(assetName))
+                return false;
+
+            var gameMode = duelGameModes.Find(gm => gm != null && gm.name == assetName);
+            if (gameMode == null)
+                return false;
+
+            if (!session.TryGetGuestSteamId(out var guestSteamId))
+                return false;
+
+            var hostRole = session.GetHostRole();
+            var guestRole = session.GetGuestRole();
+
+            PlayerType hostPlayerType = hostRole == SteamLobbySession.Role.Rabbit ? PlayerType.Rabbit : PlayerType.Mole;
+            PlayerType guestPlayerType = guestRole == SteamLobbySession.Role.Rabbit ? PlayerType.Rabbit : PlayerType.Mole;
+
+            // Host side: local player is Human on host role, remote is Online (driven by guest via transport).
+            var rabbitAgent = hostPlayerType == PlayerType.Rabbit ? PlayerControlAgent.Human : PlayerControlAgent.Online;
+            var moleAgent = hostPlayerType == PlayerType.Mole ? PlayerControlAgent.Human : PlayerControlAgent.Online;
+
+            var onlineConfig = PlayGameSettings.OnlineConfig.CreateHost(session.CurrentLobbyId, guestSteamId);
+            settings = new PlayGameSettings(
+                gameMode: gameMode,
+                map: GameSceneManager.SceneType.GamePlay_Duel,
+                day: System.DayOfWeek.Monday.SelectRandom(),
+                playerTypeForStory: hostPlayerType,
+                rabbitControlAgent: rabbitAgent,
+                moleControlAgent: moleAgent,
+                aiIntelligence: 90,
+                onlineConfig: onlineConfig);
+
+            // We only create OnlineAgentController for the remote-controlled player on host.
+            onlineAgentPlayerType = guestPlayerType;
+            return true;
+        }
+
+        private bool TryBuildClientOnlinePlaySettings(out PlayGameSettings settings)
+        {
+            settings = default;
+
+            var session = SteamLobbySession.Instance;
+            if (!session.IsInLobby || session.IsHost)
+                return false;
+
+            if (!session.TryGetStartNonce(out var startNonce) || startNonce <= 0)
+                return false;
+
+            if (!session.TryGetStartMapAndDay(out int mapScene, out int dayOfWeek))
+                return false;
+
+            if (!session.TryGetHostSteamId(out var hostSteamId))
+                return false;
+
+            string assetName = session.GetGameModeAssetName();
+            if (string.IsNullOrWhiteSpace(assetName))
+                return false;
+
+            var gameMode = duelGameModes.Find(gm => gm != null && gm.name == assetName);
+            if (gameMode == null)
+                return false;
+
+            // Client wants to control the guest role.
+            var guestRole = session.GetGuestRole();
+            PlayerType guestPlayerType = guestRole == SteamLobbySession.Role.Rabbit ? PlayerType.Rabbit : PlayerType.Mole;
+
+            // Current OnlineAgentController implementation assumes a single Online agent per peer.
+            // We create Online controller only for the local (guest) player on client.
+            var rabbitAgent = guestPlayerType == PlayerType.Rabbit ? PlayerControlAgent.Online : PlayerControlAgent.None;
+            var moleAgent = guestPlayerType == PlayerType.Mole ? PlayerControlAgent.Online : PlayerControlAgent.None;
+
+            var onlineConfig = PlayGameSettings.OnlineConfig.CreateClient(session.CurrentLobbyId, hostSteamId);
+            settings = new PlayGameSettings(
+                gameMode: gameMode,
+                map: (GameSceneManager.SceneType)mapScene,
+                day: (System.DayOfWeek)dayOfWeek,
+                playerTypeForStory: guestPlayerType,
+                rabbitControlAgent: rabbitAgent,
+                moleControlAgent: moleAgent,
+                aiIntelligence: 90,
+                onlineConfig: onlineConfig);
+
+            // Stash nonce so coordinator will only begin when the correct session begins.
+            GameSystems.Steam.Scripts.SteamOnlineStartCoordinator.Instance.SetLocalStartNonce(startNonce);
+            return true;
         }
 
         private void SetupMenus()
@@ -216,19 +416,43 @@ namespace RabbitVsMole
               })
               .Build();
 
+            _playMutatorSelector = _menuManager.CreatePanel(GetLocalizedString("menu_mutator_selector"), widePanelPrefab)
+                .AddCustomElement(mutatorSelectorPrefab)
+                .SetId("MutatorSelectorElement")
+                .AddSpacer(10f)
+                .AddButton(GetLocalizedString("button_add"), () => _mutatorSelectorElement?.AddSelectedMutator(), true)
+                .AddButton(GetLocalizedString("button_remove"), () => _mutatorSelectorElement?.DeleteSelectedMutator(), true)
+                .AddButton(GetLocalizedString("button_accept"), () => OnMutatorAcceptClicked(_mutatorSelectorElement?.GetSelectedMutators()), true)
+                .AddBackButton()
+                .Build();
+            _mutatorSelectorElement = _playMutatorSelector?.GetElementByID("MutatorSelectorElement") as GUICustomElement_MutatorSelector;
+            if (_mutatorSelectorElement != null)
+            {
+                _mutatorSelectorElement.AcceptClicked += OnMutatorAcceptClicked;
+                _mutatorSelectorElement.BackClicked += OnMutatorBackClicked;
+            }
+
             _playPanelStoryMole = _menuManager.CreatePanel(GetLocalizedString("menu_play_story_mole"))
-                .AddCustomElement(gameModeSelectorPrefab, rabbitStoryGameModes.GetRange(0, GetMaxStoryProgress(PlayerType.Mole)))
+                .AddCustomElement(gameModeSelectorPrefab,
+                    new GUICustomElement_GameModeSelector.InitArgs(
+                        rabbitStoryGameModes.GetRange(0, GetMaxStoryProgress(PlayerType.Mole)),
+                        showAiSlider: false))
                     .SetId("PlayPanelStoryMole")
                 .AddButton(GetLocalizedString("button_play_story"), () => { }, true)
                 .AddBackButton()
                 .Build();
+            BindMutatorButton(_playPanelStoryMole, "PlayPanelStoryMole");
 
             _playPanelStoryRabbit = _menuManager.CreatePanel(GetLocalizedString("menu_play_story_rabbit"), widePanelPrefab)
-                .AddCustomElement(gameModeSelectorPrefab, rabbitStoryGameModes.GetRange(0, GetMaxStoryProgress(PlayerType.Rabbit)))
+                .AddCustomElement(gameModeSelectorPrefab,
+                    new GUICustomElement_GameModeSelector.InitArgs(
+                        rabbitStoryGameModes.GetRange(0, GetMaxStoryProgress(PlayerType.Rabbit)),
+                        showAiSlider: false))
                     .SetId("GameModeStoryRabbit")
                 .AddButton(GetLocalizedString("button_play_story"), PlayStoryRabbit, true)
                 .AddBackButton()
                 .Build();
+            BindMutatorButton(_playPanelStoryRabbit, "GameModeStoryRabbit");
 
             _playPanelStory = _menuManager.CreatePanel(GetLocalizedString("menu_play_story"), widePanelPrefab)
                 .AddButton(GetLocalizedString("button_play_story_rabbit"), _playPanelStoryRabbit)
@@ -237,24 +461,287 @@ namespace RabbitVsMole
                 .Build();
 
             _playPanelDuelLocalSolo = _menuManager.CreatePanel(GetLocalizedString("menu_play_duel_local_solo"), widePanelPrefab)
-               .AddCustomElement(gameModeSelectorPrefab, duelGameModes)
+               .AddCustomElement(gameModeSelectorPrefab,
+                    new GUICustomElement_GameModeSelector.InitArgs(
+                        duelGameModes,
+                        showAiSlider: true))
                     .SetId("GameModeDuelLocalSolo")
                .AddButton(GetLocalizedString("button_play_duel_as_rabbit"), () => PlayDuelSolo(PlayerType.Rabbit), true)
                .AddButton(GetLocalizedString("button_play_duel_as_mole"), () => PlayDuelSolo(PlayerType.Mole), true)
                .AddBackButton()
                .Build();
+            BindMutatorButton(_playPanelDuelLocalSolo, "GameModeDuelLocalSolo");
 
             _playPanelDuelLocalSplit = _menuManager.CreatePanel(GetLocalizedString("menu_play_duel_local_split"), widePanelPrefab)
-                .AddCustomElement(gameModeSelectorPrefab, duelGameModes)
+                .AddCustomElement(gameModeSelectorPrefab,
+                    new GUICustomElement_GameModeSelector.InitArgs(
+                        duelGameModes,
+                        showAiSlider: false))
                     .SetId("GameModelDuelLocalSplit")
                 .AddButton(GetLocalizedString("button_play_duel"), PlayDuelSplitScreen, true)
                 .AddBackButton()
                 .Build();
+            BindMutatorButton(_playPanelDuelLocalSplit, "GameModelDuelLocalSplit");
 
-            _playPanelDuelOnline = _menuManager.CreatePanel(GetLocalizedString("menu_play_duel_online"), widePanelPrefab)
-                //TODO: 
+            _playPanelDuelOnlineHostSetup = _menuManager.CreatePanel(GetLocalizedString("interface_online_host_setup_title"), widePanelPrefab)
+                .AddCustomElement(gameModeSelectorPrefab,
+                    new GUICustomElement_GameModeSelector.InitArgs(
+                        duelGameModes,
+                        showAiSlider: false))
+                    .SetId("HostGameModeSelector")
+                .AddButton(GetLocalizedString("interface_table_host"), () =>
+                {
+                    var selector = _playPanelDuelOnlineHostSetup.GetElementByID("HostGameModeSelector") as GUICustomElement_GameModeSelector;
+                    var selected = selector != null ? selector.GetSelectedGameMode() : null;
+                    if (selected == null) return;
+
+                    bool hasMutators = selected.mutators != null && selected.mutators.Count > 0;
+                    SteamLobbySession.Instance.CreateLobby(selected.name, hasMutators, maxMembers: 2);
+                    _menuManager.ChangePanel(_playPanelDuelOnlineHostLobby);
+                }, true)
                 .AddBackButton()
                 .Build();
+            BindMutatorButton(_playPanelDuelOnlineHostSetup, "HostGameModeSelector");
+
+            _playPanelDuelOnlineHostLobby = _menuManager.CreatePanel(GetLocalizedString("interface_online_host_lobby_title"), widePanelPrefab)
+                .AddCustomElement(gameModeSelectorPrefab).SetId("HostLobbySelector")
+                .AddButton(GetLocalizedString("interface_lobby_swap_players"), () =>
+                {
+                    SteamLobbySession.Instance.SwapPlayers();
+                }, true).SetId("HostSwapPlayersButton")
+                .AddButton(GetLocalizedString("interface_lobby_start"), () => { }, true).SetId("HostStartButton")
+                .AddButton(GetLocalizedString("interface_lobby_exit"), () =>
+                {
+                    SteamLobbySession.Instance.LeaveLobby();
+                    // We are closing the lobby flow; Back from server list should go to Duel menu (not back into lobby).
+                    _menuManager.PopHistoryUntil(_playPanelDuel);
+                    _menuManager.ChangePanel(_playPanelDuelOnline, pushToHistory: false);
+                }, true).SetId("HostExitLobbyButton")
+                .Build();
+            BindMutatorButton(_playPanelDuelOnlineHostLobby, "HostLobbySelector");
+
+            _playPanelDuelOnlineJoinLobby = _menuManager.CreatePanel(GetLocalizedString("interface_online_join_lobby_title"), widePanelPrefab)
+                .AddCustomElement(gameModeSelectorPrefab).SetId("ClientLobbySelector")
+                .AddButton(GetLocalizedString("interface_lobby_ready"), () =>
+                {
+                    SteamLobbySession.Instance.SetReady(true);
+                    // Keep the panel open; host will see Start enabled.
+                }, true).SetId("ClientReadyButton")
+                .AddButton(GetLocalizedString("interface_lobby_exit"), () =>
+                {
+                    SteamLobbySession.Instance.LeaveLobby();
+                    _menuManager.PopHistoryUntil(_playPanelDuel);
+                    _menuManager.ChangePanel(_playPanelDuelOnline, pushToHistory: false);
+                }, true).SetId("ClientExitLobbyButton")
+                .Build();
+            BindMutatorButton(_playPanelDuelOnlineJoinLobby, "ClientLobbySelector");
+
+            _playPanelDuelOnline = _menuManager.CreatePanel(GetLocalizedString("menu_play_duel_online"), widePanelPrefab)
+                // Extra top margin so the panel header/banner doesn't overlap the table header.
+                .AddSpacer(50f)
+                .AddCustomElement(onlineSessionsTablePrefab,
+                    new Interface.Element.GUITable.InitArgs(
+                        rows: new List<Interface.Element.GUITable.RowData>()))
+                    .SetId("OnlineSessionsTable")
+                .AddButton(GetLocalizedString("interface_table_join"), () =>
+                {
+                    var table = _playPanelDuelOnline.GetElementByID("OnlineSessionsTable") as Interface.Element.GUITable;
+                    if (table == null || !table.HasSelection) return;
+
+                    if (ulong.TryParse(table.SelectedIp, out var lobbyId))
+                    {
+                        SteamLobbySession.Instance.JoinLobby(lobbyId);
+                        _menuManager.ChangePanel(_playPanelDuelOnlineJoinLobby);
+                    }
+                }, true).SetId("OnlineJoinButton")
+                .AddButton(GetLocalizedString("interface_table_host"), () =>
+                {
+                    _menuManager.ChangePanel(_playPanelDuelOnlineHostSetup);
+                }, true).SetId("OnlineHostButton")
+                .AddBackButton()
+                .Build();
+
+            // Wire selection => enable Join button (debug step - action will be added later)
+            if (_playPanelDuelOnline != null)
+            {
+                var table = _playPanelDuelOnline.GetElementByID("OnlineSessionsTable") as Interface.Element.GUITable;
+                var joinButton = _playPanelDuelOnline.GetElementByID("OnlineJoinButton") as Interface.Element.GUIButton;
+                var hostButton = _playPanelDuelOnline.GetElementByID("OnlineHostButton") as Interface.Element.GUIButton;
+
+                if (joinButton != null)
+                {
+                    joinButton.SetDisabled(true);
+                }
+
+                if (table != null && joinButton != null)
+                {
+                    // Start background lobby refresh while this panel is visible (component stops when table is disabled).
+                    var lobbyBrowser = table.GetComponent<SteamLobbyBrowser>() ?? table.gameObject.AddComponent<SteamLobbyBrowser>();
+                    lobbyBrowser.Bind(table);
+                    table.OnRefreshRequested += lobbyBrowser.RefreshNow;
+
+                    table.OnRowSelected += _ =>
+                    {
+                        if (joinButton != null)
+                        {
+                            joinButton.SetDisabled(false);
+                        }
+                    };
+                }
+            }
+
+            // Lobby UI binders and button states
+            {
+                var hostSelector = _playPanelDuelOnlineHostLobby.GetElementByID("HostLobbySelector") as GUICustomElement_GameModeSelector;
+                if (hostSelector != null)
+                {
+                    var binder = hostSelector.GetComponent<SteamLobbyRoomBinder>() ?? hostSelector.gameObject.AddComponent<SteamLobbyRoomBinder>();
+                    binder.Configure(hostSelector, isHostView: true, availableGameModes: duelGameModes);
+                }
+
+                var clientSelector = _playPanelDuelOnlineJoinLobby.GetElementByID("ClientLobbySelector") as GUICustomElement_GameModeSelector;
+                if (clientSelector != null)
+                {
+                    var binder = clientSelector.GetComponent<SteamLobbyRoomBinder>() ?? clientSelector.gameObject.AddComponent<SteamLobbyRoomBinder>();
+                    binder.Configure(clientSelector, isHostView: false, availableGameModes: duelGameModes);
+                }
+
+                var startBtn = _playPanelDuelOnlineHostLobby.GetElementByID("HostStartButton") as Interface.Element.GUIButton;
+                if (startBtn != null)
+                {
+                    startBtn.SetDisabled(true);
+                    void UpdateStart()
+                    {
+                        bool canStart = SteamLobbySession.Instance.CanHostStart();
+                        startBtn.SetDisabled(!canStart);
+                    }
+                    SteamLobbySession.Instance.OnMembersChanged += UpdateStart;
+                    SteamLobbySession.Instance.OnStateChanged += UpdateStart;
+                    SteamLobbySession.Instance.OnLobbyDataChanged += UpdateStart;
+                    UpdateStart();
+
+                    // IMPORTANT: Start must go through GameManager.PlayGame (scene load + GameInspector), then
+                    // OnlineAgentController(s) will be created in GameManager.CreateAgentController.
+                    startBtn.SetOnClick(() =>
+                    {
+                        if (!TryBuildHostOnlinePlaySettings(out var pgs, out var onlinePlayerType))
+                            return;
+
+                        // Send start request to client via lobby data so it can also load the same session.
+                        var day = System.DayOfWeek.Monday.SelectRandom();
+                        int startNonce = SteamLobbySession.Instance.HostRequestStart(
+                            mapScene: (int)GameSceneManager.SceneType.GamePlay_Duel,
+                            dayOfWeek: (int)day);
+
+                        GameSystems.Steam.Scripts.SteamOnlineStartCoordinator.Instance.ResetForNewSession();
+                        GameSystems.Steam.Scripts.SteamOnlineStartCoordinator.Instance.SetLocalStartNonce(startNonce);
+
+                        // Ensure host uses the same map/day stored in lobby data.
+                        pgs.day = day;
+                        pgs.map = GameSceneManager.SceneType.GamePlay_Duel;
+
+                        GameManager.PlayGame(
+                            gameMode: pgs.gameMode,
+                            map: pgs.map,
+                            day: pgs.day,
+                            playerTypeForStory: pgs.playerTypeForStory,
+                            rabbitControlAgent: pgs.GetPlayerControlAgent(PlayerType.Rabbit),
+                            moleControlAgent: pgs.GetPlayerControlAgent(PlayerType.Mole),
+                            aiIntelligence: pgs.aiIntelligence,
+                            onlineConfig: pgs.onlineConfig);
+                    });
+                }
+
+                var readyBtn = _playPanelDuelOnlineJoinLobby.GetElementByID("ClientReadyButton") as Interface.Element.GUIButton;
+                if (readyBtn != null)
+                {
+                    void UpdateClientReadyButton()
+                    {
+                        var session = SteamLobbySession.Instance;
+                        if (!session.IsInLobby || session.IsHost)
+                        {
+                            readyBtn.SetDisabled(true);
+                            return;
+                        }
+
+                        // If roles changed since last Ready, Ready must be enabled again.
+                        bool rolesKnown = session.TryGetRolesNonce(out int rolesNonce) && rolesNonce > 0;
+#if !DISABLESTEAMWORKS
+                        // Read local member data directly (only local can set it).
+                        try
+                        {
+                            var lobby = new Steamworks.CSteamID(session.CurrentLobbyId);
+                            var local = Steamworks.SteamUser.GetSteamID();
+                            var v = Steamworks.SteamMatchmaking.GetLobbyMemberData(lobby, local, SteamLobbySession.MemberData_ReadyRolesNonce) ?? "0";
+                            int.TryParse(v, out int readyNonce);
+                            bool isReadyForRoles = rolesKnown && readyNonce == rolesNonce;
+                            readyBtn.SetDisabled(isReadyForRoles);
+                        }
+                        catch
+                        {
+                            readyBtn.SetDisabled(false);
+                        }
+#else
+                        readyBtn.SetDisabled(false);
+#endif
+                    }
+
+                    // Disable after clicking once (no unready yet). Ready notifies host and stays in lobby panel.
+                    readyBtn.SetOnClick(() =>
+                    {
+                        SteamLobbySession.Instance.SetReady(true);
+                        UpdateClientReadyButton();
+                    });
+
+                    SteamLobbySession.Instance.OnLobbyDataChanged += UpdateClientReadyButton; // role swap increments roles nonce
+                    SteamLobbySession.Instance.OnStateChanged += UpdateClientReadyButton;
+                    SteamLobbySession.Instance.OnMembersChanged += UpdateClientReadyButton;
+                    UpdateClientReadyButton();
+                }
+            }
+
+            // Client-side: when host publishes start_nonce, auto-start loading the gameplay scene.
+            // (Client is in lobby but currently looking at server list after pressing Ready.)
+            {
+                int lastSeenStartNonce = 0;
+                void TryClientStartFromLobby()
+                {
+                    var session = SteamLobbySession.Instance;
+                    if (!session.IsInLobby || session.IsHost)
+                        return;
+
+                    if (!session.TryGetStartNonce(out int startNonce) || startNonce <= 0)
+                        return;
+
+                    if (startNonce == lastSeenStartNonce)
+                        return;
+
+                    // Only react to host request, not to begin_nonce updates.
+                    if (session.TryGetBeginNonce(out int beginNonce) && beginNonce == startNonce)
+                        return;
+
+                    lastSeenStartNonce = startNonce;
+
+                    if (!TryBuildClientOnlinePlaySettings(out var clientPgs))
+                        return;
+
+                    GameSystems.Steam.Scripts.SteamOnlineStartCoordinator.Instance.ResetForNewSession();
+                    GameSystems.Steam.Scripts.SteamOnlineStartCoordinator.Instance.SetLocalStartNonce(startNonce);
+
+                    GameManager.PlayGame(
+                        gameMode: clientPgs.gameMode,
+                        map: clientPgs.map,
+                        day: clientPgs.day,
+                        playerTypeForStory: clientPgs.playerTypeForStory,
+                        rabbitControlAgent: clientPgs.GetPlayerControlAgent(PlayerType.Rabbit),
+                        moleControlAgent: clientPgs.GetPlayerControlAgent(PlayerType.Mole),
+                        aiIntelligence: clientPgs.aiIntelligence,
+                        onlineConfig: clientPgs.onlineConfig);
+                }
+
+                SteamLobbySession.Instance.OnLobbyDataChanged += TryClientStartFromLobby;
+                SteamLobbySession.Instance.OnStateChanged += TryClientStartFromLobby;
+            }
 
             _playPanelDuel = _menuManager.CreatePanel(GetLocalizedString("menu_play_duel"))
                 .AddButton(GetLocalizedString("button_play_duel_local_solo"), _playPanelDuelLocalSolo)
@@ -376,6 +863,20 @@ namespace RabbitVsMole
         private void OnDestroy()
         {
             LocalizationSettings.SelectedLocaleChanged -= OnLanguageChanged;
+            if (_mutatorSelectorElement != null)
+            {
+                _mutatorSelectorElement.AcceptClicked -= OnMutatorAcceptClicked;
+                _mutatorSelectorElement.BackClicked -= OnMutatorBackClicked;
+            }
+
+            foreach (var selector in _mutatorAwareSelectors)
+            {
+                if (selector != null)
+                {
+                    selector.MutatorConfigRequested -= OnMutatorConfigRequested;
+                }
+            }
+            _mutatorAwareSelectors.Clear();
         }
 
         private List<string> PrepareCredits()

@@ -16,8 +16,10 @@ namespace RabbitVsMole
             public GameSceneManager.SceneType map;
             public DayOfWeek day;
             public PlayerType playerTypeForStory;
+            public int aiIntelligence; // 0..100
             public Dictionary<PlayerType, PlayerControlAgent> playerControlAgent;
             public Dictionary<PlayerType, bool> playerGamepadUsing;
+            public OnlineConfig onlineConfig;
 
             public readonly bool IsAllHumanAgents => playerControlAgent.Select(kv => kv.Value).All(v => v == PlayerControlAgent.Human);
 
@@ -27,18 +29,22 @@ namespace RabbitVsMole
                 DayOfWeek day,
                 PlayerType playerTypeForStory,
                 PlayerControlAgent rabbitControlAgent,
-                PlayerControlAgent moleControlAgent)
+                PlayerControlAgent moleControlAgent,
+                int aiIntelligence = 90,
+                OnlineConfig onlineConfig = default)
             {
                 this.gameMode = gameMode;
                 this.map = map;
                 this.day = day;
                 this.playerTypeForStory = playerTypeForStory;
+                this.aiIntelligence = aiIntelligence;
                 this.playerGamepadUsing = new Dictionary<PlayerType, bool>().PopulateWithEnumValues();
                 this.playerControlAgent = new Dictionary<PlayerType, PlayerControlAgent>()
                         {
                             { PlayerType.Rabbit, rabbitControlAgent },
                             { PlayerType.Mole, moleControlAgent }
                         };
+                this.onlineConfig = onlineConfig.IsDefined ? onlineConfig : OnlineConfig.Offline;
             }
 
             public void AddMutator(MutatorSO mutatorSO) =>
@@ -86,7 +92,32 @@ namespace RabbitVsMole
             }
             public string ToStringDebug()
             {
-                return $"PlayGameSettings: GameMode={gameMode}, Map={map}, Day={day}, PlayerTypeForStory={playerTypeForStory}, RabbitControlAgent={GetPlayerControlAgent(PlayerType.Rabbit)}, MoleControlAgent={GetPlayerControlAgent(PlayerType.Mole)}, RabbitGamepadUsing={playerGamepadUsing[PlayerType.Rabbit]}, MoleGamepadUsing={playerGamepadUsing[PlayerType.Mole]}";
+                return $"PlayGameSettings: GameMode={gameMode}, Map={map}, Day={day}, PlayerTypeForStory={playerTypeForStory}, AIIntelligence={aiIntelligence}, RabbitControlAgent={GetPlayerControlAgent(PlayerType.Rabbit)}, MoleControlAgent={GetPlayerControlAgent(PlayerType.Mole)}, RabbitGamepadUsing={playerGamepadUsing[PlayerType.Rabbit]}, MoleGamepadUsing={playerGamepadUsing[PlayerType.Mole]}, OnlineEnabled={onlineConfig.IsOnline}, OnlineHost={onlineConfig.IsHost}, OnlineLobby={onlineConfig.LobbyId}, OnlineRemote={onlineConfig.RemoteSteamId}";
+            }
+
+            public readonly struct OnlineConfig
+            {
+                public readonly bool IsOnline;
+                public readonly bool IsHost;
+                public readonly ulong LobbyId;
+                public readonly ulong RemoteSteamId;
+                public bool IsDefined => IsOnline || IsHost || LobbyId != 0 || RemoteSteamId != 0;
+
+                public static OnlineConfig Offline => new OnlineConfig(false, false, 0, 0);
+
+                public OnlineConfig(bool isOnline, bool isHost, ulong lobbyId, ulong remoteSteamId)
+                {
+                    IsOnline = isOnline;
+                    IsHost = isHost;
+                    LobbyId = lobbyId;
+                    RemoteSteamId = remoteSteamId;
+                }
+
+                public static OnlineConfig CreateHost(ulong lobbyId, ulong remoteSteamId) =>
+                    new OnlineConfig(true, true, lobbyId, remoteSteamId);
+
+                public static OnlineConfig CreateClient(ulong lobbyId, ulong remoteSteamId) =>
+                    new OnlineConfig(true, false, lobbyId, remoteSteamId);
             }
         }
     }

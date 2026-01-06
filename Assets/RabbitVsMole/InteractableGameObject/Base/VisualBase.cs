@@ -490,5 +490,31 @@ namespace RabbitVsMole.InteractableGameObject.Base
                 _ => linearT,
             };
         }
+
+        /// <summary>
+        /// Sets the current animation progress instantly (0-1) and applies the eased transform to models.
+        /// Useful for network sync of growing visuals (e.g., carrot growth).
+        /// </summary>
+        public void SetProgressNormalized(float progress)
+        {
+            progress = Mathf.Clamp01(progress);
+
+            if (_scaleElements == null || _scaleElements.Count == 0)
+            {
+                InitializeScaleElements();
+            }
+
+            foreach (var element in _scaleElements)
+            {
+                element.CurrentProgress = progress;
+                var eased = ApplyEasing(progress);
+                element.Model.localScale = Vector3.Lerp(Vector3.zero, element.OriginalScale, eased);
+                element.Model.localPosition = element.OriginalPosition;
+                element.Model.localRotation = element.TargetRotation;
+            }
+
+            _currentProgress = progress;
+            _isReady = progress >= 1f;
+        }
     }
 }

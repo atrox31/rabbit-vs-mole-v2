@@ -654,11 +654,11 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         source.maxDistance = 50.0f;
 
         source.Play();
-        
+        /*
         DebugHelper.Log(this, $"PlaySoundAtPosition: Started playing '{clip.name}' on channel {channel}, " +
             $"spatialBlend={source.spatialBlend}, volume={source.volume}, isPlaying={source.isPlaying}, " +
             $"mixerGroup={(source.outputAudioMixerGroup != null ? source.outputAudioMixerGroup.name : "NULL")}");
-
+        */
         // Return to pool after it's done
         StartCoroutine(ReturnSourceToPool(source, clip.length));
     }

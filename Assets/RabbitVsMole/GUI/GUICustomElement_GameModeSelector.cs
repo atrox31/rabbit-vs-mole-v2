@@ -1,15 +1,38 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Localization;
 using UnityEngine.Localization.Components;
+using Interface.Element;
+using RabbitVsMole.GameData.Mutator;
 
 namespace RabbitVsMole
 {
     public partial class GUICustomElement_GameModeSelector : Interface.Element.LocalizedElementBase
     {
+        private const int DEFAULT_AI_INTELLIGENCE = 90;
+        private int _aiIntelligence = DEFAULT_AI_INTELLIGENCE; // 0..100
+
+        public readonly struct InitArgs
+        {
+            public readonly List<GameModeData> GameModes;
+            public readonly bool ShowAiSlider;
+
+            public InitArgs(List<GameModeData> gameModes, bool showAiSlider)
+            {
+                GameModes = gameModes ?? new List<GameModeData>();
+                ShowAiSlider = showAiSlider;
+            }
+
+            public InitArgs(GameModeData[] gameModes, bool showAiSlider)
+            {
+                GameModes = gameModes != null ? new List<GameModeData>(gameModes) : new List<GameModeData>();
+                ShowAiSlider = showAiSlider;
+            }
+        }
 
         [Header("Game Mode Selector References")]
         [SerializeField] private ScrollRect _gameModeScrollView;
@@ -17,6 +40,9 @@ namespace RabbitVsMole
         [SerializeField] private Image _gameModeBackgroundImage;
         [SerializeField] private TextMeshProUGUI _gameModeDescriptionText;
         [SerializeField] private TextMeshProUGUI _gameModeConfigurationText;
+        [SerializeField] private GUISlider _gameModeAiLevelSlider;
+        [SerializeField] private GameObject _selectedMutatorIconTemplate;
+        [SerializeField] private RectTransform _selectedIconsContainer;
 
         [Header("Button Template")]
         [SerializeField] private GameObject _gameModeButtonTemplate;
@@ -25,13 +51,18 @@ namespace RabbitVsMole
         [SerializeField] private AudioClip _showSound;
         [SerializeField] private AudioClip _hideSound;
 
+        [Header("Mutator selector")]
+        [SerializeField] private Button _mutatorConfigButton;
+
         [Header("Layout Settings")]
         [SerializeField] private float _buttonSpacing = 10f;
         [SerializeField] private bool _allowAnchorModificationOverride = false;
 
         private List<GameModeData> _gameModes = new List<GameModeData>();
         private List<Button> _createdButtons = new List<Button>();
+        private readonly List<Button> _selectedMutatorIconButtons = new();
         private int _selectedIndex = 0;
+        private bool _showAiSliderContext;
         
         private LocalizeStringEvent _descriptionLocalizeEvent;
         private LocalizeStringEvent _configurationLocalizeEvent;
@@ -40,15 +71,44 @@ namespace RabbitVsMole
 
         public int SelectedIndex => _selectedIndex;
 
+        public int GetSelectedAiIntelligence() => Mathf.Clamp(_aiIntelligence, 0, 100);
+
+        public event Action<GUICustomElement_GameModeSelector, GameModeData, List<MutatorSO>> MutatorConfigRequested;
+
+        private void OnEnable()
+        {
+            // Safety: if someone toggles the slider active in prefab/scene, keep it consistent with context.
+            UpdateAiSliderVisibility();
+        }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            // In editor there is no runtime context (InitArgs), so default to hidden unless explicitly enabled at runtime.
+            if (!UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                _showAiSliderContext = false;
+                UpdateAiSliderVisibility();
+            }
+        }
+#endif
+
         public override void InitializeWithArgument(object argument)
         {
-            if (argument is List<GameModeData> gameModes)
+            if (argument is InitArgs initArgs)
+            {
+                _gameModes = initArgs.GameModes ?? new List<GameModeData>();
+                _showAiSliderContext = initArgs.ShowAiSlider;
+            }
+            else if (argument is List<GameModeData> gameModes)
             {
                 _gameModes = gameModes;
+                _showAiSliderContext = false;
             }
             else if (argument is GameModeData[] gameModesArray)
             {
                 _gameModes = new List<GameModeData>(gameModesArray);
+                _showAiSliderContext = false;
             }
             else
             {
@@ -67,6 +127,9 @@ namespace RabbitVsMole
                     SelectMode(0);
                 }
             }
+
+            UpdateAiSliderVisibility();
+            SetupAiSliderIfNeeded();
         }
 
         public GameModeData GetSelectedGameMode()
@@ -119,9 +182,43 @@ namespace RabbitVsMole
                 SelectMode(0);
             }
 
+            UpdateAiSliderVisibility();
+            SetupAiSliderIfNeeded();
+
             FixCustomElementLayout();
+            HideSelectedMutatorTemplate();
+            SetupSelectedIconsLayout();
+            WireMutatorConfigButton();
+            RefreshSelectedMutatorIcons(GetSelectedGameMode());
 
             AudioManager.PreloadClips(_showSound, _hideSound);
+        }
+
+        private void UpdateAiSliderVisibility()
+        {
+            if (_gameModeAiLevelSlider == null) return;
+
+            // Slider ma być widoczny tylko w miejscach, które jawnie na to pozwalają (np. Duel Local Solo).
+            _gameModeAiLevelSlider.gameObject.SetActive(_showAiSliderContext);
+        }
+
+        private void SetupAiSliderIfNeeded()
+        {
+            if (_gameModeAiLevelSlider == null) return;
+            if (!_showAiSliderContext) return;
+
+            // Localization key: label_ai_level (table: Interface)
+            var localizedLabel = new LocalizedString("Interface", "label_ai_level");
+            _gameModeAiLevelSlider.Initialize(
+                localizedLabel: localizedLabel,
+                onValueChanged: OnAiSliderChanged,
+                getCurrentValue: () => Mathf.Clamp01(_aiIntelligence / 100f),
+                valueFormatter: v => Mathf.RoundToInt(Mathf.Clamp01(v) * 100f).ToString());
+        }
+
+        private void OnAiSliderChanged(float slider01)
+        {
+            _aiIntelligence = Mathf.RoundToInt(Mathf.Clamp01(slider01) * 100f);
         }
 
         public void FixCustomElementLayout()
@@ -376,6 +473,8 @@ namespace RabbitVsMole
                     _gameModeConfigurationText.text = "";
                 }
             }
+
+            RefreshSelectedMutatorIcons(selectedMode);
         }
 
         private new void OnDestroy()
@@ -399,6 +498,161 @@ namespace RabbitVsMole
             {
                 _configurationLocalizeEvent.OnUpdateString.RemoveAllListeners();
             }
+
+            if (_mutatorConfigButton != null)
+            {
+                _mutatorConfigButton.onClick.RemoveListener(OnMutatorConfigClicked);
+            }
+
+            foreach (var btn in _selectedMutatorIconButtons)
+            {
+                if (btn != null)
+                {
+                    btn.onClick.RemoveAllListeners();
+                }
+            }
+        }
+
+        private void WireMutatorConfigButton()
+        {
+            if (_mutatorConfigButton == null) return;
+            _mutatorConfigButton.onClick.RemoveListener(OnMutatorConfigClicked);
+            _mutatorConfigButton.onClick.AddListener(OnMutatorConfigClicked);
+        }
+
+        private void OnMutatorConfigClicked()
+        {
+            var currentMode = GetSelectedGameMode();
+            if (currentMode == null)
+            {
+                DebugHelper.LogWarning(this, "GameModeSelector: No selected game mode for mutator config.");
+                return;
+            }
+
+            var currentSelection = currentMode.mutators != null
+                ? currentMode.mutators.Where(m => m != null).ToList()
+                : new List<MutatorSO>();
+
+            MutatorConfigRequested?.Invoke(this, currentMode, currentSelection);
+        }
+
+        private void HideSelectedMutatorTemplate()
+        {
+            if (_selectedMutatorIconTemplate == null) return;
+            _selectedMutatorIconTemplate.SetActive(false);
+            _selectedMutatorIconTemplate.transform.position = new Vector3(10000, 10000, 0);
+        }
+
+        private void SetupSelectedIconsLayout()
+        {
+            if (_selectedIconsContainer == null && _selectedMutatorIconTemplate != null)
+            {
+                _selectedIconsContainer = _selectedMutatorIconTemplate.transform.parent as RectTransform;
+            }
+
+            if (_selectedIconsContainer == null)
+            {
+                DebugHelper.LogWarning(this, "GameModeSelector: Selected icons container is not assigned.");
+                return;
+            }
+
+            HorizontalLayoutGroup layoutGroup = _selectedIconsContainer.GetComponent<HorizontalLayoutGroup>();
+            if (layoutGroup == null)
+            {
+                layoutGroup = _selectedIconsContainer.gameObject.AddComponent<HorizontalLayoutGroup>();
+            }
+            layoutGroup.spacing = _buttonSpacing;
+            layoutGroup.childControlWidth = false;
+            layoutGroup.childControlHeight = false;
+            layoutGroup.childForceExpandWidth = false;
+            layoutGroup.childForceExpandHeight = false;
+
+            ContentSizeFitter sizeFitter = _selectedIconsContainer.GetComponent<ContentSizeFitter>();
+            if (sizeFitter == null)
+            {
+                sizeFitter = _selectedIconsContainer.gameObject.AddComponent<ContentSizeFitter>();
+            }
+            sizeFitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+        }
+
+        private void ClearSelectedMutatorIcons()
+        {
+            foreach (var btn in _selectedMutatorIconButtons)
+            {
+                if (btn != null)
+                {
+                    Destroy(btn.gameObject);
+                }
+            }
+            _selectedMutatorIconButtons.Clear();
+        }
+
+        private void RefreshSelectedMutatorIcons(GameModeData selectedMode)
+        {
+            ClearSelectedMutatorIcons();
+
+            if (_selectedIconsContainer == null || _selectedMutatorIconTemplate == null)
+            {
+                DebugHelper.LogWarning(this, "GameModeSelector: Missing selected mutator template or container, cannot render icons.");
+                return;
+            }
+
+            var mutators = selectedMode?.mutators;
+            if (mutators == null || mutators.Count == 0)
+                return;
+
+            foreach (var mutator in mutators)
+            {
+                if (mutator == null)
+                    continue;
+
+                GameObject iconObj = Instantiate(_selectedMutatorIconTemplate, _selectedIconsContainer);
+                iconObj.SetActive(true);
+
+                Button button = iconObj.GetComponent<Button>() ?? iconObj.GetComponentInChildren<Button>();
+                if (button != null)
+                {
+                    MutatorSO captured = mutator;
+                    button.onClick.AddListener(() => MutatorConfigRequested?.Invoke(this, selectedMode, selectedMode.mutators?.Where(m => m != null).ToList() ?? new List<MutatorSO>()));
+                    _selectedMutatorIconButtons.Add(button);
+                }
+
+                Image image = iconObj.GetComponent<Image>() ?? iconObj.GetComponentInChildren<Image>();
+                if (image != null)
+                {
+                    image.sprite = mutator.image;
+                    image.enabled = mutator.image != null;
+                }
+
+                TextMeshProUGUI label = iconObj.GetComponentInChildren<TextMeshProUGUI>();
+                if (label != null)
+                {
+                    LocalizeStringEvent le = label.GetComponent<LocalizeStringEvent>();
+                    if (le != null)
+                    {
+                        le.StringReference = null;
+                        le.OnUpdateString.RemoveAllListeners();
+                    }
+                    label.text = mutator.GetLocalizedName() ?? mutator.name;
+                }
+            }
+        }
+
+        public void ApplyMutatorsToSelectedMode(IEnumerable<MutatorSO> mutators)
+        {
+            var selectedMode = GetSelectedGameMode();
+            if (selectedMode == null)
+            {
+                DebugHelper.LogWarning(this, "GameModeSelector: Cannot apply mutators, no mode selected.");
+                return;
+            }
+
+            var safeList = mutators != null
+                ? mutators.Where(m => m != null).ToList()
+                : new List<MutatorSO>();
+
+            selectedMode.mutators = safeList;
+            RefreshSelectedMutatorIcons(selectedMode);
         }
     }
 

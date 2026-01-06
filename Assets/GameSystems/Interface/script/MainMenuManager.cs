@@ -25,8 +25,8 @@ namespace Interface
         [SerializeField] private GameObject _labelPrefab;
 
         [Header("Steam")]
-        [SerializeField] private SteamAvatar _avatarPrefab;
-        public SteamAvatar SteamAvatar { get { return _avatarPrefab; } private set { _avatarPrefab = value; }}
+        [SerializeField] private SteamAvatar _steamAvatar;
+        public SteamAvatar SteamAvatar { get { return _steamAvatar; } private set { _steamAvatar = value; }}
 
         [Header("Settings")]
         [SerializeField] private Transform _panelsParent;
@@ -188,25 +188,34 @@ namespace Interface
                 return;
             }
 
-            ChangePanel(_panels[panelName]);
+            ChangePanel(_panels[panelName], pushToHistory: true);
         }
 
         public void ChangePanel(GUIPanel panel)
         {
+            ChangePanel(panel, pushToHistory: true);
+        }
+
+        /// <summary>
+        /// Change the visible panel. By default, the current panel is pushed to history (Back will return to it).
+        /// Use pushToHistory=false for "return to list"/"close modal" style navigation.
+        /// </summary>
+        public void ChangePanel(GUIPanel panel, bool pushToHistory)
+        {
             if (panel == null) return;
-            
+
             // If panel is already current and visible, don't change
             if (panel == _currentPanel && panel.IsVisible && !panel.IsAnimating)
             {
-                return; 
-            }
-            
-            if (_currentPanel != null && _currentPanel.IsAnimating)
-            {
-                return; 
+                return;
             }
 
-            StartCoroutine(ChangePanelCoroutine(panel));
+            if (_currentPanel != null && _currentPanel.IsAnimating)
+            {
+                return;
+            }
+
+            StartCoroutine(ChangePanelCoroutine(panel, pushToHistory));
         }
 
         public void ClosePanel(GUIPanel panel)
@@ -222,12 +231,15 @@ namespace Interface
             panel.HidePanel();
         }
 
-        private IEnumerator ChangePanelCoroutine(GUIPanel newPanel)
+        private IEnumerator ChangePanelCoroutine(GUIPanel newPanel, bool pushToHistory)
         {
             if (_currentPanel != null && _currentPanel != newPanel)
             {
                 GUIPanel panelToHide = _currentPanel;
-                _panelHistory.Push(panelToHide);
+                if (pushToHistory)
+                {
+                    _panelHistory.Push(panelToHide);
+                }
                 panelToHide.HidePanel();
                 
                 // Wait for animation to complete using unscaled time
@@ -244,6 +256,35 @@ namespace Interface
             newPanel?.ShowPanel();
             yield return null;
             _eventSystem.SetSelectedGameObject(newPanel?.GetFirstButton());
+        }
+
+        /// <summary>
+        /// Pops history entries until <paramref name="target"/> becomes the top entry.
+        /// Useful to prevent Back returning to "stale" panels (e.g., after closing a lobby modal).
+        /// </summary>
+        public void PopHistoryUntil(GUIPanel target)
+        {
+            if (target == null) return;
+            while (_panelHistory.Count > 0 && _panelHistory.Peek() != target)
+            {
+                _panelHistory.Pop();
+            }
+        }
+
+        /// <summary>
+        /// Clears and seeds the panel history so Back navigation works from a known path.
+        /// Provide panels from root -> ... -> parentOfCurrent (do NOT include current panel).
+        /// </summary>
+        public void SeedHistory(params GUIPanel[] panels)
+        {
+            _panelHistory.Clear();
+            if (panels == null) return;
+            // Stack top should be the immediate previous panel.
+            for (int i = 0; i < panels.Length; i++)
+            {
+                if (panels[i] != null)
+                    _panelHistory.Push(panels[i]);
+            }
         }
 
         public void OnCancel(BaseEventData eventData)

@@ -1,4 +1,3 @@
-using DebugTools;
 using GameSystems;
 using PlayerManagementSystem;
 using RabbitVsMole.Events;
@@ -32,6 +31,7 @@ namespace RabbitVsMole
         private PlayerType _currentPlayerOnStory;
         private PlayerControlAgent _rabbitControlAgent;
         private PlayerControlAgent _moleControlAgent;
+        private GameManager.PlayGameSettings.OnlineConfig _onlineConfig;
         private readonly int[] _carrotCount = new int[Enum.GetValues(typeof(PlayerType)).Length];
         private Coroutine _gameTimerCoroutine;
         public int CurrentGameTime { get; private set; } = 0;
@@ -43,6 +43,8 @@ namespace RabbitVsMole
         public PlayerType CurrentPlayerOnStory => _currentPlayerOnStory;
         public PlayerControlAgent RabbitControlAgent => _rabbitControlAgent;
         public PlayerControlAgent MoleControlAgent => _moleControlAgent;
+        public bool IsOnlineSession => _onlineConfig.IsOnline;
+        public bool IsOnlineHost => _onlineConfig.IsOnline && _onlineConfig.IsHost;
         public int RabbitCarrotCount => _carrotCount[(int)PlayerType.Rabbit];
         public int MoleCarrotCount => _carrotCount[(int)PlayerType.Mole];
         public bool IsSplitScreen => _rabbitControlAgent == PlayerControlAgent.Human && 
@@ -74,6 +76,7 @@ namespace RabbitVsMole
             _currentPlayerOnStory = playGameSettings.playerTypeForStory;
             _rabbitControlAgent = playGameSettings.GetPlayerControlAgent(PlayerType.Rabbit);
             _moleControlAgent = playGameSettings.GetPlayerControlAgent(PlayerType.Mole);
+            _onlineConfig = playGameSettings.onlineConfig;
         }
 
         private void Start()
@@ -102,8 +105,20 @@ namespace RabbitVsMole
             _gameUIInstance = Instantiate(gameUIPrefab).GetComponent<GameUI>();
             if (GameStats.SystemShowInventoryOnStart)
             {
-                GameUI.SetInventoryVisible(PlayerType.Rabbit, RabbitControlAgent == PlayerControlAgent.Human);
-                GameUI.SetInventoryVisible(PlayerType.Mole, MoleControlAgent == PlayerControlAgent.Human);
+                bool ShowLocalInventory(PlayerType playerType, PlayerControlAgent agent)
+                {
+                    if (agent == PlayerControlAgent.Human)
+                        return true;
+
+                    // Online: local player may be driven by OnlineAgentController (client), still should see inventory.
+                    if (_onlineConfig.IsOnline && agent == PlayerControlAgent.Online && playerType == _currentPlayerOnStory)
+                        return true;
+
+                    return false;
+                }
+
+                GameUI.SetInventoryVisible(PlayerType.Rabbit, ShowLocalInventory(PlayerType.Rabbit, RabbitControlAgent));
+                GameUI.SetInventoryVisible(PlayerType.Mole, ShowLocalInventory(PlayerType.Mole, MoleControlAgent));
             }
         }
 

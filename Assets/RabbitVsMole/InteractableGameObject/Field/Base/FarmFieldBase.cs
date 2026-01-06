@@ -57,6 +57,18 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
             }
         }
 
+        public float GetWaterLevel() => WaterLevel;
+        public float GetCarrotProgressNormalized() => _farmCarrotVisual != null ? _farmCarrotVisual.Progress : 0f;
+
+        internal void SetWaterLevelFromNetwork(float value) => WaterLevel = value;
+        internal void SetCarrotProgressFromNetwork(float progress)
+        {
+            if (_farmCarrotVisual == null)
+                return;
+
+            _farmCarrotVisual.SetProgressNormalized(progress);
+        }
+
         private void RefreshWaterMesh(bool haveWater) =>
             _modelMeshFilter.mesh = haveWater 
                 ? _meshWaterLevel1 
@@ -209,10 +221,10 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
         {
             WaterLevel -= GameManager.CurrentGameStats.FarmFieldWaterDrainPerSec;
 
-            if (State is FarmFieldRooted)
+            if (State is FarmFieldRooted && (!Online.OnlineAuthority.IsOnline || Online.OnlineAuthority.IsHost))
                 HandleRoots();
         }
-
+#if UNITY_EDITOR
         StringBuilder sb = new StringBuilder();
         private void OnDrawGizmos()
         {
@@ -260,7 +272,7 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
 
             Handles.EndGUI();
         }
-
+#endif
         float rootSpreadCounter = 0f;
         private void HandleRoots()
         {
@@ -332,8 +344,15 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
             return neighborsList;
         }
 
-        internal void AddWater(float value) =>
+        internal void AddWater(float value)
+        {
             WaterLevel += value;
+
+            if (Online.OnlineAuthority.IsOnline && Online.OnlineAuthority.IsHost)
+            {
+                Online.OnlineAuthority.NotifyHostFieldStateChanged(this, _fieldState);
+            }
+        }
 
         internal void DestroyCarrot()
         {

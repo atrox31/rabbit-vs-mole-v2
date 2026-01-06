@@ -35,7 +35,7 @@ namespace RabbitVsMole
                 AIConsts.MIN_AGGRO_SPHERE_RADIUS, AIConsts.MAX_AGGRO_SPHERE_RADIUS);
         private float GetAggroModyficator =>
             (AIConsts.AGGRO_INCREASE_RATIO_BY_INTELIIGENCE * _intelligence) * Time.deltaTime;
-        public static void CreateInstance(PlayGameSettings playGameSettings, PlayerType playerType, int intelligence = 90)
+        public static void CreateInstance(PlayGameSettings playGameSettings, PlayerType playerType)
         {
             var prefab = _agentPrefabs.GetPrefab(PlayerControlAgent.Bot);
             var instance = Instantiate(prefab).GetOrAddComponent<BotAgentController>();
@@ -47,7 +47,7 @@ namespace RabbitVsMole
             }
 
             instance._playerType = playerType;
-            instance._intelligence = intelligence;
+            instance._intelligence = playGameSettings.aiIntelligence;
             instance._currentAggroRange = instance.GetDefaultAggroRange;
             if(playGameSettings.gameMode.winCondition == GameModeWinCondition.Cooperation)
                 instance._peace = true;
@@ -59,7 +59,7 @@ namespace RabbitVsMole
                 return;
             }
 
-            if (!instance.SetupBehaviorGraphAgent(intelligence))
+            if (!instance.SetupBehaviorGraphAgent(playGameSettings.aiIntelligence))
             {
                 DebugHelper.LogError(instance, "Failed to initialize BehaviorGraphAgent");
                 Destroy(instance.gameObject);
@@ -184,7 +184,22 @@ namespace RabbitVsMole
                 _ => null
             };
 
+            if (_graphAgent.Graph == null)
+            {
+                DebugHelper.LogError(this, "BehaviorGraph is null (no graph assigned for this bot).");
+                return false;
+            }
+
+            // When assigning Graph at runtime, Unity Behavior auto-initializes during the next Update().
+            // We need the blackboard right away (Start/Update use it), so force initialization now.
+            _graphAgent.Init();
+
             _blackboardReference = _graphAgent.BlackboardReference;
+            if (_blackboardReference == null)
+            {
+                DebugHelper.LogError(this, "BlackboardReference is null after Init(). Is the BehaviorGraph valid/validated?");
+                return false;
+            }
 
             if (!SetVarible<FarmSeedStorage>(_blackboardReference) 
                 || !SetVarible<FarmWaterStorage>(_blackboardReference) 

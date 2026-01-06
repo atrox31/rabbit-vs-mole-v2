@@ -99,6 +99,20 @@ namespace PlayerManagementSystem.Backpack
             return false;
         }
 
+        /// <summary>
+        /// Network/authority update: force set count and publish a single InventoryChangedEvent diff.
+        /// </summary>
+        public void SetCountFromNetwork(int newCount)
+        {
+            newCount = Mathf.Clamp(newCount, 0, Capacity);
+            int old = Count;
+            if (old == newCount)
+                return;
+
+            Count = newCount;
+            SendChangeEvent(newCount - old);
+        }
+
         public BackpackItem(PlayerType playerType, BackpackItemType itemType, int capacity, bool startsFull = false)
         {
             PlayerType = playerType;

@@ -52,6 +52,9 @@ namespace GameSystems.Steam.Scripts
             if (_condition != null && !_condition(e))
                 return;
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            DebugHelper.Log(null, $"[Achievements] Unlock event '{typeof(TEvent).Name}' -> '{_achievementId}'");
+#endif
             _watcher.TryUnlockAchievement(_achievementId);
         }
     }

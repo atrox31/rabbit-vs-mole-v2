@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using UnityEngine;
 
+#if UNITY_EDITOR
+
 public static class DebugHelper
 {
     /// <summary>
@@ -61,3 +63,11 @@ public static class DebugHelper
         UnityEngine.Debug.LogWarning(formattedMessage, sourceObject?.gameObject);
     }
 }
+#else
+public static class DebugHelper
+{
+    public static void LogError(MonoBehaviour sourceObject, string message){}
+    public static void Log(MonoBehaviour sourceObject, string message){}
+    public static void LogWarning(MonoBehaviour sourceObject, string message){}
+}
+#endif

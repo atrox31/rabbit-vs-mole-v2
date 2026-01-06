@@ -11,6 +11,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using System.Linq;
 
 public class GameUI : MonoBehaviour
 {
@@ -72,11 +73,25 @@ public class GameUI : MonoBehaviour
         EventBus.Unsubscribe<CarrotPickEvent>(UpdateCarrots);
     }
 
-    public void ButtonRestartGame() =>
+    public void ButtonRestartGame()
+    {
+        // Online sessions: restart should be disabled.
+        if (GameManager.CurrentGameInspector != null && GameManager.CurrentGameInspector.IsOnlineSession)
+            return;
         GameManager.RestartGame();
+    }
 
-    public void ButtonReturnToMenu() =>
+    public void ButtonReturnToMenu()
+    {
+        if (GameManager.CurrentGameInspector != null && GameManager.CurrentGameInspector.IsOnlineSession)
+        {
+            // Leaving gameplay as client/host: opuść bieżące lobby, wróć na listę lobby.
+            GameSystems.Steam.Scripts.SteamLobbySession.Instance.LeaveLobby();
+            GameManager.GoToOnlineDuelLobbyList();
+            return;
+        }
         GameManager.GoToMainMenu();
+    }
 
     public void ShowGameOverScreen(string text, string title)
     {
@@ -86,9 +101,49 @@ public class GameUI : MonoBehaviour
         _gameOverTitle.text = title;
         _gameOverText.text = text;
 
+        ConfigureGameOverButtonsForOnline();
+
         OnDisable();
         StopAllCoroutines();
         StartCoroutine(AnimateGameOverScreen());
+    }
+
+    private void ConfigureGameOverButtonsForOnline()
+    {
+        if (GameManager.CurrentGameInspector == null || !GameManager.CurrentGameInspector.IsOnlineSession)
+            return;
+        if (_gameOverPanel == null)
+            return;
+
+        var buttons = _gameOverPanel.GetComponentsInChildren<Button>(true);
+        if (buttons == null || buttons.Length == 0)
+            return;
+
+        Button restartBtn = null;
+        Button exitBtn = null;
+
+        foreach (var b in buttons)
+        {
+            if (b == null) continue;
+            var ev = b.onClick;
+            int n = ev.GetPersistentEventCount();
+            for (int i = 0; i < n; i++)
+            {
+                string m = ev.GetPersistentMethodName(i);
+                if (m == nameof(ButtonRestartGame)) restartBtn = b;
+                if (m == nameof(ButtonReturnToMenu)) exitBtn = b;
+            }
+        }
+
+        if (restartBtn != null)
+        {
+            restartBtn.interactable = false;
+        }
+
+        if (exitBtn != null)
+        {
+            _gameOverDefaultButton = exitBtn.gameObject;
+        }
     }
 
     IEnumerator AnimateGameOverScreen()
@@ -111,11 +166,38 @@ public class GameUI : MonoBehaviour
         SetPanelsScale(1f, panels);
 
 
-        EventSystem _eventSystem = GetComponentInChildren<EventSystem>();
-        if (_eventSystem == null)
+        // Try to focus the default button even if the EventSystem lives elsewhere in the scene.
+        var eventSystem = EventSystem.current ?? GetComponentInChildren<EventSystem>() ?? FindFirstObjectByType<EventSystem>(FindObjectsInactive.Exclude);
+        if (eventSystem == null)
+        {
             DebugHelper.LogError(this, "Event system is not found");
+            yield break;
+        }
 
-        _eventSystem.SetSelectedGameObject(_gameOverDefaultButton);
+        if (_gameOverDefaultButton == null || !_gameOverDefaultButton.activeInHierarchy)
+        {
+            // Fallback: choose first interactable button in game-over panel
+            var buttons = _gameOverPanel != null ? _gameOverPanel.GetComponentsInChildren<Button>(true) : null;
+            if (buttons != null)
+            {
+                foreach (var b in buttons)
+                {
+                    if (b != null && b.isActiveAndEnabled && b.interactable)
+                    {
+                        _gameOverDefaultButton = b.gameObject;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (_gameOverDefaultButton == null)
+        {
+            DebugHelper.LogError(this, "Default game over button is not assigned");
+            yield break;
+        }
+
+        eventSystem.SetSelectedGameObject(_gameOverDefaultButton);
     }
 
     void UpdateItem(InventoryChangedEvent inventoryChangedEvent)

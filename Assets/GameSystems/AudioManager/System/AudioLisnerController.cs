@@ -31,7 +31,8 @@ public class AudioLisnerController : MonoBehaviour
             // error here are always appear when You closing game via STOP PLAY MODE button
             // there is no need ot guard this
             // if this error appear in normal game You shud be worried
-            AudioManager.UnregisterAudioLisner(_audioListener);
+            if(AudioManager.Instance != null)
+                AudioManager.UnregisterAudioLisner(_audioListener);
             _isRegistered = false;
         }
     }

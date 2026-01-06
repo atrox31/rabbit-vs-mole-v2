@@ -192,6 +192,22 @@ namespace Interface.Element
             Setup();
         }
 
+        /// <summary>
+        /// Updates button click handler after creation (useful for wiring UI after PanelBuilder.Build()).
+        /// </summary>
+        public void SetOnClick(Action onClick)
+        {
+            _onClickAction = onClick;
+            if (_button != null)
+            {
+                _button.onClick.RemoveAllListeners();
+                if (_onClickAction != null)
+                {
+                    _button.onClick.AddListener(OnClickAction);
+                }
+            }
+        }
+
         public void SetDisabled(bool disabled, LocalizedString tooltipText = null)
         {
             _isDisabled = disabled;

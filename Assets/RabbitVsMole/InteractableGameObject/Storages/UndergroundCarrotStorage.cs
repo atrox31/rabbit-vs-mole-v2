@@ -21,7 +21,7 @@ namespace RabbitVsMole.InteractableGameObject.Storages
         public int CarrotCount =>
             _carrotList.Count;
 
-        private void AddCarrot()
+        public void AddCarrot()
         {
             _carrotList.Add(Instantiate(_carrotModelInStorage, _carrotSpawnPoint.position, Quaternion.identity, transform));
             GameManager.CurrentGameInspector?.CarrotPicked(PlayerType.Mole);

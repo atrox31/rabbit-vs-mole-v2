@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Localization;
 using UnityEngine.Localization.Components;
+using UnityEngine.EventSystems;
 using System.Collections;
 using System.Linq;
 
@@ -31,6 +32,11 @@ namespace Interface
         [SerializeField] private float _elementSpacing = 10f;
         [SerializeField] private float _topPadding = 100f;
         [SerializeField] private float _bottomPadding = 46f;
+        
+        [Header("Bottom Elements Layout")]
+        [SerializeField] private bool _autoFitBottomElementsHorizontally = true;
+        [SerializeField] private float _bottomHorizontalPadding = 20f;
+        [SerializeField] private float _bottomElementMinWidth = 60f;
 
         [Header("Scroll Settings")]
         [SerializeField] private bool _enableScrollWhenNeeded = true;
@@ -38,6 +44,7 @@ namespace Interface
 
         private List<InterfaceElement> _elements = new List<InterfaceElement>();
         private List<InterfaceElement> _bottomElements = new List<InterfaceElement>();
+        private readonly Dictionary<RectTransform, float> _bottomElementOriginalWidths = new Dictionary<RectTransform, float>();
 
         // Scroll components
         private ScrollRect _scrollRect;
@@ -54,6 +61,10 @@ namespace Interface
         private bool _autoScrollPaused = false;
         private float _lastScrollValue = 0f;
         private bool _isScrollingDown = true;
+
+        // Focus scroll settings
+        private GameObject _lastSelectedObject = null;
+        private bool _isTrackingSelection = false;
 
         // Animation settings
         private PanelAnimationType _animationType = PanelAnimationType.Fade;
@@ -168,14 +179,59 @@ namespace Interface
 
         public GameObject GetFirstButton()
         {
+            var selectables = GetAllSelectables();
+            return selectables.Count > 0 ? selectables[0].gameObject : null;
+        }
+
+        /// <summary>
+        /// Gets all interactable Selectable components from panel elements in order
+        /// </summary>
+        private List<Selectable> GetAllSelectables()
+        {
+            List<Selectable> selectables = new List<Selectable>();
+            
             foreach (var element in _elements.Concat(_bottomElements))
             {
-                if(element.TryGetComponent(out GUIButton button))
+                if (element == null) continue;
+                
+                // Get all Selectables in this element (includes Button, Toggle, Slider, etc.)
+                Selectable[] elementSelectables = element.GetComponentsInChildren<Selectable>(true);
+                foreach (var selectable in elementSelectables)
                 {
-                    return button.gameObject;
+                    if (selectable != null && selectable.interactable && selectable.gameObject.activeInHierarchy)
+                    {
+                        selectables.Add(selectable);
+                    }
                 }
             }
-            return null;
+            
+            return selectables;
+        }
+
+        /// <summary>
+        /// Sets up explicit vertical navigation between all Selectable elements in the panel
+        /// </summary>
+        private void SetupExplicitNavigation()
+        {
+            var selectables = GetAllSelectables();
+            
+            if (selectables.Count == 0) return;
+            
+            for (int i = 0; i < selectables.Count; i++)
+            {
+                Selectable current = selectables[i];
+                Selectable prev = i > 0 ? selectables[i - 1] : selectables[selectables.Count - 1];
+                Selectable next = i < selectables.Count - 1 ? selectables[i + 1] : selectables[0];
+                
+                Navigation nav = current.navigation;
+                nav.mode = Navigation.Mode.Explicit;
+                nav.selectOnUp = prev;
+                nav.selectOnDown = next;
+                // Keep left/right for sliders to work properly
+                nav.selectOnLeft = null;
+                nav.selectOnRight = null;
+                current.navigation = nav;
+            }
         }
 
         public InterfaceElement AddElement(InterfaceElement element, bool isBottomElement = false)
@@ -193,6 +249,16 @@ namespace Interface
             RectTransform elementRect = element.GetRectTransform();
             if (elementRect != null)
             {
+                if (isBottomElement && !_bottomElementOriginalWidths.ContainsKey(elementRect))
+                {
+                    float w = elementRect.sizeDelta.x;
+                    if (w <= 0f && elementRect.rect.width > 0f)
+                    {
+                        w = elementRect.rect.width;
+                    }
+                    _bottomElementOriginalWidths[elementRect] = w;
+                }
+
                 // Modyfikuj anchory tylko jeśli element na to pozwala
                 if (element.AllowAnchorModification)
                 {
@@ -239,6 +305,12 @@ namespace Interface
                 StartCoroutine(CheckScrollAfterLayout());
             }
 
+            // Refresh navigation when elements are added
+            if (gameObject.activeInHierarchy)
+            {
+                StartCoroutine(SetupNavigationAfterLayout());
+            }
+
             if (isBottomElement)
                 return _bottomElements.Last();
             else
@@ -251,12 +323,23 @@ namespace Interface
 
             _elements.Remove(element);
             _bottomElements.Remove(element);
+            RectTransform elementRect = element.GetRectTransform();
+            if (elementRect != null)
+            {
+                _bottomElementOriginalWidths.Remove(elementRect);
+            }
             
             RepositionElements();
             
             if (_enableScrollWhenNeeded && gameObject.activeInHierarchy)
             {
                 StartCoroutine(CheckScrollAfterLayout());
+            }
+
+            // Refresh navigation when elements are removed
+            if (gameObject.activeInHierarchy)
+            {
+                StartCoroutine(SetupNavigationAfterLayout());
             }
         }
         
@@ -318,7 +401,8 @@ namespace Interface
 
             RectTransform containerForMiddleElements = _scrollSetup && _scrollContent != null ? _scrollContent : _contentContainer;
             
-            float currentY = _scrollSetup ? 0f : -_topPadding;
+            // Always start with top padding - even in scroll mode for consistent spacing
+            float currentY = -_topPadding;
             Interface.Element.GUILabel previousLabel = null;
 
             foreach (var element in _elements)
@@ -350,7 +434,6 @@ namespace Interface
             float currentBottomY = _bottomPadding;
             
             // Calculate total width of all bottom elements for horizontal centering
-            float totalWidth = 0f;
             List<RectTransform> validBottomElements = new List<RectTransform>();
             
             foreach (var element in _bottomElements)
@@ -374,6 +457,22 @@ namespace Interface
                 }
                 
                 validBottomElements.Add(elementRect);
+                if (!_bottomElementOriginalWidths.TryGetValue(elementRect, out float existingW) || existingW <= 0f)
+                {
+                    float w = elementRect.sizeDelta.x;
+                    if (w <= 0f && elementRect.rect.width > 0f)
+                    {
+                        w = elementRect.rect.width;
+                    }
+                    _bottomElementOriginalWidths[elementRect] = w;
+                }
+            }
+            
+            TryAutoFitBottomElementsHorizontally(validBottomElements);
+            
+            float totalWidth = 0f;
+            foreach (var elementRect in validBottomElements)
+            {
                 totalWidth += elementRect.sizeDelta.x;
             }
             
@@ -382,7 +481,7 @@ namespace Interface
             {
                 totalWidth += _elementSpacing * (validBottomElements.Count - 1);
             }
-            
+
             // Position elements horizontally, centered
             float startX = -totalWidth / 2f;
             float currentX = startX;
@@ -404,6 +503,70 @@ namespace Interface
             if (_scrollSetup)
             {
                 UpdateScrollContentSize();
+            }
+        }
+
+        private void TryAutoFitBottomElementsHorizontally(List<RectTransform> bottomRects)
+        {
+            if (!_autoFitBottomElementsHorizontally) return;
+            if (bottomRects == null || bottomRects.Count == 0) return;
+
+            RectTransform containerRect = _contentContainer;
+            float containerWidth = containerRect.rect.width > 0f ? containerRect.rect.width : containerRect.sizeDelta.x;
+            if (containerWidth <= 0f) return;
+
+            float availableWidth = Mathf.Max(0f, containerWidth - (_bottomHorizontalPadding * 2f));
+            if (availableWidth <= 0f) return;
+
+            float spacingTotal = _elementSpacing * Mathf.Max(0, bottomRects.Count - 1);
+            float availableForElements = availableWidth - spacingTotal;
+            if (availableForElements <= 0f) return;
+
+            // Use original widths when available so we can restore after shrinking.
+            float sumOriginalWidths = 0f;
+            foreach (var rt in bottomRects)
+            {
+                if (rt == null) continue;
+                if (_bottomElementOriginalWidths.TryGetValue(rt, out float w) && w > 0f)
+                {
+                    sumOriginalWidths += w;
+                }
+                else
+                {
+                    sumOriginalWidths += Mathf.Max(0f, rt.sizeDelta.x);
+                }
+            }
+
+            // If everything fits, restore original widths (if we have them).
+            if (sumOriginalWidths <= availableForElements + 0.01f)
+            {
+                foreach (var rt in bottomRects)
+                {
+                    if (rt == null) continue;
+                    if (_bottomElementOriginalWidths.TryGetValue(rt, out float w) && w > 0f)
+                    {
+                        rt.sizeDelta = new Vector2(w, rt.sizeDelta.y);
+                    }
+                }
+                return;
+            }
+
+            // Otherwise shrink so they fit.
+            float widthPer = availableForElements / bottomRects.Count;
+            float minWidth = Mathf.Max(0f, _bottomElementMinWidth);
+            float candidate = Mathf.Max(widthPer, minWidth);
+            // Ensure we never exceed available space due to min width.
+            if (candidate * bottomRects.Count > availableForElements)
+            {
+                candidate = widthPer;
+            }
+
+            foreach (var rt in bottomRects)
+            {
+                if (rt == null) continue;
+                float original = _bottomElementOriginalWidths.TryGetValue(rt, out float w) ? w : rt.sizeDelta.x;
+                float newWidth = Mathf.Max(0f, Mathf.Min(original > 0f ? original : candidate, candidate));
+                rt.sizeDelta = new Vector2(newWidth, rt.sizeDelta.y);
             }
         }
 
@@ -433,7 +596,21 @@ namespace Interface
             // Reset scrollbar to top and start auto-scroll if enabled
             StartCoroutine(ResetScrollAndStartAutoScroll());
 
+            // Setup explicit navigation for gamepad/keyboard between all selectable elements
+            StartCoroutine(SetupNavigationAfterLayout());
+
+            // Start tracking selection for gamepad/keyboard scroll-to-focus
+            StartSelectionTracking();
+
             AudioManager.PlaySoundUI(_showSound);
+        }
+
+        private IEnumerator SetupNavigationAfterLayout()
+        {
+            // Wait for layout to complete
+            yield return new WaitForEndOfFrame();
+            yield return null;
+            SetupExplicitNavigation();
         }
 
 
@@ -449,6 +626,9 @@ namespace Interface
                     _verticalScrollbar.onValueChanged.RemoveListener(OnScrollbarValueChanged);
                 }
             }
+
+            // Stop tracking selection for scroll-to-focus
+            StopSelectionTracking();
             
             Hide();
 
@@ -570,7 +750,8 @@ namespace Interface
         {
             if (_elements.Count == 0) return 0f;
             
-            float totalHeight = 0f;
+            // Start with top padding for consistent spacing
+            float totalHeight = _topPadding;
             Interface.Element.GUILabel previousLabel = null;
             
             foreach (var element in _elements)
@@ -640,7 +821,6 @@ namespace Interface
 
             _originalContentContainer = _contentContainer;
 
-            float headerHeight = GetHeaderHeight();
             float bottomButtonsHeight = GetBottomButtonsHeight();
 
             GameObject viewportObj = new GameObject("ScrollViewport");
@@ -650,7 +830,7 @@ namespace Interface
             _scrollViewport.anchorMin = new Vector2(0f, 0f);
             _scrollViewport.anchorMax = new Vector2(1f, 1f);
             _scrollViewport.offsetMin = new Vector2(0f, bottomButtonsHeight);
-            _scrollViewport.offsetMax = new Vector2(0f, -headerHeight);
+            _scrollViewport.offsetMax = new Vector2(0f, 0f); // Top = 0
             
             Image viewportImage = viewportObj.AddComponent<Image>();
             viewportImage.color = new Color(1f, 1f, 1f, 1f);
@@ -665,7 +845,7 @@ namespace Interface
             scrollbarRect.anchorMin = new Vector2(1f, 0f);
             scrollbarRect.anchorMax = new Vector2(1f, 1f);
             scrollbarRect.offsetMin = new Vector2(-20f, bottomButtonsHeight);
-            scrollbarRect.offsetMax = new Vector2(0f, -headerHeight);
+            scrollbarRect.offsetMax = new Vector2(0f, -_topPadding); // Start below top padding
             scrollbarRect.sizeDelta = new Vector2(20f, 0f);
             
             _verticalScrollbar = scrollbarObj.AddComponent<Scrollbar>();
@@ -927,6 +1107,100 @@ namespace Interface
                 
                 yield return null;
             }
+        }
+
+        private void Update()
+        {
+            // Track selection changes and scroll to selected element
+            if (_isTrackingSelection && _scrollSetup && _scrollRect != null)
+            {
+                GameObject currentSelected = EventSystem.current?.currentSelectedGameObject;
+                
+                if (currentSelected != null && currentSelected != _lastSelectedObject)
+                {
+                    _lastSelectedObject = currentSelected;
+                    
+                    // Check if the selected object is a child of our scroll content
+                    if (_scrollContent != null && currentSelected.transform.IsChildOf(_scrollContent))
+                    {
+                        ScrollToElement(currentSelected.GetComponent<RectTransform>());
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Scrolls the scroll view to ensure the given element is visible
+        /// </summary>
+        private void ScrollToElement(RectTransform element)
+        {
+            if (element == null || _scrollRect == null || _scrollContent == null || _scrollViewport == null) 
+                return;
+
+            // Find the parent InterfaceElement to get proper bounds (for nested elements like Toggle)
+            RectTransform targetRect = element;
+            Transform current = element.transform;
+            while (current != null && current != _scrollContent)
+            {
+                InterfaceElement interfaceElement = current.GetComponent<Interface.Element.InterfaceElement>();
+                if (interfaceElement != null)
+                {
+                    targetRect = interfaceElement.GetRectTransform();
+                    break;
+                }
+                current = current.parent;
+            }
+
+            // Get the element's position relative to the scroll content
+            // Use the anchored position which is more reliable for UI elements
+            Vector2 elementLocalPos = _scrollContent.InverseTransformPoint(targetRect.position);
+            
+            // Calculate element bounds considering pivot
+            float elementHeight = targetRect.rect.height;
+            float pivotOffset = targetRect.pivot.y * elementHeight;
+            float elementTop = -elementLocalPos.y - pivotOffset;
+            float elementBottom = elementTop + elementHeight;
+
+            // Get viewport height
+            float viewportHeight = _scrollViewport.rect.height;
+            
+            // Get current scroll position in content space
+            float contentHeight = _scrollContent.rect.height;
+            float scrollableHeight = contentHeight - viewportHeight;
+            
+            if (scrollableHeight <= 0) return;
+
+            float currentScrollY = (1f - _scrollRect.verticalNormalizedPosition) * scrollableHeight;
+
+            // Check if element is above or below the visible area
+            float margin = _scrollMargin;
+            
+            if (elementTop < currentScrollY + margin)
+            {
+                // Element is above visible area - scroll up to show element at top with margin
+                float targetScrollY = Mathf.Max(0, elementTop - margin);
+                float targetNormalized = 1f - (targetScrollY / scrollableHeight);
+                _scrollRect.verticalNormalizedPosition = Mathf.Clamp01(targetNormalized);
+            }
+            else if (elementBottom > currentScrollY + viewportHeight - margin)
+            {
+                // Element is below visible area - scroll down to show element at bottom with margin
+                float targetScrollY = elementBottom - viewportHeight + margin;
+                float targetNormalized = 1f - (targetScrollY / scrollableHeight);
+                _scrollRect.verticalNormalizedPosition = Mathf.Clamp01(targetNormalized);
+            }
+        }
+
+        private void StartSelectionTracking()
+        {
+            _isTrackingSelection = true;
+            _lastSelectedObject = null;
+        }
+
+        private void StopSelectionTracking()
+        {
+            _isTrackingSelection = false;
+            _lastSelectedObject = null;
         }
 
         private void OnDestroy()

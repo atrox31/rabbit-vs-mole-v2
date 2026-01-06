@@ -506,10 +506,50 @@ namespace RabbitVsMole
 
         private float OnActionRequested(ActionType requestedAction)
         {
+            LastRequestedActionType = requestedAction;
             ShowAddon(requestedAction);
             var actionTIme = GetActionTime(requestedAction);
             TriggerActionAnimation(requestedAction, actionTIme);
             return actionTIme;
+        }
+
+        /// <summary>
+        /// Last action type requested by an interactable via Interact() callback.
+        /// Useful for online host to report what action is being performed.
+        /// </summary>
+        public ActionType LastRequestedActionType { get; private set; } = ActionType.None;
+
+        /// <summary>
+        /// Online client-side helper: play the same action animation + SFX and block movement,
+        /// but DO NOT execute Interact() or any gameplay logic.
+        /// </summary>
+        public bool FakeAction(ActionType actionType, Vector3 soundPosition)
+        {
+            if (_isPerformingAction)
+                return false;
+
+            _isPerformingAction = true;
+            ShowAddon(actionType);
+
+            float actionTime = GetActionTime(actionType);
+            TriggerActionAnimation(actionType, actionTime);
+
+            // Play the same SFX that normal Interact() would play
+            var sound = SoundDB.GetSound(actionType, playerType);
+            if (!string.IsNullOrWhiteSpace(sound))
+            {
+                AudioManager.PlaySound3D(sound, soundPosition, AudioManager.AudioChannel.SFX);
+            }
+
+            StartCoroutine(FakeActionCoroutine(actionTime));
+            return true;
+        }
+
+        private IEnumerator FakeActionCoroutine(float actionTime)
+        {
+            if (actionTime > 0f)
+                yield return new WaitForSeconds(actionTime);
+            OnActionCompleted();
         }
 
         private void OnActionCompleted()

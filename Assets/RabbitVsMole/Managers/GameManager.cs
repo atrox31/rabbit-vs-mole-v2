@@ -1,6 +1,6 @@
-using GameSystems;
 using GameSystems.Steam;
 using GameSystems.Steam.Scripts;
+using AddressablesStaticDictionary;
 using InputManager;
 using PlayerManagementSystem;
 using PlayerManagementSystem.Backpack;
@@ -48,6 +48,11 @@ namespace RabbitVsMole
         [SerializeField] private GameObject gameInspectorPrefab;
         private GameInspector _currentGameInspector;
 
+        // Client-side: we need a visual proxy avatar for the remote host player.
+        // This loads the same character prefabs AgentController uses, but without creating a controller.
+        private static readonly AddressablesStaticDictionary<PlayerType> _onlineCharacterPrefabs =
+            new("Assets/Prefabs/Agents/Characters/", ".prefab");
+
         /// <summary>
         /// Static accessor for the current game inspector instance.
         /// Returns null when not in a game session.
@@ -86,7 +91,14 @@ namespace RabbitVsMole
                 // Carrot stored first time (diff -1 when putting into storage)
                 new EventAchievement<InventoryChangedEvent>(
                     "ACHIEVEMENT_CARROT_1",
-                    e => e.BackpackItemType == BackpackItemType.Carrot && e.Diff == -1),
+                    e =>
+                    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                        if (e.BackpackItemType == BackpackItemType.Carrot && e.Diff == -1)
+                            DebugHelper.Log(this, $"[Achievements] Carrot put down -> InventoryChangedEvent diff={e.Diff} count={e.Count}/{e.Capacity}");
+#endif
+                        return e.BackpackItemType == BackpackItemType.Carrot && e.Diff == -1;
+                    }),
 
                 // Carrot 100 progress via Steam stat (0..100)
                 new StatProgressAchievement<InventoryChangedEvent>(
@@ -94,7 +106,14 @@ namespace RabbitVsMole
                     statName: "CARROT100",
                     max: 100,
                     incrementPerTrigger: 1,
-                    condition: e => e.BackpackItemType == BackpackItemType.Carrot && e.Diff == -1),
+                    condition: e =>
+                    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                        if (e.BackpackItemType == BackpackItemType.Carrot && e.Diff == -1)
+                            DebugHelper.Log(this, $"[Achievements] Carrot100 progress trigger -> diff={e.Diff} count={e.Count}/{e.Capacity}");
+#endif
+                        return e.BackpackItemType == BackpackItemType.Carrot && e.Diff == -1;
+                    }),
 
                 // Seed achievements (use/plant consumes seeds -> diff < 0)
                 new EventAchievement<InventoryChangedEvent>(
@@ -234,7 +253,9 @@ namespace RabbitVsMole
             DayOfWeek day,
             PlayerType playerTypeForStory,
             PlayerControlAgent rabbitControlAgent,
-            PlayerControlAgent moleControlAgent)
+            PlayerControlAgent moleControlAgent,
+            int aiIntelligence = 90,
+            PlayGameSettings.OnlineConfig onlineConfig = default)
         {
             var playGameSettings = new PlayGameSettings(
                 gameMode: gameMode,
@@ -242,7 +263,9 @@ namespace RabbitVsMole
                 day: day,
                 playerTypeForStory: playerTypeForStory,
                 rabbitControlAgent: rabbitControlAgent,
-                moleControlAgent: moleControlAgent);
+                moleControlAgent: moleControlAgent,
+                aiIntelligence: aiIntelligence,
+                onlineConfig: onlineConfig);
 
             bool isSplitScreen = playGameSettings.IsAllHumanAgents;
 
@@ -305,13 +328,24 @@ namespace RabbitVsMole
                     Instance.gameAudioManager.PlayMusic(GameAudioManager.MusicType.Gameplay);
                     CreateAgentController(playGameSettings, PlayerType.Rabbit);
                     CreateAgentController(playGameSettings, PlayerType.Mole);
+
+                    EnsureRemoteAvatarProxyIfNeeded(playGameSettings);
                 },
                 OnSceneShow: () =>
                 {
-                    if (Instance._currentGameInspector != null)
+                    if (Instance._currentGameInspector == null)
+                        return;
+
+                    // Online: pause after load and wait for both peers to load, then start together.
+                    if (playGameSettings.onlineConfig.IsOnline)
                     {
-                        Instance._currentGameInspector.StartGame();
+                        // Ensure endgame watcher exists during online gameplay.
+                        _ = GameSystems.Steam.Scripts.SteamOnlineEndgameWatcher.Instance;
+                        GameSystems.Steam.Scripts.SteamOnlineStartCoordinator.Instance.OnGameplaySceneShown();
+                        return;
                     }
+
+                    Instance._currentGameInspector.StartGame();
                 });
 
             DebugHelper.Log(Instance, $"GameManager: Starting game for {playGameSettings.day}, " +
@@ -339,11 +373,40 @@ namespace RabbitVsMole
                     BotAgentController.CreateInstance(playGameSettings, playerType);
                     break;
                 case PlayerControlAgent.Online:
-                    // OnlineAgentController.CreateInstance(playerType);
+                    OnlineAgentController.CreateInstance(playGameSettings, playerType);
                     break;
                 default:
                     break;
             }
+        }
+
+        private static void EnsureRemoteAvatarProxyIfNeeded(PlayGameSettings playGameSettings)
+        {
+            if (!playGameSettings.onlineConfig.IsOnline || playGameSettings.onlineConfig.IsHost)
+                return;
+
+            // Client: local player is playerTypeForStory, remote is the other one.
+            var local = playGameSettings.playerTypeForStory;
+            var remote = local == PlayerType.Rabbit ? PlayerType.Mole : PlayerType.Rabbit;
+
+            if (remote == PlayerType.Rabbit && PlayerAvatar.RabbitStaticInstance != null)
+                return;
+            if (remote == PlayerType.Mole && PlayerAvatar.MoleStaticInstance != null)
+                return;
+
+            var prefab = _onlineCharacterPrefabs.GetPrefab(remote);
+            if (prefab == null)
+            {
+                Debug.LogError($"Online: character prefab for remote player '{remote}' not found (Addressables)");
+                return;
+            }
+
+            var spawn = PlayerSpawnPoint<PlayerType>.FindSpawnPoint(remote);
+            var pos = spawn != null ? spawn.position : Vector3.zero;
+            var rot = spawn != null ? spawn.rotation : Quaternion.identity;
+
+            var go = Instantiate(prefab, pos, rot);
+            go.name = $"RemoteAvatarProxy ({remote})";
         }
 
         public static void GoToMainMenu()
@@ -367,6 +430,30 @@ namespace RabbitVsMole
                 {
                     var rabbitVsMoleMenuSetup = FindFirstObjectByType<MainMenuSetup>();
                     rabbitVsMoleMenuSetup?.ShowMenu();
+                });
+        }
+
+        public static void GoToOnlineDuelLobbyList()
+        {
+            GameSceneManager.ChangeScene(
+                scene: GameSceneManager.SceneType.MainMenu,
+                OnSceneLoad: (scene) =>
+                {
+                    // Reset game inspector reference when leaving game scene
+                    if (Instance._currentGameInspector != null)
+                    {
+                        Instance._currentGameInspector.OnGameEnded -= Instance.HandleGameEnd;
+                        Instance._currentGameInspector = null;
+                    }
+                },
+                OnSceneStart: () =>
+                {
+                    Instance.gameAudioManager.PlayMusic(GameAudioManager.MusicType.MainMenu);
+                },
+                OnSceneShow: () =>
+                {
+                    var rabbitVsMoleMenuSetup = FindFirstObjectByType<MainMenuSetup>();
+                    rabbitVsMoleMenuSetup?.ShowOnlineDuelList();
                 });
         }
 
@@ -403,12 +490,44 @@ namespace RabbitVsMole
         /// <summary>
         /// Handles game end event from GameInspector.
         /// </summary>
-        private void HandleGameEnd(WinConditionEvaluator.WinResult winResult)
+        private void HandleGameEnd(WinConditionEvaluator.WinResult winResult) =>
+            HandleGameEndInternal(winResult, fromNetwork: false);
+
+        internal static bool IsGameEnded => Instance != null && Instance._endGame;
+
+        internal static void ApplyRemoteGameEnd(WinConditionEvaluator.WinResult winResult)
         {
+            if (Instance == null) return;
+            Instance.HandleGameEndInternal(winResult, fromNetwork: true);
+        }
+
+        internal static void ForceWinForLocalPlayer()
+        {
+            if (Instance == null || Instance._currentGameInspector == null) return;
+            var local = Instance._currentGameInspector.CurrentPlayerOnStory;
+            Instance.HandleGameEndInternal(WinConditionEvaluator.GetWinner(local), fromNetwork: true);
+        }
+
+        private void HandleGameEndInternal(WinConditionEvaluator.WinResult winResult, bool fromNetwork)
+        {
+            // Online: only host decides. Client ignores local evaluation and waits for host.
+            if (!fromNetwork && _currentGameInspector != null && _currentGameInspector.IsOnlineSession && !_currentGameInspector.IsOnlineHost)
+                return;
+
             if (_endGame)
                 return;
 
             _endGame = true;
+
+            // Online: publish result from host to client via lobby data.
+            if (!fromNetwork && _currentGameInspector != null && _currentGameInspector.IsOnlineSession && _currentGameInspector.IsOnlineHost)
+            {
+                try
+                {
+                    SteamLobbySession.Instance.HostPublishGameEnd(winResult.winner);
+                }
+                catch { }
+            }
 
             // Publish a typed event for systems like Steam achievements.
             // AchievementsWatcher will ignore this in splitscreen sessions.

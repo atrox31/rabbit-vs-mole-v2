@@ -9,6 +9,7 @@ using GameSystems;
 using GameSystems.Steam.Scripts;
 using System;
 using System.Collections.Generic;
+using System.Collections;
 using UnityEngine;
 #if !DISABLESTEAMWORKS
 using System.Reflection;
@@ -42,6 +43,7 @@ namespace GameSystems.Steam
         private readonly HashSet<string> _pendingUnlocks = new();
         private readonly Dictionary<string, int> _pendingStatIncrements = new();
         private Func<bool> _isTrackingAllowed;
+        private Coroutine _statsRequestRoutine;
 
         private void Awake()
         {
@@ -54,6 +56,7 @@ namespace GameSystems.Steam
             DontDestroyOnLoad(gameObject);
 
             InitializeSteamCallbacks();
+            StartStatsRequestRoutine();
         }
 
         /// <summary>
@@ -70,13 +73,50 @@ namespace GameSystems.Steam
             if (_instance == this)
                 _instance = null;
 
+            if (_statsRequestRoutine != null)
+            {
+                StopCoroutine(_statsRequestRoutine);
+                _statsRequestRoutine = null;
+            }
+
             UnregisterAllAchievements();
         }
 
-        private void Update()
+        private void StartStatsRequestRoutine()
         {
-            // Steam init may happen in bootstrap; request stats once when available.
-            TryRequestCurrentStats();
+            if (_steamStatsReady)
+                return;
+            if (!isActiveAndEnabled)
+                return;
+            if (_statsRequestRoutine != null)
+                return;
+
+            _statsRequestRoutine = StartCoroutine(StatsRequestRoutine());
+        }
+
+        private IEnumerator StatsRequestRoutine()
+        {
+            while (isActiveAndEnabled && !_steamStatsReady)
+            {
+                // Steam init may happen in bootstrap; request stats once when available.
+                TryRequestCurrentStats();
+
+                if (_steamStatsReady)
+                    break;
+
+                float waitSeconds = 1f;
+#if !DISABLESTEAMWORKS
+                if (SteamManager.Initialized)
+                {
+                    // Sleep until the next scheduled retry time (set inside TryRequestCurrentStats),
+                    // clamped so we never spin too fast.
+                    waitSeconds = Mathf.Max(0.25f, _nextStatsRequestTime - Time.unscaledTime);
+                }
+#endif
+                yield return new WaitForSecondsRealtime(waitSeconds);
+            }
+
+            _statsRequestRoutine = null;
         }
 
         private void Configure(IAchievement[] achievements, Func<bool> isTrackingAllowed)
@@ -106,7 +146,7 @@ namespace GameSystems.Steam
                 a.Register(this);
 
             // If we already have stats ready (e.g. domain reload), refresh again.
-            TryRequestCurrentStats();
+            StartStatsRequestRoutine();
             if (_steamStatsReady)
                 NotifySteamStatsReady();
         }
@@ -226,10 +266,13 @@ namespace GameSystems.Steam
             // If we don't have stats yet, queue it so we don't miss early triggers (e.g. fast carrot).
             if (!_steamStatsReady)
             {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                DebugHelper.Log(this, $"[Achievements] Queue unlock '{achievementId}' (stats not ready yet).");
+#endif
                 _pendingUnlocks.Add(achievementId);
                 return;
             }
-
+            DebugHelper.Log(this, $"achivement unlocked: {achievementId}");
             SteamUserStats.SetAchievement(achievementId);
             SteamUserStats.StoreStats();
 #endif
@@ -254,6 +297,9 @@ namespace GameSystems.Steam
             {
                 _pendingStatIncrements.TryGetValue(statName, out int pending);
                 _pendingStatIncrements[statName] = pending + increment;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                DebugHelper.Log(this, $"[Achievements] Queue stat '{statName}' +{increment} (pending total={_pendingStatIncrements[statName]}; stats not ready yet).");
+#endif
                 return;
             }
 
@@ -262,6 +308,9 @@ namespace GameSystems.Steam
             if (clampMax > 0)
                 next = Mathf.Clamp(next, 0, clampMax);
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            DebugHelper.Log(this, $"[Achievements] Set stat '{statName}': {current} -> {next} (inc={increment}, clampMax={clampMax})");
+#endif
             SteamUserStats.SetStat(statName, next);
             _cachedIntStats[statName] = next;
             SteamUserStats.StoreStats();
