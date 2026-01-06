@@ -286,6 +286,9 @@ namespace RabbitVsMole.InteractableGameObject.Base
         {
             if (grow)
                 _isReady = true;
+            else
+                Destroy(gameObject);
+
             _activeAnimation = null;
             _isPaused = false;
         }

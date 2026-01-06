@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Collections;
 using Interface.Element;
 using RabbitVsMole.GameData.Mutator;
 using TMPro;
@@ -15,7 +16,13 @@ namespace RabbitVsMole
     /// </summary>
     public class GUICustomElement_MutatorSelector : LocalizedElementBase
     {
-        private const int MAX_SELECTED_MUTATORS = 8;
+        private const int MAX_SELECTED_MUTATORS = 6;
+        
+        [Header("Layout")]
+        [Tooltip("If true, GUIPanel may override this element's RectTransform anchors/pivot. For this custom element it should stay false.")]
+        [SerializeField] private bool _allowAnchorModificationOverride = false;
+
+        public override bool AllowAnchorModification => _allowAnchorModificationOverride;
 
         public readonly struct InitArgs
         {
@@ -72,6 +79,12 @@ namespace RabbitVsMole
 
         public MutatorSO GetSelectedMutator() => _focusedMutator;
 
+        private void OnEnable()
+        {
+            // Similar to GameModeSelector: allow panel/layout/navigation to settle, then re-select focused button.
+            StartCoroutine(ReselectFocusedAfterLayout());
+        }
+
         public override void InitializeWithArgument(object argument)
         {
             List<MutatorSO> incomingMutators = null;
@@ -100,6 +113,11 @@ namespace RabbitVsMole
             _mutators.Clear();
             if (incomingMutators != null)
                 _mutators.AddRange(incomingMutators);
+
+            // IMPORTANT: this element can be reopened many times from different sources.
+            // Do not keep focus from the previous session; prefer the caller's preselection.
+            _focusedMutator = preselected?.FirstOrDefault(m => m != null)
+                ?? locked?.FirstOrDefault(m => m != null);
 
             SetLockedMutators(locked);
             ApplyPreselected(preselected);
@@ -397,6 +415,22 @@ namespace RabbitVsMole
             }
         }
 
+        private IEnumerator ReselectFocusedAfterLayout()
+        {
+            // MainMenuManager forces selection to panel.GetFirstButton() one frame after ShowPanel().
+            // Wait two frames so our selection "wins" and the focused mutator is highlighted.
+            yield return null;
+            yield return null;
+            if (_focusedMutator != null)
+            {
+                SelectMutator(_focusedMutator);
+            }
+            else
+            {
+                SelectInitialMutator();
+            }
+        }
+
         private void UpdateDetails(MutatorSO mutator)
         {
             if (_mutatorPreviewImage != null)
@@ -592,7 +626,7 @@ namespace RabbitVsMole
             }
         }
 
-        private void FixCustomElementLayout()
+        public override void FixCustomElementLayout()
         {
             RectTransform rectTransform = GetRectTransform();
             if (rectTransform != null)

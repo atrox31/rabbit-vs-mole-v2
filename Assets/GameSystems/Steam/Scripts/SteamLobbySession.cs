@@ -378,6 +378,27 @@ namespace GameSystems.Steam.Scripts
 #endif
         }
 
+        /// <summary>
+        /// Updates lobby data flag that indicates whether the current session uses any mutators.
+        /// This is used by the lobby browser list/table ("Mutators: YES/NO").
+        /// Host-only.
+        /// </summary>
+        public void SetHasMutators(bool hasMutators)
+        {
+#if !DISABLESTEAMWORKS
+            if (!IsInLobby || !SteamManager.Initialized || !IsHost)
+                return;
+
+            var lobby = new CSteamID(CurrentLobbyId);
+            SteamMatchmaking.SetLobbyData(lobby, LobbyData_Mutators, hasMutators ? "1" : "0");
+
+            // Keep the pending value consistent (used during lobby creation flow).
+            _pendingHasMutators = hasMutators;
+
+            OnLobbyDataChanged?.Invoke();
+#endif
+        }
+
         public Role GetHostRole()
         {
 #if !DISABLESTEAMWORKS

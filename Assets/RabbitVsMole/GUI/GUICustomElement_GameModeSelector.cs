@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -20,17 +21,20 @@ namespace RabbitVsMole
         {
             public readonly List<GameModeData> GameModes;
             public readonly bool ShowAiSlider;
+            public readonly bool IsStoryMode;
 
-            public InitArgs(List<GameModeData> gameModes, bool showAiSlider)
+            public InitArgs(List<GameModeData> gameModes, bool showAiSlider, bool isStoryMode = false)
             {
                 GameModes = gameModes ?? new List<GameModeData>();
                 ShowAiSlider = showAiSlider;
+                IsStoryMode = isStoryMode;
             }
 
-            public InitArgs(GameModeData[] gameModes, bool showAiSlider)
+            public InitArgs(GameModeData[] gameModes, bool showAiSlider, bool isStoryMode = false)
             {
                 GameModes = gameModes != null ? new List<GameModeData>(gameModes) : new List<GameModeData>();
                 ShowAiSlider = showAiSlider;
+                IsStoryMode = isStoryMode;
             }
         }
 
@@ -63,6 +67,7 @@ namespace RabbitVsMole
         private readonly List<Button> _selectedMutatorIconButtons = new();
         private int _selectedIndex = 0;
         private bool _showAiSliderContext;
+        private bool _isStoryMode;
         
         private LocalizeStringEvent _descriptionLocalizeEvent;
         private LocalizeStringEvent _configurationLocalizeEvent;
@@ -79,6 +84,11 @@ namespace RabbitVsMole
         {
             // Safety: if someone toggles the slider active in prefab/scene, keep it consistent with context.
             UpdateAiSliderVisibility();
+            UpdateMutatorButtonVisibility();
+
+            // When returning from another panel (e.g. mutator selector), Unity's EventSystem selection can drift.
+            // Also, GUIPanel may rebuild navigation and re-select something after layout. Delay re-select by one frame.
+            StartCoroutine(ReselectCurrentModeAfterLayout());
         }
 
 #if UNITY_EDITOR
@@ -99,16 +109,19 @@ namespace RabbitVsMole
             {
                 _gameModes = initArgs.GameModes ?? new List<GameModeData>();
                 _showAiSliderContext = initArgs.ShowAiSlider;
+                _isStoryMode = initArgs.IsStoryMode;
             }
             else if (argument is List<GameModeData> gameModes)
             {
                 _gameModes = gameModes;
                 _showAiSliderContext = false;
+                _isStoryMode = false;
             }
             else if (argument is GameModeData[] gameModesArray)
             {
                 _gameModes = new List<GameModeData>(gameModesArray);
                 _showAiSliderContext = false;
+                _isStoryMode = false;
             }
             else
             {
@@ -130,6 +143,7 @@ namespace RabbitVsMole
 
             UpdateAiSliderVisibility();
             SetupAiSliderIfNeeded();
+            UpdateMutatorButtonVisibility();
         }
 
         public GameModeData GetSelectedGameMode()
@@ -191,7 +205,44 @@ namespace RabbitVsMole
             WireMutatorConfigButton();
             RefreshSelectedMutatorIcons(GetSelectedGameMode());
 
+            UpdateMutatorButtonVisibility();
+
             AudioManager.PreloadClips(_showSound, _hideSound);
+        }
+
+        private void UpdateMutatorButtonVisibility()
+        {
+            if (_mutatorConfigButton == null) return;
+
+            // In story mode the mutator button should not be visible at all.
+            _mutatorConfigButton.gameObject.SetActive(!_isStoryMode);
+        }
+
+        private void SelectCurrentModeButton()
+        {
+            if (_createdButtons == null || _createdButtons.Count == 0)
+                return;
+            if (_selectedIndex < 0 || _selectedIndex >= _createdButtons.Count)
+                return;
+
+            var button = _createdButtons[_selectedIndex];
+            if (button != null && button.gameObject.activeInHierarchy && button.interactable)
+            {
+                button.Select();
+            }
+        }
+
+        private IEnumerator ReselectCurrentModeAfterLayout()
+        {
+            // MainMenuManager forces selection to panel.GetFirstButton() one frame after ShowPanel().
+            // Wait two frames so our selection "wins" and highlight matches the selected index.
+            yield return null;
+            yield return null;
+            SelectCurrentModeButton();
+
+            // Data (mutator lists) may have changed while this panel was hidden (e.g. reset on Back).
+            // Ensure icons reflect the current selected mode immediately, without requiring a re-click.
+            RefreshSelectedMutatorIcons(GetSelectedGameMode());
         }
 
         private void UpdateAiSliderVisibility()
@@ -221,7 +272,7 @@ namespace RabbitVsMole
             _aiIntelligence = Mathf.RoundToInt(Mathf.Clamp01(slider01) * 100f);
         }
 
-        public void FixCustomElementLayout()
+        public override void FixCustomElementLayout()
         {
             RectTransform rectTransform = GetRectTransform();
             if (rectTransform != null)
@@ -613,7 +664,17 @@ namespace RabbitVsMole
                 if (button != null)
                 {
                     MutatorSO captured = mutator;
-                    button.onClick.AddListener(() => MutatorConfigRequested?.Invoke(this, selectedMode, selectedMode.mutators?.Where(m => m != null).ToList() ?? new List<MutatorSO>()));
+                    button.onClick.AddListener(() =>
+                    {
+                        // Put the clicked mutator first so MutatorSelector focuses it by default.
+                        var list = selectedMode.mutators?.Where(m => m != null).ToList() ?? new List<MutatorSO>();
+                        if (captured != null)
+                        {
+                            list.Remove(captured);
+                            list.Insert(0, captured);
+                        }
+                        MutatorConfigRequested?.Invoke(this, selectedMode, list);
+                    });
                     _selectedMutatorIconButtons.Add(button);
                 }
 

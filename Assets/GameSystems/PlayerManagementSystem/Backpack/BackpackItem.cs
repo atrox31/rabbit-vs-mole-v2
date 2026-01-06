@@ -17,7 +17,7 @@ namespace PlayerManagementSystem.Backpack
         public bool IsEmpty => Count == 0;
         public bool IsFull => Count == Capacity;
         private void SendChangeEvent(int diff) =>
-            EventBus.Publish(new InventoryChangedEvent(ItemType, Count, Capacity, diff));
+            EventBus.Publish(new InventoryChangedEvent(PlayerType, ItemType, Count, Capacity, diff));
         private void SendErrorEvent() =>
             EventBus.Publish(new InventoryErrorEvent(ItemType));
 

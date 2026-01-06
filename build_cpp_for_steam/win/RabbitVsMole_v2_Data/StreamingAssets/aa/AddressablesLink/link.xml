@@ -48,9 +48,7 @@
     <type fullname="WalkingImmersionSystem.WalkingImmersionSystemController" preserve="all" />
     <type fullname="AttackEnemyAction" preserve="nothing" serialized="true" />
     <type fullname="CalmDownAction" preserve="nothing" serialized="true" />
-    <type fullname="FindBestFieldForMoundAction" preserve="nothing" serialized="true" />
     <type fullname="FindFieldForRabbitAction" preserve="nothing" serialized="true" />
-    <type fullname="FindNearestMoundSequence" preserve="nothing" serialized="true" />
     <type fullname="InteractDownAction" preserve="nothing" serialized="true" />
     <type fullname="InteractionFrontAction" preserve="nothing" serialized="true" />
     <type fullname="MoveToTargetAction" preserve="nothing" serialized="true" />
@@ -166,6 +164,7 @@
   </assembly>
   <assembly fullname="UnityEngine.AIModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
     <type fullname="UnityEngine.AI.NavMeshData" preserve="all" />
+    <type fullname="UnityEngine.AI.NavMeshObstacle" preserve="all" />
   </assembly>
   <assembly fullname="UnityEngine.AnimationModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
     <type fullname="UnityEngine.AnimationClip" preserve="all" />

@@ -614,9 +614,14 @@ namespace RabbitVsMole
             {
                 if (actionTime > 0f && clipLength > 0f)
                     _animator.speed = clipLength / actionTime;
+                else
+                    _animator.speed = 1f;
             }
             else
+            {
                 DebugHelper.LogWarning(this, $"Animation clip '{triggerName}' not found in cache. Using default speed.");
+                _animator.speed = 1f;
+            }
 
             _animator.SetTrigger(triggerName);
             _currentAnimationState = AnimationState.Action;

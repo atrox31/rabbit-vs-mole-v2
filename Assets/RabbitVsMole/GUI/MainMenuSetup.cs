@@ -10,6 +10,9 @@ using UnityEngine.InputSystem;
 using UnityEngine.Localization;
 using UnityEngine.Localization.Settings;
 using RabbitVsMole.GameData.Mutator;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace RabbitVsMole
 {
@@ -49,6 +52,7 @@ namespace RabbitVsMole
         private GUICustomElement_MutatorSelector _mutatorSelectorElement;
         private GUICustomElement_GameModeSelector _mutatorSourceSelector;
         private readonly List<GUICustomElement_GameModeSelector> _mutatorAwareSelectors = new();
+        private readonly Dictionary<GameModeData, List<MutatorSO>> _defaultMutatorsByMode = new();
 
         private List<Interface.Element.GUILabel> _creditLabels = new List<Interface.Element.GUILabel>();
 
@@ -108,8 +112,72 @@ namespace RabbitVsMole
             // Initialize graphics settings (FPS, etc.)
             MainMenuDefaultLogic.InitializeTargetFPS();
 
+            CacheDefaultMutators();
             SetupMenus();
             LocalizationSettings.SelectedLocaleChanged += OnLanguageChanged;
+
+#if UNITY_EDITOR
+            // In editor, runtime changes to ScriptableObject assets can "stick" after exiting Play Mode.
+            // Restore defaults ONLY when leaving Play Mode (not on scene changes when starting gameplay).
+            EditorApplication.playModeStateChanged -= OnEditorPlayModeStateChanged;
+            EditorApplication.playModeStateChanged += OnEditorPlayModeStateChanged;
+#endif
+        }
+
+#if UNITY_EDITOR
+        private void OnEditorPlayModeStateChanged(PlayModeStateChange state)
+        {
+            if (state == PlayModeStateChange.ExitingPlayMode)
+            {
+                RestoreDefaultMutators(rabbitStoryGameModes);
+                RestoreDefaultMutators(moleStoryGameModes);
+                RestoreDefaultMutators(challengeGameModes);
+                RestoreDefaultMutators(duelGameModes);
+            }
+        }
+#endif
+
+        private void CacheDefaultMutators()
+        {
+            _defaultMutatorsByMode.Clear();
+
+            void Cache(IEnumerable<GameModeData> list)
+            {
+                if (list == null) return;
+                foreach (var gm in list)
+                {
+                    if (gm == null) continue;
+                    if (_defaultMutatorsByMode.ContainsKey(gm)) continue;
+
+                    var copy = gm.mutators != null
+                        ? gm.mutators.Where(m => m != null).ToList()
+                        : null;
+                    _defaultMutatorsByMode[gm] = copy;
+                }
+            }
+
+            Cache(rabbitStoryGameModes);
+            Cache(moleStoryGameModes);
+            Cache(challengeGameModes);
+            Cache(duelGameModes);
+        }
+
+        private void RestoreDefaultMutators(IEnumerable<GameModeData> list)
+        {
+            if (list == null) return;
+            foreach (var gm in list)
+            {
+                if (gm == null) continue;
+                if (_defaultMutatorsByMode.TryGetValue(gm, out var original))
+                {
+                    gm.mutators = original != null ? new List<MutatorSO>(original) : null;
+                }
+                else
+                {
+                    // Not cached (shouldn't happen), fallback to clearing.
+                    gm.mutators = null;
+                }
+            }
         }
 
         public void ShowMenu()
@@ -194,13 +262,15 @@ namespace RabbitVsMole
 
             var available = GetAvailableMutators();
             var selected = preselected ?? gameMode.mutators ?? new List<MutatorSO>();
-            var locked = gameMode.mutators ?? new List<MutatorSO>();
+            // NOTE: gameMode.mutators are defaults for the mode, but user should be able to remove them.
+            // Use locked mutators only for truly mandatory ones (none for now).
+            List<MutatorSO> locked = null;
 
             _mutatorSelectorElement.InitializeWithArgument(
                 new GUICustomElement_MutatorSelector.InitArgs(
                     available,
-                    new List<MutatorSO>(selected.Where(m => m != null)),
-                    new List<MutatorSO>(locked.Where(m => m != null))));
+                    new List<MutatorSO>((selected ?? new List<MutatorSO>()).Where(m => m != null)),
+                    new List<MutatorSO>((locked ?? Enumerable.Empty<MutatorSO>()).Where(m => m != null))));
 
             _menuManager.ChangePanel(_playMutatorSelector);
         }
@@ -209,6 +279,13 @@ namespace RabbitVsMole
         {
             var safe = mutators ?? new List<MutatorSO>();
             _mutatorSourceSelector?.ApplyMutatorsToSelectedMode(safe);
+
+            // Online lobby: update lobby browser flag dynamically when host changes mutators after lobby creation.
+            if (SteamLobbySession.Instance.IsInLobby && SteamLobbySession.Instance.IsHost)
+            {
+                SteamLobbySession.Instance.SetHasMutators(safe.Any(m => m != null));
+            }
+
             _mutatorSourceSelector = null;
             _menuManager.GoBack();
         }
@@ -436,10 +513,15 @@ namespace RabbitVsMole
                 .AddCustomElement(gameModeSelectorPrefab,
                     new GUICustomElement_GameModeSelector.InitArgs(
                         rabbitStoryGameModes.GetRange(0, GetMaxStoryProgress(PlayerType.Mole)),
-                        showAiSlider: false))
+                        showAiSlider: false,
+                        isStoryMode: true))
                     .SetId("PlayPanelStoryMole")
                 .AddButton(GetLocalizedString("button_play_story"), () => { }, true)
-                .AddBackButton()
+                .AddButton(_menuManager.GetBackButtonLocalized(), () =>
+                {
+                    RestoreDefaultMutators(rabbitStoryGameModes);
+                    _menuManager.GoBack();
+                }, true)
                 .Build();
             BindMutatorButton(_playPanelStoryMole, "PlayPanelStoryMole");
 
@@ -447,10 +529,15 @@ namespace RabbitVsMole
                 .AddCustomElement(gameModeSelectorPrefab,
                     new GUICustomElement_GameModeSelector.InitArgs(
                         rabbitStoryGameModes.GetRange(0, GetMaxStoryProgress(PlayerType.Rabbit)),
-                        showAiSlider: false))
+                        showAiSlider: false,
+                        isStoryMode: true))
                     .SetId("GameModeStoryRabbit")
                 .AddButton(GetLocalizedString("button_play_story"), PlayStoryRabbit, true)
-                .AddBackButton()
+                .AddButton(_menuManager.GetBackButtonLocalized(), () =>
+                {
+                    RestoreDefaultMutators(rabbitStoryGameModes);
+                    _menuManager.GoBack();
+                }, true)
                 .Build();
             BindMutatorButton(_playPanelStoryRabbit, "GameModeStoryRabbit");
 
@@ -468,7 +555,11 @@ namespace RabbitVsMole
                     .SetId("GameModeDuelLocalSolo")
                .AddButton(GetLocalizedString("button_play_duel_as_rabbit"), () => PlayDuelSolo(PlayerType.Rabbit), true)
                .AddButton(GetLocalizedString("button_play_duel_as_mole"), () => PlayDuelSolo(PlayerType.Mole), true)
-               .AddBackButton()
+               .AddButton(_menuManager.GetBackButtonLocalized(), () =>
+               {
+                   RestoreDefaultMutators(duelGameModes);
+                   _menuManager.GoBack();
+               }, true)
                .Build();
             BindMutatorButton(_playPanelDuelLocalSolo, "GameModeDuelLocalSolo");
 
@@ -479,7 +570,11 @@ namespace RabbitVsMole
                         showAiSlider: false))
                     .SetId("GameModelDuelLocalSplit")
                 .AddButton(GetLocalizedString("button_play_duel"), PlayDuelSplitScreen, true)
-                .AddBackButton()
+                .AddButton(_menuManager.GetBackButtonLocalized(), () =>
+                {
+                    RestoreDefaultMutators(duelGameModes);
+                    _menuManager.GoBack();
+                }, true)
                 .Build();
             BindMutatorButton(_playPanelDuelLocalSplit, "GameModelDuelLocalSplit");
 
@@ -499,7 +594,11 @@ namespace RabbitVsMole
                     SteamLobbySession.Instance.CreateLobby(selected.name, hasMutators, maxMembers: 2);
                     _menuManager.ChangePanel(_playPanelDuelOnlineHostLobby);
                 }, true)
-                .AddBackButton()
+                .AddButton(_menuManager.GetBackButtonLocalized(), () =>
+                {
+                    RestoreDefaultMutators(duelGameModes);
+                    _menuManager.GoBack();
+                }, true)
                 .Build();
             BindMutatorButton(_playPanelDuelOnlineHostSetup, "HostGameModeSelector");
 
@@ -863,6 +962,10 @@ namespace RabbitVsMole
         private void OnDestroy()
         {
             LocalizationSettings.SelectedLocaleChanged -= OnLanguageChanged;
+#if UNITY_EDITOR
+            EditorApplication.playModeStateChanged -= OnEditorPlayModeStateChanged;
+#endif
+
             if (_mutatorSelectorElement != null)
             {
                 _mutatorSelectorElement.AcceptClicked -= OnMutatorAcceptClicked;

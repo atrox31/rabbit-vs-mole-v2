@@ -362,7 +362,7 @@ namespace Interface.Element
             }
         }
 
-        public void FixCustomElementLayout()
+        public override void FixCustomElementLayout()
         {
             RectTransform rt = GetRectTransform();
             if (rt == null) return;

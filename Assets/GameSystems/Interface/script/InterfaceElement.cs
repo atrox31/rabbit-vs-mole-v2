@@ -51,6 +51,15 @@ namespace Interface.Element
             // Override in custom elements to handle initialization
         }
 
+        /// <summary>
+        /// Optional hook for custom elements to fix their own layout after being added to a panel.
+        /// Called by <see cref="Interface.GUIPanel.AddElement"/> (shipping-friendly alternative to reflection).
+        /// </summary>
+        public virtual void FixCustomElementLayout()
+        {
+            // Override in custom elements that need post-parenting layout fixes.
+        }
+
         protected virtual void CollectUIComponents()
         {
             _elementImages.Clear();

@@ -95,9 +95,11 @@ namespace RabbitVsMole
                     {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
                         if (e.BackpackItemType == BackpackItemType.Carrot && e.Diff == -1)
-                            DebugHelper.Log(this, $"[Achievements] Carrot put down -> InventoryChangedEvent diff={e.Diff} count={e.Count}/{e.Capacity}");
+                            DebugHelper.Log(this, $"[Achievements] Carrot put down ({e.PlayerType}) -> diff={e.Diff} count={e.Count}/{e.Capacity}");
 #endif
-                        return e.BackpackItemType == BackpackItemType.Carrot && e.Diff == -1;
+                        return CountsForAchievements(e.PlayerType)
+                               && e.BackpackItemType == BackpackItemType.Carrot
+                               && e.Diff == -1;
                     }),
 
                 // Carrot 100 progress via Steam stat (0..100)
@@ -110,37 +112,48 @@ namespace RabbitVsMole
                     {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
                         if (e.BackpackItemType == BackpackItemType.Carrot && e.Diff == -1)
-                            DebugHelper.Log(this, $"[Achievements] Carrot100 progress trigger -> diff={e.Diff} count={e.Count}/{e.Capacity}");
+                            DebugHelper.Log(this, $"[Achievements] Carrot100 progress trigger ({e.PlayerType}) -> diff={e.Diff} count={e.Count}/{e.Capacity}");
 #endif
-                        return e.BackpackItemType == BackpackItemType.Carrot && e.Diff == -1;
+                        return CountsForAchievements(e.PlayerType)
+                               && e.BackpackItemType == BackpackItemType.Carrot
+                               && e.Diff == -1;
                     }),
 
                 // Seed achievements (use/plant consumes seeds -> diff < 0)
                 new EventAchievement<InventoryChangedEvent>(
                     "ACHIEVEMENT_SEED_1",
-                    e => e.BackpackItemType == BackpackItemType.Seed && e.Diff < 0),
+                    e => CountsForAchievements(e.PlayerType)
+                         && e.BackpackItemType == BackpackItemType.Seed
+                         && e.Diff < 0),
                 new StatProgressAchievement<InventoryChangedEvent>(
                     "ACHIEVEMENT_SEED_100",
                     statName: "SEED100",
                     max: 100,
                     incrementPerTrigger: 1,
-                    condition: e => e.BackpackItemType == BackpackItemType.Seed && e.Diff < 0),
+                    condition: e => CountsForAchievements(e.PlayerType)
+                                    && e.BackpackItemType == BackpackItemType.Seed
+                                    && e.Diff < 0),
 
                 // Water achievements (watering consumes water -> diff < 0)
                 new EventAchievement<InventoryChangedEvent>(
                     "ACHIEVEMENT_WATER_1",
-                    e => e.BackpackItemType == BackpackItemType.Water && e.Diff < 0),
+                    e => CountsForAchievements(e.PlayerType)
+                         && e.BackpackItemType == BackpackItemType.Water
+                         && e.Diff < 0),
                 new StatProgressAchievement<InventoryChangedEvent>(
                     "ACHIEVEMENT_WATER_100",
                     statName: "WATER100",
                     max: 100,
                     incrementPerTrigger: 1,
-                    condition: e => e.BackpackItemType == BackpackItemType.Water && e.Diff < 0),
+                    condition: e => CountsForAchievements(e.PlayerType)
+                                    && e.BackpackItemType == BackpackItemType.Water
+                                    && e.Diff < 0),
 
                 // Fast carrot: pick a carrot within first 30 seconds of the match (carrot added to inventory)
                 new EventAchievement<InventoryChangedEvent>(
                     "ACHIEVEMENT_FAST_CARROT",
-                    e => e.BackpackItemType == BackpackItemType.Carrot
+                    e => CountsForAchievements(e.PlayerType)
+                         && e.BackpackItemType == BackpackItemType.Carrot
                          && e.Diff > 0
                          && CurrentGameInspector != null
                          && CurrentGameInspector.CurrentGameTime <= 30),
@@ -148,14 +161,14 @@ namespace RabbitVsMole
                 // Golden carrots
                 new EventAchievement<GoldenCarrotCollectedEvent>(
                     "ACHIEVEMENT_GOLDER_CARROT_1",
-                    _ => true),
+                    e => CountsForAchievements(e.PlayerType)),
                 // NOTE: Requires Steam stat configured on Steamworks side: GOLDEN_CARROT_COUNT (0..7)
                 new StatProgressAchievement<GoldenCarrotCollectedEvent>(
                     "ACHIEVEMENT_GOLDER_CARROT_7",
                     statName: "GOLDEN_CARROT_COUNT",
                     max: 7,
                     incrementPerTrigger: 1,
-                    condition: _ => true),
+                    condition: e => CountsForAchievements(e.PlayerType)),
 
                 // Wins per mode (only when local player wins; disabled in splitscreen by watcher)
                 new EventAchievement<GameEndedEvent>(
@@ -187,6 +200,20 @@ namespace RabbitVsMole
             }
             
             DebugHelper.Log(this, "GameManager: Ready completed.");
+        }
+
+        private static bool CountsForAchievements(PlayerType playerType)
+        {
+            var inspector = CurrentGameInspector;
+            if (inspector == null)
+                return false;
+
+            var controlAgent = playerType == PlayerType.Rabbit
+                ? inspector.RabbitControlAgent
+                : inspector.MoleControlAgent;
+
+            return controlAgent == PlayerControlAgent.Human
+                   || controlAgent == PlayerControlAgent.Online;
         }
 
         private static bool DidLocalPlayerWin(GameEndedEvent e)
