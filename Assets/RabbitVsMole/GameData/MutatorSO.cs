@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Localization;
+using UnityEngine.Localization.Settings;
 
 namespace RabbitVsMole.GameData.Mutator
 {
@@ -36,7 +37,12 @@ namespace RabbitVsMole.GameData.Mutator
             if (string.IsNullOrEmpty(localizedString.TableReference.TableCollectionName) &&
                 localizedString.TableReference == null)
                 return null;
-            return localizedString.GetLocalizedString();
+            
+            // Use LocalizationSettings.StringDatabase for reliable build support
+            // This ensures the string is loaded from preloaded tables
+            return LocalizationSettings.StringDatabase.GetLocalizedString(
+                localizedString.TableReference, 
+                localizedString.TableEntryReference);
         }
 
         /// <summary>

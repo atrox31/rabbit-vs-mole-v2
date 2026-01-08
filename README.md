@@ -177,7 +177,6 @@ The game includes a complete farming cycle, dynamic day-of-week progression, gol
 - **Steamworks.NET**: Steam API integration.
 - **EasyTransitions**: Scene transition effects.
 - **SerializedCollections**: Enhanced dictionary serialization.
-- **DOTween** (if used, else omit).
 
 ---
 
