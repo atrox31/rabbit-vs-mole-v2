@@ -48,7 +48,9 @@
     <type fullname="WalkingImmersionSystem.WalkingImmersionSystemController" preserve="all" />
     <type fullname="AttackEnemyAction" preserve="nothing" serialized="true" />
     <type fullname="CalmDownAction" preserve="nothing" serialized="true" />
+    <type fullname="FindBestFieldForMoundAction" preserve="nothing" serialized="true" />
     <type fullname="FindFieldForRabbitAction" preserve="nothing" serialized="true" />
+    <type fullname="FindNearestMoundSequence" preserve="nothing" serialized="true" />
     <type fullname="InteractDownAction" preserve="nothing" serialized="true" />
     <type fullname="InteractionFrontAction" preserve="nothing" serialized="true" />
     <type fullname="MoveToTargetAction" preserve="nothing" serialized="true" />
@@ -75,6 +77,7 @@
     <type fullname="Unity.Behavior.BranchingConditionComposite" preserve="nothing" serialized="true" />
     <type fullname="Unity.Behavior.ConditionOperator" preserve="nothing" serialized="true" />
     <type fullname="Unity.Behavior.Node" preserve="nothing" serialized="true" />
+    <type fullname="Unity.Behavior.RandomComposite" preserve="nothing" serialized="true" />
     <type fullname="Unity.Behavior.SequenceComposite" preserve="nothing" serialized="true" />
     <type fullname="Unity.Behavior.Start" preserve="nothing" serialized="true" />
     <type fullname="Unity.Behavior.VariableComparisonCondition" preserve="nothing" serialized="true" />

@@ -51,6 +51,8 @@ namespace RabbitVsMole
 
         // Movement input (set externally by controller)
         private Vector2 _moveInput;
+        // Pending movement input received during action (buffered until action completes)
+        private Vector2 _pendingMoveInput;
 
         // Action States
         private bool _isPerformingAction;
@@ -167,6 +169,7 @@ namespace RabbitVsMole
             if (evt.IsFrozen)
             {
                 _moveInput = Vector2.zero;
+                _pendingMoveInput = Vector2.zero;
                 
                 // Stop walking animation and set to idle
                 if (_animator != null)
@@ -261,7 +264,11 @@ namespace RabbitVsMole
         public void SetMoveInput(Vector2 moveInput)
         {
             if (_isPerformingAction)
+            {
+                // Buffer the input during action so it can be applied when action completes
+                _pendingMoveInput = moveInput;
                 return;
+            }
 
             _moveInput = moveInput;
         }
@@ -432,16 +439,35 @@ namespace RabbitVsMole
 
         public void MoundCollapse(FieldBase field)
         {
-            if (_interactableDown == null)
+            if (field is not UndergroundFieldBase collapsedUndergroundField)
                 return;
 
-            if(field is not UndergroundFieldBase collapsedUndergroundField)
-                return;
+            bool isStandingOnField = false;
 
-            if(_interactableDown is not UndergroundFieldBase fieldThatPlayerIsStandingOn)
-                return;
+            // Check 1: Cached interaction
+            if (_interactableDown is UndergroundFieldBase fieldThatPlayerIsStandingOn)
+            {
+                if (collapsedUndergroundField == fieldThatPlayerIsStandingOn)
+                    isStandingOnField = true;
+            }
 
-            if(collapsedUndergroundField == fieldThatPlayerIsStandingOn)
+            // Check 2: Physics bounds (fallback)
+            if (!isStandingOnField)
+            {
+                var collider = collapsedUndergroundField.GetComponent<Collider>();
+                if (collider != null)
+                {
+                    var bounds = collider.bounds;
+                    // Check XZ bounds (ignore Y)
+                    if (transform.position.x >= bounds.min.x && transform.position.x <= bounds.max.x &&
+                        transform.position.z >= bounds.min.z && transform.position.z <= bounds.max.z)
+                    {
+                        isStandingOnField = true;
+                    }
+                }
+            }
+
+            if (isStandingOnField)
                 Hit(GameManager.CurrentGameStats.FightMoleHealthPoints + 1, true);
         }
 
@@ -561,6 +587,13 @@ namespace RabbitVsMole
             {
                 _isPerformingAction = false;
                 _currentActionType = ActionType.None;
+                
+                // Apply any pending movement input that was received during the action
+                if (_pendingMoveInput.sqrMagnitude > 0.01f)
+                {
+                    _moveInput = _pendingMoveInput;
+                    _pendingMoveInput = Vector2.zero;
+                }
             }
             // If we're in Victory/Defeat, keep _isPerformingAction true and _currentActionType set
             // so movement remains blocked

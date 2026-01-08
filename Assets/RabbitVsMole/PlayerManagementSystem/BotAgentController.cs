@@ -9,6 +9,7 @@ using System.Linq;
 using Unity.Behavior;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Localization.Settings;
 using static RabbitVsMole.GameManager;
 
 namespace RabbitVsMole
@@ -23,6 +24,7 @@ namespace RabbitVsMole
         private BehaviorGraphAgent _graphAgent;
         private BlackboardReference _blackboardReference;
         private float _intelligence;
+        private bool _initialized;
 
         private float _currentAggroRange;
         private float _aggroCounter = 0f;
@@ -47,6 +49,7 @@ namespace RabbitVsMole
             }
 
             instance._playerType = playerType;
+            instance._initialized = true;
             instance._intelligence = playGameSettings.aiIntelligence;
             instance._currentAggroRange = instance.GetDefaultAggroRange;
             if(playGameSettings.gameMode.winCondition == GameModeWinCondition.Cooperation)
@@ -74,10 +77,12 @@ namespace RabbitVsMole
             {
                 SetupEnemy();
             }
-            if(!TryGetComponent(out _navMeshAgent))
+            _navMeshAgent = GetComponentInChildren<NavMeshAgent>();
+            if (_navMeshAgent == null)
             {
                 DebugHelper.LogError(this, "can not find NavMeshAgent");
             }
+            SubscribeEvents();
         }
 
         private void Update()
@@ -170,7 +175,6 @@ namespace RabbitVsMole
 
         private bool SetupBehaviorGraphAgent(int intelligence, BehaviorGraph nonStandardBehaviorGraph = null)
         {
-            
             if (!TryGetComponent<BehaviorGraphAgent>(out _graphAgent))
             {
                 DebugHelper.LogError(this, "Failed to find BehaviorGraphAgent");
@@ -200,13 +204,7 @@ namespace RabbitVsMole
                 DebugHelper.LogError(this, "BlackboardReference is null after Init(). Is the BehaviorGraph valid/validated?");
                 return false;
             }
-
-            if (!SetVarible<FarmSeedStorage>(_blackboardReference) 
-                || !SetVarible<FarmWaterStorage>(_blackboardReference) 
-                || !SetVarible<FarmCarrotStorage>(_blackboardReference))
-                return false;
-
-            if(!_blackboardReference.SetVariableValue("AvatarOfPlayer", _playerAvatar.gameObject))
+            if (!_blackboardReference.SetVariableValue("AvatarOfPlayer", _playerAvatar.gameObject))
             {
                 DebugHelper.LogError(this, "Cannot find AvatarOfPlayer");
                 return false;
@@ -216,6 +214,21 @@ namespace RabbitVsMole
             {
                 DebugHelper.LogError(this, "Cannot find Intelligence");
                 return false;
+            }
+
+            if (_playerType == PlayerType.Rabbit)
+            {
+                if (!SetVarible<FarmSeedStorage>(_blackboardReference)
+                    || !SetVarible<FarmWaterStorage>(_blackboardReference)
+                    || !SetVarible<FarmCarrotStorage>(_blackboardReference))
+                    return false;
+            }
+            else
+            {
+                if (!SetVarible<UndergroundCarrotStorage>(_blackboardReference)
+                 || !SetVarible<FarmCarrotStorage>(_blackboardReference)
+                 || !_blackboardReference.SetVariableValue("Cooperation", _peace))
+                    return false;
             }
 
             return true;
@@ -239,11 +252,23 @@ namespace RabbitVsMole
 
         private void OnEnable()
         {
+            if (_initialized)
+                SubscribeEvents();
+        }
+
+        private void OnDisable()
+        {
+            if (_initialized)
+                UnsubscribeEvents();
+        }
+
+        private void SubscribeEvents()
+        {
             if (_playerType == PlayerType.Mole)
                 EventBus.Subscribe<TravelEvent>(MoleTravel);
         }
 
-        private void OnDisable()
+        private void UnsubscribeEvents()
         {
             if (_playerType == PlayerType.Mole)
                 EventBus.Unsubscribe<TravelEvent>(MoleTravel);
@@ -261,8 +286,14 @@ namespace RabbitVsMole
                 _navMeshAgent.Warp(moleTravelEvent.NewLocation);
                 _navMeshAgent.ResetPath();
             }
+            else
+            {
+                _playerAvatar.transform.position = moleTravelEvent.NewLocation;
+            }
+
 
             yield return null;
+            _blackboardReference.SetVariableValue("isUnderground", !_playerAvatar.IsOnSurface);
             _playerAvatar.PerformAction(moleTravelEvent.actionTypeAfterTravel);
 
             _playerAvatar.SetupNewTerrain();

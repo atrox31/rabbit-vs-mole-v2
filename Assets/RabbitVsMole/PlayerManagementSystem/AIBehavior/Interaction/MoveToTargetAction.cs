@@ -26,10 +26,12 @@ public partial class MoveToTargetAction : Action
     private NavMeshPath _path;
 
     private bool _isTargetFarmField;
+    private bool _isTargetUndergroundField;
     private bool _isTargetSupplyObject;
     private bool _isTargetOtherPlayer;
 
-    private bool IsTargetStaticPosition => (_isTargetFarmField || _isTargetSupplyObject);
+    private bool IsTargetStaticPosition 
+        => (_isTargetFarmField || _isTargetSupplyObject || _isTargetUndergroundField);
     private Vector3 TargetStaticPosition;
 
     private Vector3 _selfPosition;
@@ -46,6 +48,7 @@ public partial class MoveToTargetAction : Action
         _path = new NavMeshPath();
 
         _isTargetFarmField = _target.TryGetComponent<FarmFieldBase>(out _);
+        _isTargetUndergroundField = _target.TryGetComponent<UndergroundFieldBase>(out _);
         _isTargetSupplyObject = _target.CompareTag(AIConsts.SUPPLY_TAG);
         
         if (_target.TryGetComponent<PlayerAvatar>(out var targetPlayerAvatar))
@@ -95,8 +98,13 @@ public partial class MoveToTargetAction : Action
         }
         if (_isTargetFarmField)
         {
-            _target.TryGetComponent<FarmFieldBase>(out FarmFieldBase farmfield);
+            _target.TryGetComponent(out FarmFieldBase farmfield);
             AIDebugOutput.LogMessage($"MoveToTarget {farmfield?.StateName}");
+        }
+        if (_isTargetUndergroundField)
+        {
+            _target.TryGetComponent(out UndergroundFieldBase farmfield);
+            AIDebugOutput.LogMessage($"MoveToTarget {nameof(farmfield)}");
         }
 
         switch (CalculatePath(selfPosition, targetPosition))
@@ -132,7 +140,8 @@ public partial class MoveToTargetAction : Action
         if (_isTargetSupplyObject)
             return HandleSupplyObject();
 
-        if (_isTargetFarmField)
+        if (_isTargetFarmField
+            || _isTargetUndergroundField)
             return HandleFarmField();
 
         if (_isTargetOtherPlayer)

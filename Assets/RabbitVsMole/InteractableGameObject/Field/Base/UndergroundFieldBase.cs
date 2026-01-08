@@ -13,6 +13,7 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
     public class UndergroundFieldBase : FieldBase
     {
         protected override FieldState _fieldState { get; set; }
+        public bool IsBotUnderground { get; set; } = false;
 
         [Header("Visuals")]
         [SerializeField] UndergroundCarrotVisual undergroundCarrotVisualPrefab;
@@ -33,9 +34,9 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
 
         void Awake()
         {
+            IsBotUnderground = GameManager.CurrentGameInspector.MoleControlAgent == PlayerControlAgent.Bot;
             _fieldState = CreateUndergroundWallState();
             _wallsVisual?.SetDuration(0.01f);
-
         }
         VisualBase _currentVisual;
 
@@ -79,12 +80,18 @@ namespace RabbitVsMole.InteractableGameObject.Field.Base
 
         internal void DestroyWall()
         {
+            if (IsBotUnderground)
+                return;
+
             _wallsVisual?.SetDuration(GameManager.CurrentGameStats.TimeActionDigUndergroundWall);
             DestroyVisual(ref _wallsVisual);
         }
 
         internal void CreateWall()
         {
+            if (IsBotUnderground)
+                return;
+
             CreateVisual(ref _wallsVisual, wallVisualPrefab);
         }
 

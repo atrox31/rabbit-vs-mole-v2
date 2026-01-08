@@ -10,6 +10,8 @@ using UnityEngine.InputSystem;
 using UnityEngine.Localization;
 using UnityEngine.Localization.Settings;
 using RabbitVsMole.GameData.Mutator;
+using Steamworks;
+
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -17,6 +19,7 @@ using UnityEditor;
 namespace RabbitVsMole
 {
     using static GameManager;
+    using static UnityEngine.Rendering.DebugUI;
 
     public class MainMenuSetup : MonoBehaviour
     {
@@ -53,6 +56,7 @@ namespace RabbitVsMole
         private GUICustomElement_GameModeSelector _mutatorSourceSelector;
         private readonly List<GUICustomElement_GameModeSelector> _mutatorAwareSelectors = new();
         private readonly Dictionary<GameModeData, List<MutatorSO>> _defaultMutatorsByMode = new();
+        protected Callback<GameLobbyJoinRequested_t> m_LobbyJoinRequested;
 
         private List<Interface.Element.GUILabel> _creditLabels = new List<Interface.Element.GUILabel>();
 
@@ -115,6 +119,10 @@ namespace RabbitVsMole
             CacheDefaultMutators();
             SetupMenus();
             LocalizationSettings.SelectedLocaleChanged += OnLanguageChanged;
+
+            if (SteamManager.Initialized)
+                m_LobbyJoinRequested = Callback<GameLobbyJoinRequested_t>.Create(OnLobbyJoinRequested);
+
 
 #if UNITY_EDITOR
             // In editor, runtime changes to ScriptableObject assets can "stick" after exiting Play Mode.
@@ -476,6 +484,13 @@ namespace RabbitVsMole
             // Stash nonce so coordinator will only begin when the correct session begins.
             GameSystems.Steam.Scripts.SteamOnlineStartCoordinator.Instance.SetLocalStartNonce(startNonce);
             return true;
+        }
+
+        void OnLobbyJoinRequested(GameLobbyJoinRequested_t callback)
+        {
+            Debug.Log("Join request received for Lobby: " + callback.m_steamIDLobby);
+            SteamLobbySession.Instance.JoinLobby(callback.m_steamIDLobby.m_SteamID);
+            _menuManager.ChangePanel(_playPanelDuelOnlineJoinLobby);
         }
 
         private void SetupMenus()
@@ -980,6 +995,12 @@ namespace RabbitVsMole
                 }
             }
             _mutatorAwareSelectors.Clear();
+
+            if (m_LobbyJoinRequested != null)
+            {
+                m_LobbyJoinRequested.Dispose();
+                m_LobbyJoinRequested = null;
+            }
         }
 
         private List<string> PrepareCredits()

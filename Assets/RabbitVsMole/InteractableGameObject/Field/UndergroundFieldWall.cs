@@ -23,17 +23,24 @@ namespace RabbitVsMole.InteractableGameObject.Field
             FieldParent.CreateWall();
             _hitCount = 0;
 
-            if(FieldParent.TryGetComponent<BoxCollider>(out var boxCollider))
+            PlayerAvatar.MoleStaticInstance?.MoundCollapse(FieldParent);
+
+            if (FieldParent.IsBotUnderground)
+                return;
+
+            if (FieldParent.TryGetComponent<BoxCollider>(out var boxCollider))
             {
                 var boxSize = boxCollider.size;
                 boxSize.y = 5f;
                 boxCollider.size = boxSize;
             }
-            PlayerAvatar.MoleStaticInstance?.MoundCollapse(FieldParent);
         }
 
         protected override void OnDestroy()
         {
+            if (FieldParent.IsBotUnderground)
+                return;
+
             FieldParent.DestroyWall();
 
             if (FieldParent.TryGetComponent<BoxCollider>(out var boxCollider))

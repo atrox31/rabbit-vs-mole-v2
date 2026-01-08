@@ -57,7 +57,7 @@ namespace RabbitVsMole.GameData
         public int WaterSourceWaterToInventoryPerDrain = 4;
 
         // Carrot
-        public float CarrotGrowingTimeInSec = 12f;
+        public float CarrotGrowingTimeInSec = 14f;
         public float CarrotSpoilTimeInSec = 120f;
 
         // FarmField
@@ -156,10 +156,10 @@ namespace RabbitVsMole.GameData
             public AIPriority FarmFieldWithCarrotWorking = new AIPriority(priority: 10);
             public AIPriority FieldWithCarrotReady = new AIPriority(priority: 100);
 
-            internal AIPriority UndergroundFieldClean = new AIPriority(0);
-            internal AIPriority UndergroundFieldCarrot = new AIPriority(0);
-            internal AIPriority UndergroundFieldMounded = new AIPriority(0);
-            internal AIPriority UndergroundFieldWall = new AIPriority(0);
+            internal AIPriority UndergroundFieldClean = new AIPriority(50);
+            internal AIPriority UndergroundFieldCarrot = new AIPriority(90);
+            internal AIPriority UndergroundFieldMounded = new AIPriority(55);
+            internal AIPriority UndergroundFieldWall = new AIPriority(60);
 
         }
     }

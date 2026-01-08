@@ -1,6 +1,6 @@
+using AddressablesStaticDictionary;
 using GameSystems.Steam;
 using GameSystems.Steam.Scripts;
-using AddressablesStaticDictionary;
 using InputManager;
 using PlayerManagementSystem;
 using PlayerManagementSystem.Backpack;
@@ -8,12 +8,14 @@ using PlayerManagementSystem.Backpack.Events;
 using RabbitVsMole.Events;
 using RabbitVsMole.GameData;
 using RabbitVsMole.InteractableGameObject.Enums;
+using Steamworks;
 using System;
 using System.Collections;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Localization;
 using WalkingImmersionSystem;
+using static UnityEngine.Rendering.DebugUI;
 using EventBus = GameSystems.EventBus;
 
 namespace RabbitVsMole
@@ -42,7 +44,7 @@ namespace RabbitVsMole
         // Last used settings for current gameplay session, used by RestartGame
         private PlayGameSettings _lastPlayGameSettings;
         private bool _endGame = false;
-        private bool _isPaused;
+        private bool _isPaused; 
 
         [Header("Game Inspector")]
         [SerializeField] private GameObject gameInspectorPrefab;
@@ -198,7 +200,7 @@ namespace RabbitVsMole
                 DebugHelper.LogWarning(this, "GameManager: GameAudioManager not found, adding default but expect some errors.");
                 gameAudioManager = gameObject.AddComponent<GameAudioManager>();
             }
-            
+
             DebugHelper.Log(this, "GameManager: Ready completed.");
         }
 

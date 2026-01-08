@@ -39,7 +39,15 @@ namespace RabbitVsMole.InteractableGameObject.Base
 
             if (!CanInteract(playerAvatar.Backpack))
             {
-                AudioManager.PlaySound3D(SoundDB.SoundDB.GetSound(ActionType.None, playerAvatar.PlayerType), Parent.transform.position, AudioManager.AudioChannel.SFX);
+                var playErrorSound = playerAvatar.PlayerType switch
+                {
+                    PlayerType.Rabbit => GameManager.CurrentGameInspector.MoleControlAgent != PlayerControlAgent.Bot,
+                    PlayerType.Mole => GameManager.CurrentGameInspector.MoleControlAgent != PlayerControlAgent.Bot,
+                    _ => false,
+                };
+
+                if (playErrorSound)
+                    AudioManager.PlaySound3D(SoundDB.SoundDB.GetSound(ActionType.None, playerAvatar.PlayerType), Parent.transform.position, AudioManager.AudioChannel.SFX);
                 return false;
             }
 

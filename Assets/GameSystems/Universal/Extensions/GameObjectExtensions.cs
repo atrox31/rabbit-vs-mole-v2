@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 
@@ -90,6 +91,32 @@ namespace Extensions
             Vector3 currentPos = origin.transform.position;
 
             foreach (T obj in allObjects)
+            {
+                // Skip if the object found is the one we are searching from
+                if (obj.gameObject == origin) continue;
+
+                // Using sqrMagnitude to avoid expensive square root calculations
+                Vector3 directionToTarget = obj.transform.position - currentPos;
+                float dSqr = directionToTarget.sqrMagnitude;
+
+                if (dSqr < minDistanceSqr)
+                {
+                    minDistanceSqr = dSqr;
+                    nearest = obj;
+                }
+            }
+
+            return nearest;
+        }
+        public static T FindNearest<T>(this GameObject origin, List<T> objectList) where T : Component
+        {
+            if (objectList.Count == 0) return null;
+
+            T nearest = null;
+            float minDistanceSqr = float.MaxValue;
+            Vector3 currentPos = origin.transform.position;
+
+            foreach (T obj in objectList)
             {
                 // Skip if the object found is the one we are searching from
                 if (obj.gameObject == origin) continue;
