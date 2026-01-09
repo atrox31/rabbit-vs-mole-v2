@@ -57,6 +57,7 @@ namespace RabbitVsMole
         private readonly List<GUICustomElement_GameModeSelector> _mutatorAwareSelectors = new();
         private readonly Dictionary<GameModeData, List<MutatorSO>> _defaultMutatorsByMode = new();
         protected Callback<GameLobbyJoinRequested_t> m_LobbyJoinRequested;
+        protected Callback<GameRichPresenceJoinRequested_t> m_GameRichPresenceJoinRequested;
 
         private List<Interface.Element.GUILabel> _creditLabels = new List<Interface.Element.GUILabel>();
 
@@ -121,8 +122,12 @@ namespace RabbitVsMole
             LocalizationSettings.SelectedLocaleChanged += OnLanguageChanged;
 
             if (SteamManager.Initialized)
+            {
                 m_LobbyJoinRequested = Callback<GameLobbyJoinRequested_t>.Create(OnLobbyJoinRequested);
-
+                m_GameRichPresenceJoinRequested = Callback<GameRichPresenceJoinRequested_t>.Create(OnGameRichPresenceJoinRequested);
+                SteamLobbySession.Instance.OnStateChanged += OnLobbyStateChanged;
+                SteamLobbySession.Instance.OnJoinLobbyFailed += OnLobbyJoinFailed;
+            }
 
 #if UNITY_EDITOR
             // In editor, runtime changes to ScriptableObject assets can "stick" after exiting Play Mode.
@@ -130,6 +135,71 @@ namespace RabbitVsMole
             EditorApplication.playModeStateChanged -= OnEditorPlayModeStateChanged;
             EditorApplication.playModeStateChanged += OnEditorPlayModeStateChanged;
 #endif
+        }
+
+        private void Start()
+        {
+            CheckCommandLineArgs();
+        }
+
+        private void CheckCommandLineArgs()
+        {
+            // Check for +connect_lobby <LobbyID>
+            string[] args = System.Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length - 1; i++)
+            {
+                if (args[i].Equals("+connect_lobby", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    if (ulong.TryParse(args[i + 1], out ulong lobbyId))
+                    {
+                        Debug.Log($"[MainMenuSetup] Found command line join request for lobby: {lobbyId}");
+                        SteamLobbySession.Instance.JoinLobby(lobbyId);
+                    }
+                }
+            }
+        }
+
+        private void OnLobbyStateChanged()
+        {
+            // Automatically switch to correct panel when we successfully enter a lobby
+            // This handles Join, Create, and Invite accept scenarios uniformly.
+            if (SteamLobbySession.Instance.IsInLobby)
+            {
+                if (SteamLobbySession.Instance.IsHost)
+                {
+                    // If we are not already in the host lobby panel, go there.
+                    // Note: CreateLobby might have manually switched, but this ensures it.
+                    // We only switch if we are NOT already there to avoid resetting UI state if user is active.
+                    // However, _menuManager.ChangePanel handles duplicates typically.
+                    if (!_menuManager.IsCurrentPanel(_playPanelDuelOnlineHostLobby))
+                    {
+                        _menuManager.ChangePanel(_playPanelDuelOnlineHostLobby);
+                    }
+                }
+                else
+                {
+                    if (!_menuManager.IsCurrentPanel(_playPanelDuelOnlineJoinLobby))
+                    {
+                        
+                        _menuManager.ChangePanel(_playPanelDuelOnlineJoinLobby);
+                         //Ensure we are in correct history state
+                         _menuManager.SeedHistory(_mainMenu, _playPanel, _playPanelDuel, _playPanelDuelOnline);
+                    }
+                }
+            }
+        }
+
+        private void OnLobbyJoinFailed(string error)
+        {
+            DebugHelper.LogWarning(this, $"Lobby Join Failed: {error}");
+            // Show a simple popup or log for now. Since there is no generic popup in this file,
+            // we will just ensure we are not stuck in a 'loading' state if we added one.
+            // Ideally, show an error dialog.
+            // For now, if we were in the sessions list, we stay there.
+            // If we were invited from main menu, we stay in main menu (or wherever we were).
+            
+            // TODO: Implement a proper UI popup for errors.
+            // For now, logging to console is done.
         }
 
 #if UNITY_EDITOR
@@ -490,7 +560,24 @@ namespace RabbitVsMole
         {
             Debug.Log("Join request received for Lobby: " + callback.m_steamIDLobby);
             SteamLobbySession.Instance.JoinLobby(callback.m_steamIDLobby.m_SteamID);
-            _menuManager.ChangePanel(_playPanelDuelOnlineJoinLobby);
+            // Do NOT manually switch panel, wait for OnLobbyStateChanged
+        }
+
+        void OnGameRichPresenceJoinRequested(GameRichPresenceJoinRequested_t callback)
+        {
+             Debug.Log($"Rich Presence Join request received: {callback.m_rgchConnect}");
+             if (!string.IsNullOrEmpty(callback.m_rgchConnect))
+             {
+                 // Expected format: +connect_lobby <id>
+                 string[] parts = callback.m_rgchConnect.Split(' ');
+                 if (parts.Length >= 2 && parts[0] == "+connect_lobby")
+                 {
+                     if (ulong.TryParse(parts[1], out ulong lobbyId))
+                     {
+                         SteamLobbySession.Instance.JoinLobby(lobbyId);
+                     }
+                 }
+             }
         }
 
         private void SetupMenus()
@@ -607,7 +694,7 @@ namespace RabbitVsMole
 
                     bool hasMutators = selected.mutators != null && selected.mutators.Count > 0;
                     SteamLobbySession.Instance.CreateLobby(selected.name, hasMutators, maxMembers: 2);
-                    _menuManager.ChangePanel(_playPanelDuelOnlineHostLobby);
+                    // UI switch will happen in OnLobbyStateChanged
                 }, true)
                 .AddButton(_menuManager.GetBackButtonLocalized(), () =>
                 {
@@ -665,7 +752,7 @@ namespace RabbitVsMole
                     if (ulong.TryParse(table.SelectedIp, out var lobbyId))
                     {
                         SteamLobbySession.Instance.JoinLobby(lobbyId);
-                        _menuManager.ChangePanel(_playPanelDuelOnlineJoinLobby);
+                        // UI switch will happen in OnLobbyStateChanged
                     }
                 }, true).SetId("OnlineJoinButton")
                 .AddButton(GetLocalizedString("interface_table_host"), () =>
@@ -985,6 +1072,12 @@ namespace RabbitVsMole
             {
                 _mutatorSelectorElement.AcceptClicked -= OnMutatorAcceptClicked;
                 _mutatorSelectorElement.BackClicked -= OnMutatorBackClicked;
+            }
+
+            if (SteamLobbySession.Instance != null)
+            {
+                SteamLobbySession.Instance.OnStateChanged -= OnLobbyStateChanged;
+                SteamLobbySession.Instance.OnJoinLobbyFailed -= OnLobbyJoinFailed;
             }
 
             foreach (var selector in _mutatorAwareSelectors)

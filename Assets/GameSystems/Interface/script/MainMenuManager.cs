@@ -197,6 +197,14 @@ namespace Interface
         }
 
         /// <summary>
+        /// Check if the given panel is the currently active one.
+        /// </summary>
+        public bool IsCurrentPanel(GUIPanel panel)
+        {
+             return _currentPanel != null && _currentPanel == panel;
+        }
+
+        /// <summary>
         /// Change the visible panel. By default, the current panel is pushed to history (Back will return to it).
         /// Use pushToHistory=false for "return to list"/"close modal" style navigation.
         /// </summary>

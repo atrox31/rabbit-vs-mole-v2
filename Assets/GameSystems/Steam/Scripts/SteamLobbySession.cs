@@ -576,16 +576,56 @@ namespace GameSystems.Steam.Scripts
             OnLobbyDataChanged?.Invoke();
         }
 
+        public event Action<string> OnJoinLobbyFailed;
+        
+        private void OnLobbyChatUpdate(LobbyChatUpdate_t param)
+        {
+            if (!IsInLobby || param.m_ulSteamIDLobby != CurrentLobbyId)
+                return;
+            OnMembersChanged?.Invoke();
+        }
+
         private void OnLobbyEnter(LobbyEnter_t param, bool ioFailure)
         {
             if (ioFailure)
             {
                 Debug.LogWarning("JoinLobby failed: IO failure");
+                OnJoinLobbyFailed?.Invoke("Connection failed (IO Failure)");
+                return;
+            }
+
+            if (param.m_EChatRoomEnterResponse != (uint)EChatRoomEnterResponse.k_EChatRoomEnterResponseSuccess)
+            {
+                string errorMsg = "Failed to join lobby.";
+                switch ((EChatRoomEnterResponse)param.m_EChatRoomEnterResponse)
+                {
+                    case EChatRoomEnterResponse.k_EChatRoomEnterResponseDoesntExist: errorMsg = "Lobby does not exist."; break;
+                    case EChatRoomEnterResponse.k_EChatRoomEnterResponseNotAllowed: errorMsg = "Join not allowed."; break;
+                    case EChatRoomEnterResponse.k_EChatRoomEnterResponseFull: errorMsg = "Lobby is full."; break;
+                    case EChatRoomEnterResponse.k_EChatRoomEnterResponseError: errorMsg = "Unexpected error."; break;
+                    case EChatRoomEnterResponse.k_EChatRoomEnterResponseBanned: errorMsg = "You are banned from this lobby."; break;
+                    case EChatRoomEnterResponse.k_EChatRoomEnterResponseLimited: errorMsg = "Community lock."; break;
+                    case EChatRoomEnterResponse.k_EChatRoomEnterResponseClanDisabled: errorMsg = "Clan disabled."; break;
+                    case EChatRoomEnterResponse.k_EChatRoomEnterResponseCommunityBan: errorMsg = "Community ban."; break;
+                    case EChatRoomEnterResponse.k_EChatRoomEnterResponseMemberBlockedYou: errorMsg = "Member blocked you."; break;
+                    case EChatRoomEnterResponse.k_EChatRoomEnterResponseYouBlockedMember: errorMsg = "You blocked a member."; break;
+                }
+                Debug.LogWarning($"JoinLobby failed: {errorMsg} ({param.m_EChatRoomEnterResponse})");
+                OnJoinLobbyFailed?.Invoke(errorMsg);
                 return;
             }
 
             CurrentLobbyId = param.m_ulSteamIDLobby;
             var lobby = new CSteamID(CurrentLobbyId);
+
+            // Check if game is already running
+            if (TryGetStartNonce(out int nonce) && nonce > 0)
+            {
+                Debug.LogWarning("JoinLobby failed: Game already in progress.");
+                LeaveLobby(); // Cleanly leave
+                OnJoinLobbyFailed?.Invoke("Game is already in progress.");
+                return;
+            }
 
             // Reset ready on join
             SteamMatchmaking.SetLobbyMemberData(lobby, MemberData_Ready, "0");
@@ -594,13 +634,6 @@ namespace GameSystems.Steam.Scripts
             OnStateChanged?.Invoke();
             OnMembersChanged?.Invoke();
             OnLobbyDataChanged?.Invoke();
-        }
-
-        private void OnLobbyChatUpdate(LobbyChatUpdate_t param)
-        {
-            if (!IsInLobby || param.m_ulSteamIDLobby != CurrentLobbyId)
-                return;
-            OnMembersChanged?.Invoke();
         }
 
         private void OnLobbyDataUpdate(LobbyDataUpdate_t param)
